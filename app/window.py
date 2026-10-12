@@ -72,6 +72,14 @@ GLib.set_prgname("Void")                # before Gtk loads → X11 WM_CLASS + Wa
 GLib.set_application_name("Void")
 from gi.repository import Gdk, Gtk, WebKit2  # noqa: E402
 
+# We restarted under XWayland (see below) but can't reach it (no XWayland, no permission…): go back to Wayland as a
+# plain window rather than not showing up at all.
+if os.environ.get("VOID_LAYER_WHY") and os.environ.get("GDK_BACKEND") == "x11" and not Gtk.init_check(sys.argv)[0]:
+    os.environ.update(GDK_BACKEND="wayland", VOID_NO_XWAYLAND="1",
+                      VOID_LAYER_WHY=os.environ["VOID_LAYER_WHY"].replace(" — running under XWayland so he can stay on top",
+                                                                           "") + " — and XWayland couldn't be opened")
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
 GtkLayerShell = None
 if os.environ.get("VOID_LAYER_WHY"):            # we restarted ourselves under XWayland (below): keep the reason for the log
     LAYER_WHY.append(os.environ["VOID_LAYER_WHY"])
