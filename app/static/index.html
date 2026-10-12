@@ -1,0 +1,2085 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Void</title>
+<link rel="icon" href="icon.png">
+<script>if(/[?&]native=1/.test(location.search)) document.documentElement.classList.add('native');</script>
+<style>
+:root{--eye:#3d9b74;--sclera:#f3dccf;--acc:#3d9b74;--hot:#7fd6ae;--edge:#16362a;--edge2:#26604a;--deep:#0b1d16;--tint:#cdeede;
+  --accA:#3d9b741f;--accB:#3d9b7459;--glow:var(--acc);--text:#f3f3f3;--dim:#a3a3a3;--panel:#0b0b0b;
+  --mono:"JetBrains Mono","Fira Code",ui-monospace,monospace;--ease:cubic-bezier(.22,1,.36,1)}
+body.m-error,body.m-annoyed{--glow:#ff2a2a} body.m-listening,body.m-happy,body.m-excited,body.m-love{--glow:var(--hot)}
+body.m-sleepy{--glow:var(--edge2)} body.m-pleading{--glow:#ffb02a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+body{position:relative;width:340px;height:460px;margin:0}
+html{background:transparent}
+body{background:radial-gradient(70% 52% at 50% 36%,#161616 0%,#090909 78%);color:var(--text);
+  font:14px/1.45 "Inter",system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+html.native body{background:transparent}
+button{font:inherit;color:inherit}
+
+#stage{position:absolute;left:0;right:0;top:0;height:330px;display:grid;place-items:center;pointer-events:none;z-index:0;isolation:isolate;
+  transform-origin:170px 165px;transition:transform .7s var(--ease)}
+body.hover #stage{transform:scale(.17)}
+#stage{transition:transform .65s cubic-bezier(.34,1.3,.5,1)}
+body.hover #orbBack,body.hover #orbFront,body.hover #workW,body.hover #haloW,body.hover #vring,body.hover #raysW,body.hover #fx,body.hover #fxBack,
+body.hover #think,body.hover #anger,body.hover #sweat,body.hover #zz,body.hover #qmark,body.hover #tears,body.hover #cap,body.hover #chip,body.hover #atts{display:none}
+body.hover #shadow{display:none}
+#guy{width:330px;height:330px;overflow:visible;pointer-events:none}
+#body{pointer-events:visiblePainted;cursor:pointer}
+#pL{fill:var(--whiteL);stroke:var(--lineL,none)} #pR{fill:var(--whiteR);stroke:var(--lineR,none)}
+.eye{stroke-width:1.6;transition:fill .6s,stroke .6s}
+.b0{stop-color:var(--body0,#191919)} .b1{stop-color:var(--body1,#0a0a0a)} .b2{stop-color:var(--body2,#020202)} .b0,.b1,.b2{transition:stop-color .6s}
+#rim{stroke:var(--rim,#262626)}
+#hlL{fill:var(--pupL)} #hlR{fill:var(--pupR)} .slit{transition:fill .6s}
+.hs{stop-color:var(--glow);transition:stop-color .8s}
+.orb line{stroke:var(--hot);stroke-linecap:round}
+#vring{fill:none;stroke:var(--hot);stroke-width:1.6;stroke-linejoin:round}
+.zz{font:700 15px var(--mono);fill:var(--hot)}
+.qm{font:800 24px "Inter",system-ui,sans-serif;fill:var(--hot)}
+.thk{fill:#111;stroke:var(--acc);stroke-width:2}
+.rs{stop-color:var(--acc);transition:stop-color .8s}
+.ang{fill:none;stroke:#ff2a2a;stroke-width:4;stroke-linecap:round}
+
+/* floating caption: only there while something's happening */
+#cap{position:absolute;left:12px;right:12px;top:296px;height:100px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+  gap:3px;text-align:center;pointer-events:none;transition:opacity 1.1s var(--ease),transform 1.1s var(--ease),top .7s var(--ease);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 34%);mask-image:linear-gradient(to bottom,transparent 0,#000 34%);
+  text-shadow:0 1px 2px #000,0 0 8px #000,0 0 16px #000a}
+#cap.off,body.appr #cap,body.pnl #cap{opacity:0;transform:translateY(6px)}
+#you{font-size:12px;color:var(--dim);text-shadow:0 1px 2px #000,0 0 5px #0009;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#you.pop{animation:wIn .7s var(--ease) both}
+#him{font-size:14.5px;font-weight:500;max-height:4.5em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;width:100%}
+#him.err{color:#ff8a8a}
+#him .ln{display:block}
+#him .w{display:inline-block;animation:wIn .6s var(--ease) both}
+#him .w.c{font-family:var(--mono);font-size:.86em;color:var(--tint)}
+@keyframes wIn{from{opacity:0;transform:translateY(.5em);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+
+#chip{position:absolute;top:10px;left:50%;max-width:92%;padding:3px 11px;border-radius:999px;font:11px var(--mono);color:var(--tint);
+  background:#0b0b0bdd;border:1px solid var(--edge);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;z-index:9;
+  opacity:0;transform:translate(-50%,-6px) scale(.94);transition:opacity .5s var(--ease),transform .7s var(--ease)}
+#chip.on{opacity:1;transform:translate(-50%,0)}
+#chip.bad{color:#ff9b9b;border-color:#5a1a1a}
+#chip.work{color:#e9e9e9;border-color:var(--edge2);box-shadow:0 0 12px var(--accA)}
+#chip .spin{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;border:1.6px solid var(--hot);border-right-color:transparent;
+  animation:vspin .75s linear infinite;vertical-align:-1px}
+@keyframes vspin{to{transform:rotate(360deg)}}
+#workW circle{fill:none;stroke:var(--hot);stroke-linecap:round}
+#workTail{stroke-width:2.4;stroke-dasharray:120 484;opacity:.45}
+#workHead{stroke-width:4.4;stroke-dasharray:16 588;stroke-dashoffset:-104}
+#him .w.k{animation-duration:.32s}
+
+#ask{position:absolute;left:20px;right:20px;bottom:18px;height:40px;display:flex;align-items:center;gap:8px;padding:0 5px 0 16px;border-radius:20px;
+  background:#0b0b0bf2;border:1px solid var(--edge);box-shadow:0 4px 12px #0009,0 0 14px var(--accA);
+  opacity:0;transform:translateY(16px) scale(.92);pointer-events:none;transition:opacity .45s var(--ease),transform .7s var(--ease)}
+#ask.on{opacity:1;transform:none;pointer-events:auto}
+#input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--text);font:inherit;caret-color:var(--hot)}
+#input::placeholder{color:#5e5e5e}
+.round{flex:none;width:30px;height:30px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer}
+#go{background:var(--acc);color:#fff}
+#clipB{background:#1a1a1a;color:#bbb} #clipB:hover{color:#fff}
+.round svg{width:14px;height:14px}
+
+/* things he'll look at with your next message */
+#atts{position:absolute;left:20px;right:20px;bottom:64px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;pointer-events:none}
+#atts .at{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;border-radius:999px;font-size:12px;
+  background:#0d0d0df2;border:1px solid var(--edge2);box-shadow:0 3px 10px #0008;animation:wIn .5s var(--ease) both}
+#atts .at img{width:22px;height:16px;object-fit:cover;border-radius:3px}
+#atts .at button{background:none;border:0;color:#999;cursor:pointer;font-size:12px;padding:0 3px}
+
+/* right-click menu: an arc of buttons over his head */
+#menu{position:absolute;left:170px;top:165px;width:0;height:0;pointer-events:none}
+.mb{position:absolute;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;border:1px solid var(--edge);background:#0c0c0cf2;color:var(--tint);
+  display:grid;place-items:center;cursor:pointer;opacity:0;transform:translate(var(--x),var(--y)) scale(.15);box-shadow:0 8px 22px #000b;
+  transition:transform .25s ease-in,opacity .18s linear,background .2s}
+#menu.on{pointer-events:auto}
+#menu.on .mb{opacity:1;transform:translate(var(--x),var(--y)) scale(1);transition:transform .5s var(--ease) var(--d,.3s),opacity .3s linear var(--d,.3s),background .2s}
+.mb:hover,.mb.on{background:var(--deep);border-color:var(--edge2)}
+.mb svg{width:18px;height:18px}
+.mb span{position:absolute;top:46px;font:10.5px var(--mono);color:#e4e4e4;white-space:nowrap;opacity:0;transition:opacity .2s;
+  text-shadow:0 0 6px #000,0 0 3px #000;pointer-events:none}
+.mb:hover span{opacity:1}
+
+
+/* panels (settings, history, memory, actions) */
+.pn{position:fixed;left:12px;right:12px;top:34px;max-height:calc(100vh - 46px);display:flex;flex-direction:column;border-radius:18px;
+  background:var(--panel);border:1px solid var(--edge);box-shadow:0 6px 20px #000a,0 0 18px var(--accA);font-size:12.5px;z-index:6;
+  opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none;transition:opacity .4s var(--ease),transform .6s var(--ease)}
+.pn.on{opacity:1;transform:none;pointer-events:auto}
+.pn .hd{display:flex;align-items:center;gap:8px;padding:11px 12px 6px 15px}
+.pn .hd b{font:600 13px "Inter",system-ui,sans-serif;flex:1}
+.pn .x{background:none;border:0;color:#888;cursor:pointer;font-size:14px;width:26px;height:26px;border-radius:50%}
+.pn .x:hover{background:#1c1c1c;color:#fff}
+.pn .bd{overflow-y:auto;padding:2px 15px 14px;scrollbar-width:thin;scrollbar-color:var(--edge2) transparent}
+.pn .bd::-webkit-scrollbar{width:6px} .pn .bd::-webkit-scrollbar-thumb{background:var(--edge2);border-radius:3px}
+.tabs{display:flex;gap:4px;padding:2px 12px 8px;border-bottom:1px solid #1d1d1d}
+.tabs button{flex:1;background:none;border:0;border-radius:10px;padding:6px 0;color:#9a9a9a;cursor:pointer;font-size:12px;transition:all .25s}
+.tabs button:hover{color:#ddd;background:#151515}
+.tabs button.on{color:#fff;background:var(--deep);box-shadow:inset 0 0 0 1px var(--edge2)}
+.tab{display:none} .tab.on{display:block;animation:wIn .45s var(--ease) both}
+.row{padding:11px 0;border-bottom:1px solid #191919} .row:last-child{border-bottom:0}
+.row .t{font-weight:600;font-size:12.5px;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.row .h{color:#8d8d8d;font-size:11.5px;line-height:1.35;margin-bottom:7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{padding:5px 11px;border-radius:999px;border:1px solid #2c2c2c;background:#141414;color:#ddd;cursor:pointer;transition:all .25s var(--ease)}
+.chips button:hover{border-color:var(--edge2)}
+.chips button.on{background:var(--acc);border-color:var(--hot);color:#fff;box-shadow:0 0 12px var(--accB)}
+.chips button i{font-style:normal;opacity:.6;margin-left:4px}
+.chips.eyes{gap:7px;align-items:center}
+.chips.eyes .sw{width:24px;height:24px;padding:0;border-radius:50%;background:var(--c);border:2px solid #2c2c2c}
+.chips.eyes .sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--c),0 0 12px var(--c)}
+.chips.eyes label.sw{position:relative;overflow:hidden;cursor:pointer;background:conic-gradient(#f55,#fd5,#5f8,#5df,#86f,#f5d,#f55)}
+.chips.eyes label.sw input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.chips.eyes .rnd{padding:4px 10px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;padding:9px 11px;border-radius:12px;border:1px solid #262626;background:#121212;cursor:pointer;transition:all .25s}
+.opt:hover{border-color:var(--edge2)}
+.opt.on{border-color:var(--hot);background:var(--deep);box-shadow:0 0 12px var(--accA)}
+.opt .ic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#1d1d1d;font-size:12px}
+.opt.on .ic{background:var(--acc)}
+.opt b{display:block;font-size:12.5px} .opt small{color:#8d8d8d;font-size:11.2px;line-height:1.3}
+.tg{display:flex;gap:10px;align-items:center;cursor:pointer;color:#ddd;line-height:1.35;padding:2px 0}
+.tg input{display:none}
+.tg .sw{flex:none;width:34px;height:20px;border-radius:10px;background:#222;border:1px solid #333;position:relative;transition:background .3s}
+.tg .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#888;transition:transform .35s var(--ease),background .3s}
+.tg input:checked+.sw{background:var(--acc);border-color:var(--hot)}
+.tg input:checked+.sw::after{transform:translateX(14px);background:#fff}
+.tg.red input:checked+.sw{background:#7a0000;border-color:#ff3b3b}
+.tg span.l{flex:1} .tg small{display:block;color:#8d8d8d;font-size:11.2px}
+code{font:11px var(--mono);color:var(--tint);background:#161616;border-radius:5px;padding:1px 5px}
+select,.pn input[type=text],.pn textarea{width:100%;background:#121212;color:#eee;border:1px solid #2a2a2a;border-radius:10px;padding:7px 9px;font:inherit;outline:0}
+select:focus,.pn input[type=text]:focus,.pn textarea:focus{border-color:var(--edge2)}
+.pn textarea{resize:vertical;min-height:52px}
+.btn{padding:6px 12px;border-radius:999px;border:1px solid #2c2c2c;background:#161616;color:#ddd;cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--edge2);color:#fff} .btn.pri{background:var(--acc);border-color:var(--hot);color:#fff}
+.btn.sm{padding:3px 9px;font-size:11.5px} .btn.danger:hover{border-color:#a33;color:#ff9b9b}
+.bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;color:#aaa;font-size:11.5px}
+.keys kbd{font:10.5px var(--mono);color:#ddd;background:#181818;border:1px solid #2c2c2c;border-radius:5px;padding:1px 5px;justify-self:start}
+.empty{color:#777;text-align:center;padding:22px 6px;font-size:12px;line-height:1.5}
+.item{padding:9px 10px;border-radius:12px;background:#111;border:1px solid #1e1e1e;margin-bottom:6px;cursor:pointer;transition:border-color .2s}
+.item:hover{border-color:var(--edge2)}
+.item .meta{font:10.5px var(--mono);color:#777;margin-bottom:3px;display:flex;gap:6px}
+.item .meta .bad{color:#ff8a8a}
+.item .y{color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .a{color:#8d8d8d;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px}
+.item.open .a{display:block;-webkit-line-clamp:unset;white-space:pre-wrap;color:#ddd;max-height:190px;overflow-y:auto;user-select:text;-webkit-user-select:text}
+.item .bar{margin-top:8px;display:none} .item.open .bar{display:flex}
+.note{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:#111;border:1px solid #1e1e1e;margin-bottom:6px;user-select:text;-webkit-user-select:text}
+.note span{flex:1;color:#ddd}
+.note button{background:none;border:0;color:#777;cursor:pointer} .note button:hover{color:#ff9b9b}
+.qa{display:flex;flex-direction:column;gap:6px}
+.qa button{text-align:left;padding:10px 12px;border-radius:12px;border:1px solid #232323;background:#121212;color:#eee;cursor:pointer;transition:all .2s}
+.qa button:hover{border-color:var(--hot);background:var(--deep)}
+.qa button small{display:block;color:#888;font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qedit{display:flex;gap:6px;align-items:center;margin-bottom:5px}
+.qedit span{flex:1;padding:6px 9px;border-radius:9px;background:#121212;border:1px solid #222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* "can I run this?" */
+#appr{position:absolute;left:14px;right:14px;top:256px;padding:11px 12px 12px;border-radius:16px;background:#0c0c0cf7;
+  border:1px solid #6b4a10;box-shadow:0 6px 20px #000a,0 0 18px #ffb02a22;z-index:7;
+  opacity:0;transform:translateY(12px) scale(.95);pointer-events:none;transition:opacity .4s var(--ease),transform .6s var(--ease)}
+#appr.on{opacity:1;transform:none;pointer-events:auto}
+#appr .q{font-size:12.5px;color:#ffd38a;margin-bottom:6px;display:flex;gap:6px;align-items:center}
+#appr pre{margin:0 0 9px;padding:7px 9px;border-radius:9px;background:#151515;border:1px solid #262626;font:11.5px/1.4 var(--mono);color:#eee;
+  max-height:64px;overflow:auto;white-space:pre-wrap;word-break:break-all;user-select:text;-webkit-user-select:text}
+#appr .bar{justify-content:flex-end}
+#appr .yes{background:#2f7d4f;border-color:#55c285;color:#fff}
+#appr .hint{flex:1;color:#777;font-size:11px}
+#pwbox{position:absolute;left:14px;right:14px;top:256px;padding:11px 12px 10px;border-radius:16px;background:#0c0c0cf7;margin:0;
+  border:1px solid #7a1414;box-shadow:0 6px 20px #000a,0 0 18px #ff2a2a22;z-index:23;
+  opacity:0;transform:translateY(12px) scale(.95);pointer-events:none;transition:opacity .4s var(--ease),transform .6s var(--ease)}
+#pwbox.on{opacity:1;transform:none;pointer-events:auto}
+#pwbox .q{font-size:12.5px;color:#ff9b9b;margin-bottom:7px;display:flex;gap:6px;align-items:center}
+#pwbox .pwrow{display:flex;gap:6px}
+#pwbox input{flex:1;min-width:0;background:#151515;border:1px solid #3a1a1a;border-radius:9px;color:#eee;font:13px var(--mono);padding:6px 9px;outline:0}
+#pwbox input:focus{border-color:#a02828}
+#pwbox .yes{background:#8a1414;border-color:#d04040;color:#fff}
+#pwbox .hint{margin-top:6px;color:#777;font-size:10.5px}
+#pwbox.bad{animation:pwShake .4s}
+@keyframes pwShake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+body.pw #cap,body.pw #appr{opacity:0}
+
+#flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(45% 35% at 50% 36%,var(--flash,#ff2a2a) 0%,transparent 70%)}
+#flash.go{animation:flash .9s var(--ease)}
+#paint{position:fixed;left:0;top:0;width:100vw;height:100vh;pointer-events:none;z-index:40}
+#menu{z-index:20} .pn{z-index:21} #appr{z-index:22} #ask{z-index:19} #atts{z-index:18} #cap{z-index:5} #chip{z-index:30}
+/* while something is open over him, the stuff behind the card stops moving */
+body.calm #orbBack,body.calm #orbFront,body.calm #raysW,body.calm #vring,body.calm #fx,body.calm #fxBack{display:none}
+
+@keyframes flash{0%{opacity:.18}100%{opacity:0}}
+/* ===== settings, take two: cards, a sliding tab pill, a live clickable preview and a proper colour picker ===== */
+#set{background:linear-gradient(180deg,#141414 0,#0c0c0c 120px,#0b0b0b 100%)}
+#set .hd{padding:12px 12px 8px 14px}
+#set .hd .logo{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--body0,#1b1b1b),var(--body2,#030303) 70%);
+  box-shadow:0 0 0 1.5px var(--edge2),0 0 10px var(--accA);position:relative}
+#set .hd .logo::before,#set .hd .logo::after{content:"";position:absolute;top:5px;width:4px;height:7px;border-radius:50%;background:var(--whiteL,#f3dccf)}
+#set .hd .logo::before{left:4.5px} #set .hd .logo::after{right:4.5px;background:var(--whiteR,#f3dccf)}
+#set .hd b{font-size:14px;letter-spacing:.01em}
+#tabs{position:relative;display:flex;gap:0;margin:0 12px 8px;padding:3px;border:0;border-radius:13px;background:#151515;box-shadow:inset 0 0 0 1px #1f1f1f}
+#tabs button{position:relative;z-index:1;flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:none;border:0;border-radius:10px;
+  padding:6px 0;color:#8f8f8f;font-size:12px;font-weight:500;cursor:pointer;transition:color .25s}
+#tabs button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tabs button:hover{color:#ddd;background:none}
+#tabs button.on{color:#fff;background:none;box-shadow:none}
+#tabs .ind{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;border-radius:10px;background:linear-gradient(180deg,var(--acc),var(--edge2));
+  box-shadow:0 2px 10px var(--accB);transition:transform .45s var(--ease),width .45s var(--ease)}
+#set .bd{padding:2px 12px 14px}
+#set .tab .row{background:#111;border:1px solid #1c1c1c;border-radius:14px;padding:11px 12px;margin:0 0 8px}
+#set .tab .row:last-child{border-bottom:1px solid #1c1c1c}
+#set .row .t{font-size:12.8px}
+#set .row.tgs{display:flex;flex-direction:column;gap:10px}
+#set .tg .sw{width:36px;height:21px;border-radius:11px;background:#232323;border:1px solid #2e2e2e}
+#set .tg .sw::after{top:2.5px;left:2.5px;width:14px;height:14px;box-shadow:0 1px 3px #0008}
+#set .tg input:checked+.sw{background:linear-gradient(180deg,var(--hot),var(--acc));border-color:transparent}
+#set .tg input:checked+.sw::after{transform:translateX(15px)}
+#set .tg.red input:checked+.sw{background:linear-gradient(180deg,#ff5050,#8a0000)}
+/* segmented control */
+.seg{display:flex;flex-wrap:wrap;gap:3px;padding:3px;border-radius:11px;background:#171717;box-shadow:inset 0 0 0 1px #212121}
+.seg button{flex:1 1 0;min-width:0;padding:6px 3px;border:0;border-radius:8px;background:none;color:#aaa;font-size:11.8px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.seg button:hover{color:#fff}
+.seg button.on{background:var(--acc);color:#fff;box-shadow:0 1px 8px var(--accB)}
+/* voices */
+.voices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.voices button{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;border:1px solid #242424;background:#151515;color:#ddd;cursor:pointer;font-size:12px;transition:all .2s}
+.voices button::before{content:"";width:0;height:0;border-left:7px solid currentColor;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;opacity:.6}
+.voices button:hover{border-color:var(--edge2)} .voices button.on{border-color:var(--hot);background:var(--deep);color:#fff}
+.voices button i{font-style:normal;opacity:.6}
+/* look: preview + parts + picker */
+.lookrow{padding-top:6px!important}
+.lookbox{position:relative;display:flex;flex-direction:column;align-items:center}
+#lookPrev{width:132px;height:132px;overflow:visible;margin:2px 0 0}
+#lookPrev [data-part]{cursor:pointer;transition:filter .2s}
+#lookPrev [data-part]:hover{filter:brightness(1.25) drop-shadow(0 0 3px #fff8)}
+#lookPrev .sel{stroke:#fff;stroke-width:3;stroke-dasharray:6 5;animation:ants 1s linear infinite;paint-order:stroke}
+@keyframes ants{to{stroke-dashoffset:-11}}
+.tapme{font:10.5px var(--mono);color:#7d7d7d;margin:2px 0 8px;letter-spacing:.04em}
+.parts{margin-bottom:9px;display:grid;grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
+.parts button{white-space:nowrap}
+.parts button{display:flex;align-items:center;justify-content:center;gap:5px}
+.parts button i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1px #fff4}
+.picker{display:flex;flex-direction:column;gap:8px}
+.picker .sv{position:relative;height:104px;border-radius:10px;overflow:hidden;cursor:crosshair;touch-action:none;box-shadow:inset 0 0 0 1px #ffffff14}
+.picker .sv canvas{width:100%;height:100%;display:block}
+.picker .hue{position:relative;height:13px;border-radius:7px;cursor:pointer;touch-action:none;
+  background:linear-gradient(90deg,#f00,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00)}
+.picker .dot{position:absolute;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1px #0007,0 2px 6px #0009;pointer-events:none}
+.picker .hue .dot{top:50%}
+.pkrow{display:flex;gap:6px;align-items:center}
+.pkrow .cur{flex:none;width:30px;height:30px;border-radius:9px;background:var(--c,#000);box-shadow:inset 0 0 0 1px #fff3}
+.pkrow input{flex:1;min-width:0;background:#151515;border:1px solid #262626;border-radius:9px;color:#eee;font:12.5px var(--mono);padding:6px 9px;outline:0;text-transform:lowercase}
+.pkrow input:focus{border-color:var(--edge2)}
+.swatches,.recent{display:flex;flex-wrap:wrap;gap:6px}
+.swatches button,.recent button{width:22px;height:22px;padding:0;border-radius:7px;border:0;background:var(--c);cursor:pointer;box-shadow:inset 0 0 0 1px #ffffff26;transition:transform .15s}
+.swatches button:hover,.recent button:hover{transform:scale(1.15)}
+.swatches button.auto{background:conic-gradient(from 45deg,var(--c) 0 50%,#666 0 100%);position:relative}
+.recent:empty{display:none} .recent::before{content:"recent";font:10px var(--mono);color:#666;align-self:center;margin-right:2px}
+/* skins gallery */
+.skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px}
+.skins button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 6px;border-radius:11px;border:1px solid #222;background:#141414;color:#aaa;font-size:10.5px;cursor:pointer;transition:all .2s}
+.skins button svg{width:52px;height:52px;overflow:visible}
+.skins button:hover{border-color:var(--edge2);color:#fff}
+.skins button.on{border-color:var(--hot);background:var(--deep);color:#fff;box-shadow:0 0 12px var(--accA)}
+/* projects */
+.proj{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:10px;background:#151515;border:1px solid #222;margin-bottom:5px}
+.proj b{font-size:12px} .proj span{flex:1;font:11px var(--mono);color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj button{background:none;border:0;color:#777;cursor:pointer} .proj button:hover{color:#ff9b9b}
+/* the "full answer" button + reply panel */
+#moreB{position:absolute;left:50%;top:398px;transform:translateX(-50%);z-index:8;padding:3px 10px;border-radius:999px;border:1px solid var(--edge2);
+  background:#0d0d0df2;color:var(--tint);font-size:11px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .4s}
+#moreB.on{opacity:1;pointer-events:auto}
+body.hover #moreB,body.pnl #moreB,body.appr #moreB{display:none}
+.md{font-size:12.8px;line-height:1.5;color:#e6e6e6;user-select:text;-webkit-user-select:text}
+.md p{margin:0 0 8px} .md ul{margin:0 0 8px;padding-left:18px} .md li{margin:2px 0}
+.md code{font-size:11.5px}
+.md .cb{position:relative;margin:0 0 9px;border-radius:10px;background:#151515;border:1px solid #242424}
+.md .cb pre{margin:0;padding:9px 10px;font:11.5px/1.45 var(--mono);color:#e8e8e8;overflow-x:auto;white-space:pre}
+.md .cb button{position:absolute;top:5px;right:5px;padding:2px 8px;border-radius:7px;border:1px solid #333;background:#1c1c1c;color:#bbb;font-size:10.5px;cursor:pointer}
+.md .cb button:hover{color:#fff;border-color:var(--edge2)}
+.md h1,.md h2,.md h3{font-size:13.5px;margin:10px 0 6px}
+/* ===== the terminal: a small flat sheet he holds under his eyes while he works ===== */
+#stage{z-index:2}
+#code{position:fixed;left:0;top:0;width:136px;height:80px;z-index:3;pointer-events:none;border-radius:10px;
+  background:#0b0b0bf2;border:1px solid var(--edge2);box-shadow:0 8px 18px #000b;font:8.5px/12px var(--mono);color:#d6d6d6;
+  opacity:0;scale:.5;transition:opacity .3s,scale .4s cubic-bezier(.3,1.5,.5,1)}
+#code.on{opacity:1;scale:1}
+#code .tb{display:flex;align-items:center;gap:6px;height:17px;padding:0 8px;border-bottom:1px solid #1d1d1d;color:var(--hot);font-weight:600}
+#code .tb b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+#code .tb span{color:#777} #code .tb span.ok{color:var(--hot)} #code .tb span.bad{color:#ff6b6b}
+#code.root{border-color:#7a1414} #code.root .tb b::before{content:"root · ";color:#ff5a5a}
+#code .lines{padding:3px 8px;height:60px;overflow:hidden}
+/* root mode: a red sticker on the side of the paper you see — so it reads the right way round even though the page is
+   turned toward him */
+#code .rootb{display:none;position:absolute;top:-13px;left:-9px;transform:rotateY(180deg);font:700 9px var(--mono);letter-spacing:.12em;
+  color:#fff;background:#9a0000;border-radius:6px;padding:3px 6px;box-shadow:0 0 10px #ff000066,0 2px 6px #000a}
+#code.rootmode .rootb{display:block}
+body.faceyou #code .rootb{transform:none;left:auto;right:-9px}
+#code .l{height:12px;white-space:pre;overflow:hidden}
+#code .l.add{color:#bfe8d3} #code .l.del{color:#ff8b8b}
+#code .l.out{color:#9a9a9a} #code .l.bad{color:#ff8b8b}
+#code i{font-style:normal} #code .k{color:var(--hot)} #code .s{color:var(--whiteL,#f3dccf)} #code .c{color:#5f5f5f}
+#code .pr,#code .ok{color:var(--hot)} #code .rt{color:#ff5a5a}
+#code .cur{display:inline-block;width:5px;height:9px;margin-left:1px;vertical-align:-1px;background:var(--hot);animation:cpBlink .9s steps(1) infinite}
+@keyframes cpBlink{50%{opacity:0}}
+body.hover #code{display:none}
+body.term #chip.work{opacity:0}          /* the terminal already says what he's doing */
+
+</style>
+</head>
+<body class="m-idle">
+<div id="flash"></div><div id="paint"></div>
+<div id="stage">
+  <svg id="guy" viewBox="-150 -150 300 300">
+    <defs>
+      <radialGradient id="halo" cx="0" cy="0" r="150" gradientUnits="userSpaceOnUse">
+        <stop offset=".46" class="hs" stop-opacity=".0"/><stop offset=".5" class="hs" stop-opacity=".55"/>
+        <stop offset=".6" class="hs" stop-opacity=".2"/><stop offset=".8" class="hs" stop-opacity=".05"/><stop offset="1" class="hs" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="rayG" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="160"><stop offset=".45" class="rs"/><stop offset="1" class="rs" stop-opacity="0"/></radialGradient>
+      <radialGradient id="shG"><stop offset="0" stop-color="#000" stop-opacity=".75"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <radialGradient id="ballG" cx="-24" cy="-30" r="112" gradientUnits="userSpaceOnUse"><stop offset="0" class="b0"/><stop offset=".55" class="b1"/><stop offset="1" class="b2"/></radialGradient>
+      <radialGradient id="glossG"><stop offset="0" stop-color="#fff" stop-opacity=".17"/><stop offset=".6" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <clipPath id="clipL"><path id="cpL"/></clipPath>
+      <clipPath id="clipR"><path id="cpR"/></clipPath>
+    </defs>
+    <g id="cam">
+      <g id="haloW"><circle id="halo" r="150" fill="url(#halo)"/></g>
+      <g id="raysW"><path id="rays" fill="url(#rayG)" opacity="0"/></g>
+      <g id="fxBack"></g>
+      <ellipse id="shadow" cx="0" cy="108" rx="62" ry="9" fill="url(#shG)"/>
+      <g id="orbBack" class="orb" filter="url(#glow)"></g>
+      <path id="vring" opacity="0" filter="url(#glow)"/>
+      <g id="workW" opacity="0" filter="url(#glow)"><circle id="workTail" r="96"/><circle id="workHead" r="96"/></g>
+      <g id="zz" opacity="0"><text class="zz" x="66" y="-66">z</text><text class="zz" x="82" y="-88" font-size="20">z</text></g>
+      <g id="qmark" opacity="0"><text class="qm" x="70" y="-70">?</text></g>
+      <g id="body">
+        <g id="accBack"></g>
+        <circle r="76" fill="url(#ballG)"/>
+        <g id="face">
+          <g id="eL"><path class="eye" id="pL"/><g clip-path="url(#clipL)"><path class="slit" id="hlL"/></g></g>
+          <g id="eR"><path class="eye" id="pR"/><g clip-path="url(#clipR)"><path class="slit" id="hlR"/></g></g>
+        </g>
+        <g id="tears"></g>
+        <!-- the glass dome: soft reflection + rim -->
+        <ellipse cx="-30" cy="-46" rx="38" ry="15" transform="rotate(-30 -30 -46)" fill="url(#glossG)" pointer-events="none"/>
+        <ellipse cx="34" cy="50" rx="18" ry="6" transform="rotate(-40 34 50)" fill="url(#glossG)" opacity=".45" pointer-events="none"/>
+        <circle id="rim" r="75" fill="none" stroke-width="1.6" pointer-events="none"/>
+        <g id="accFront"></g>
+        <g id="think" opacity="0"><circle class="thk" cx="64" cy="-70" r="4"/><circle class="thk" cx="79" cy="-86" r="6"/><circle class="thk" cx="99" cy="-106" r="9"/></g>
+        <g id="anger" opacity="0"><path class="ang" d="M-10-3Q-3-3-3-10M3-10Q3-3 10-3M10 3Q3 3 3 10M-3 10Q-3 3-10 3"/></g>
+        <path id="sweat" opacity="0" fill="#cfe8ff" d="M0-8C4-2 6 2 6 5A6 6 0 0 1-6 5C-6 2-4-2 0-8Z"/>
+      </g>
+      <g id="orbFront" class="orb" filter="url(#glow)"></g>
+      <g id="fx"></g>
+    </g>
+  </svg>
+</div>
+
+<div id="code"><div class="tb"><b></b><span></span></div><div class="lines"></div><i class="rootb" title="Root mode: Claude can run anything, incl. sudo">ROOT</i></div>
+<div id="chip"></div>
+<div id="cap" class="off"><div id="you"></div><div id="him"></div></div>
+<div id="atts"></div>
+<button id="moreB" type="button" title="read the whole answer">↗ full answer</button>
+
+<div id="menu"></div>
+
+
+<!-- settings -->
+<div class="pn" id="set">
+  <div class="hd"><span class="logo"></span><b>Settings</b><button class="x" data-close title="Close (Esc)">✕</button></div>
+  <div class="tabs" id="tabs">
+    <button data-tab="look" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="9.3" cy="11" rx="1.6" ry="3"/><ellipse cx="14.7" cy="11" rx="1.6" ry="3"/></svg>Look</button>
+    <button data-tab="voice"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Voice</button>
+    <button data-tab="brain"><svg viewBox="0 0 24 24"><path d="M12 4a3.5 3.5 0 0 0-6.6 1.6A3.5 3.5 0 0 0 4 12a3.5 3.5 0 0 0 2 5.9A3.5 3.5 0 0 0 12 19.5ZM12 4a3.5 3.5 0 0 1 6.6 1.6A3.5 3.5 0 0 1 20 12a3.5 3.5 0 0 1-2 5.9 3.5 3.5 0 0 1-6 1.6"/></svg>Brain</button>
+    <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More</button>
+    <i class="ind" id="tabInd"></i>
+  </div>
+  <div class="bd">
+    <!-- ================= LOOK ================= -->
+    <div class="tab on" data-tab="look">
+      <div class="row lookrow">
+        <div class="lookbox"><svg id="lookPrev" viewBox="-128 -150 256 256"></svg><div class="tapme" id="partName">tap a part of him</div></div>
+        <div class="seg parts" id="partChips"></div>
+        <div class="picker">
+          <div class="sv" id="pkSV"><canvas id="pkSVc" width="286" height="104"></canvas><i class="dot" id="pkSVd"></i></div>
+          <div class="hue" id="pkHue"><i class="dot" id="pkHued"></i></div>
+          <div class="pkrow"><span class="cur" id="pkCur"></span><input id="pkHex" maxlength="7" spellcheck="false" aria-label="hex colour"><button class="btn sm" id="pkRnd" title="random colour for this part">🎲</button><button class="btn sm" id="pkAll" title="random colours for everything">🎲 all</button></div>
+          <div class="swatches" id="pkSw"></div>
+          <div class="recent" id="pkRecent"></div>
+        </div>
+        <label class="tg" style="margin-top:9px"><input type="checkbox" id="linkSw"><span class="sw"></span><span class="l">Matching eyes<small>Change both eyes (and both whites) together.</small></span></label>
+        <label class="tg" style="margin-top:7px"><input type="checkbox" id="rndSw"><span class="sw"></span><span class="l">Surprise me<small>New random colours every time he pops up.</small></span></label>
+      </div>
+      <div class="row"><div class="t">Skin</div><div class="h">Something to wear. Cat ears twitch, antennas wobble.</div><div class="skins" id="skinGrid"></div></div>
+      <div class="row"><div class="t">Resting pupils</div><div class="h">His everyday look — they still change with his mood.</div><div class="seg" id="pupChips"></div></div>
+      <div class="row"><label class="tg"><input type="checkbox" id="codeSw"><span class="sw"></span><span class="l">Terminal<small>While he works he holds a little terminal showing the code he writes and the commands he runs.</small></span></label>
+        <div class="seg" id="faceChips" style="margin-top:9px"><button data-face="him">Faces him</button><button data-face="you">Faces you (readable)</button></div></div>
+      <div class="row"><label class="tg"><input type="checkbox" id="hoverSw"><span class="sw"></span><span class="l">Hover mode<small>He becomes your mouse cursor. Call him to bring him back.</small></span></label></div>
+      <div class="row"><label class="tg"><input type="checkbox" id="clickSw"><span class="sw"></span><span class="l">Click through around him<small>Clicks on the empty space around him go to the window behind. Turn off if he flickers.</small></span></label></div>
+    </div>
+    <!-- ================= VOICE ================= -->
+    <div class="tab" data-tab="voice">
+      <div class="row"><div class="t">His voice</div><div class="h">Tap one to hear it. <span id="voiceEng"></span></div><div class="voices" id="voiceChips"></div></div>
+      <div class="row tgs">
+        <label class="tg"><input type="checkbox" id="speakSw"><span class="sw"></span><span class="l">Speak replies out loud</span></label>
+        <label class="tg"><input type="checkbox" id="wakeSw"><span class="sw"></span><span class="l">“Hey Void” wake word<small>Listens for his name. Nothing leaves your computer.</small></span></label>
+        <label class="tg"><input type="checkbox" id="bargeSw"><span class="sw"></span><span class="l">Interrupt him by voice<small>Say “stop” (or “hey Void”) while he's talking.</small></span></label>
+        <label class="tg"><input type="checkbox" id="listenShowSw"><span class="sw"></span><span class="l">Listen as soon as he pops up</span></label>
+        <label class="tg"><input type="checkbox" id="sfxSw"><span class="sw"></span><span class="l">Sound effects<small>Little blips when he wakes, opens his menu or finishes.</small></span></label>
+      </div>
+      <div class="row"><div class="t">Microphone</div><select id="micSel"></select></div>
+      <div class="row"><div class="t">Speech recognition</div><div class="h">Better understands you more often but takes a moment longer.</div><div class="seg" id="sttChips"></div></div>
+    </div>
+    <!-- ================= BRAIN ================= -->
+    <div class="tab" data-tab="brain">
+      <div class="row"><div class="t">How much can he do on his own?</div><div class="opts" id="trustOpts"></div></div>
+      <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div></div>
+      <div class="row"><div class="t">Projects</div><div class="h">Say “switch to my <i>name</i>” to jump there. Add by voice: “remember my blog is in ~/code/blog”.</div>
+        <div id="projList"></div>
+        <div class="bar" style="margin-top:7px"><input type="text" id="projName" placeholder="name" style="flex:1 1 80px;min-width:0"><input type="text" id="projPath" placeholder="~/code/app" style="flex:2 1 120px;min-width:0"><button class="btn pri sm" id="projAdd">add</button></div></div>
+      <div class="row"><label class="tg red"><input type="checkbox" id="rootSw"><span class="sw"></span><span class="l">Root mode<small>Runs <b>anything</b>, incl. <code>sudo</code> — a password card appears next to him when he needs root.</small></span></label>
+        <label class="tg red" style="margin-top:9px"><input type="checkbox" id="ultraSw"><span class="sw"></span><span class="l">Ultra root<small>Type your password once and he fills it in by himself after that. Kept in memory only — never saved, forgotten when Void restarts or you turn this off.</small></span></label></div>
+    </div>
+    <!-- ================= MORE ================= -->
+    <div class="tab" data-tab="more">
+      <div class="row tgs">
+        <label class="tg"><input type="checkbox" id="autoSw"><span class="sw"></span><span class="l">Start when I log in<small>Ready and listening for “hey Void”.</small></span></label>
+        <label class="tg"><input type="checkbox" id="notifySw"><span class="sw"></span><span class="l">Notify me when a long task finishes<small>…while he's hidden.</small></span></label>
+        <label class="tg"><input type="checkbox" id="popupSw"><span class="sw"></span><span class="l">Pop back up when it's done</span></label>
+      </div>
+      <div class="row"><div class="t">Memory &amp; history</div><div class="h">Say “remember …” and he keeps it for every future chat.</div>
+        <div class="bar"><button class="btn" data-open="memory">🧠 Memory <i id="memCount"></i></button><button class="btn" data-open="history">🕘 History</button></div></div>
+      <div class="row"><div class="t">Things you can just say</div>
+        <div class="keys"><kbd>volume up</kbd><span>also mute, set volume to 40</span><kbd>pause / next song</kbd><span>needs playerctl</span><kbd>timer 10 minutes</kbd><span>“remind me at 5 to…”</span><kbd>what time is it</kbd><span>and the date</span><kbd>open firefox</kbd><span>any app</span><kbd>lock my screen</kbd><span></span><kbd>switch to my app</kbd><span>your projects</span></div></div>
+      <div class="row"><div class="t">Hotkeys</div><div class="h">Bind in your desktop, e.g. Hyprland <code>bind = SUPER, A, exec, void listen</code></div>
+        <div class="keys"><kbd>void listen</kbd><span>pop up &amp; listen</span><kbd>void look</kbd><span>screenshot, then listen</span><kbd>void hover</kbd><span>be my cursor / come back</span><kbd>void</kbd><span>show / hide</span></div></div>
+      <div class="row"><div class="t">While he's open</div>
+        <div class="keys"><kbd>Space</kbd><span>hold to talk · tap to stop him</span><kbd>Enter</kbd><span>type</span><kbd>Esc</kbd><span>back / stop / hide</span><kbd>Ctrl+N</kbd><span>new chat</span><kbd>Ctrl+H</kbd><span>history</span><kbd>Ctrl+M</kbd><span>mute</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- history / memory / quick actions share one panel -->
+<div class="pn" id="panel"><div class="hd"><b id="pTitle"></b><span id="pTools"></span><button class="x" data-close title="Close (Esc)">✕</button></div><div class="bd" id="pBody"></div></div>
+
+<div id="appr"><div class="q">✋ <span id="apQ">Can I run this?</span></div><pre id="apCmd"></pre>
+  <div class="bar"><span class="hint">say “yes” or “no”</span><button class="btn sm" data-ans="always" title="don't ask again for this in this chat">always</button><button class="btn sm" data-ans="no">no</button><button class="btn sm yes" data-ans="yes">yes</button></div></div>
+
+<form id="pwbox" autocomplete="off"><div class="q">🔑 <span id="pwQ">He needs root for this</span></div>
+  <div class="pwrow"><input id="pwIn" type="password" spellcheck="false" placeholder="your sudo password" aria-label="sudo password">
+    <button class="btn sm" type="button" data-pw="no">cancel</button><button class="btn sm yes" type="submit">allow</button></div>
+  <div class="hint" id="pwHint">typed straight to sudo — never saved</div></form>
+
+<form id="ask" autocomplete="off">
+  <button id="clipB" class="round" type="button" title="Attach a screenshot (right-click: clipboard)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+  <input id="input" spellcheck="false" placeholder="ask anything…">
+  <button id="go" class="round" type="submit" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+</form>
+
+<script>
+const TOKEN="__VOID_TOKEN__";
+const NATIVE=document.documentElement.classList.contains('native');
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const input=$('#input'), youEl=$('#you'), himEl=$('#him'), cap=$('#cap'), chip=$('#chip'), ask=$('#ask'), menuEl=$('#menu');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,k)=>a+(b-a)*k;
+const approach=(a,b,dt,rate)=>a+(b-a)*(1-Math.exp(-rate*dt));      // frame-rate independent smoothing
+const hdr=x=>Object.assign({'X-Void-Token':TOKEN},x||{});
+const post=(u,b,o)=>fetch(u,Object.assign({method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(b||{})},o||{}));
+const native=msg=>{ try{ window.webkit.messageHandlers.voidui.postMessage(msg); return true; }catch(e){ return false; } };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+let workAmt=0, workRot=0, workWhat='', workT0=0;
+let busy=false, toolMood=null, muted=false, info={}, lastActive=performance.now(), hiddenNow=false;
+let transient=null, transientUntil=0, errorUntil=0;
+let rec=null, transcribing=false, micRaw=0, follow=false, hearRaw=0;   // follow: the no-"hey Void" window after he talks
+try{ muted=localStorage.getItem('void.muted')==='1'; }catch(e){}
+
+/* ================= his look: body colour, each pupil, each eye white, a skin =================
+   Everything is a CSS variable, so changes glide in. UI accents (glow, sparks, menus) follow the left pupil. */
+const LOOK_DEFAULT={body:'#0b0b0b',pupL:'#3d9b74',pupR:'#3d9b74',whiteL:'#f3dccf',whiteR:'#f3dccf',skin:'none',skinColor:'',link:true,random:false};
+let LOOK={...LOOK_DEFAULT};
+const EC={eye:LOOK.pupL,acc:LOOK.pupL,hot:'#7fd6ae',sclera:LOOK.whiteL};
+const hex2rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const rgb2hex=c=>'#'+c.map(v=>Math.round(clamp(v,0,1)*255).toString(16).padStart(2,'0')).join('');
+function rgb2hsl([r,g,b]){ const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2; if(mx===mn) return [0,0,l];
+  const d=mx-mn, s=l>.5?d/(2-mx-mn):d/(mx+mn); let h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4; return [h*60,s,l]; }
+function hsl2hex(h,s,l){ const k=n=>(n+h/30)%12, a=s*Math.min(l,1-l), f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1)); return rgb2hex([f(0),f(8),f(4)]); }
+const okHex=h=>/^#[0-9a-f]{6}$/i.test(h||'');
+const lum=hex=>rgb2hsl(hex2rgb(hex))[2];
+function shade(hex,dl,ds=0){ const [h,s,l]=rgb2hsl(hex2rgb(hex)); return hsl2hex(h,clamp(s+ds,0,1),clamp(l+dl,0,1)); }
+// the ball's glassy gradient from one body colour: a soft highlight, the colour, a deep edge
+function bodyStops(c){ const l=lum(c); return l<.12?[shade(c,.07),c,shade(c,-.05)]:[shade(c,.1,-.05),c,shade(c,-Math.min(.3,l*.55))]; }
+function applyAccent(hex){
+  if(!okHex(hex)) hex=LOOK_DEFAULT.pupL;
+  const [h,s0,l]=rgb2hsl(hex2rgb(hex)), s=s0<.08?0:s0, st=document.documentElement.style;
+  const acc=hsl2hex(h,s?Math.max(s,.45):0,clamp(l,.42,.58)), hot=hsl2hex(h,s?Math.max(s,.5):0,clamp(l+.22,.62,.78));
+  Object.assign(EC,{eye:hex,acc,hot});
+  const v={'--acc':acc,'--hot':hot,'--edge':hsl2hex(h,s*.55,.15),'--edge2':hsl2hex(h,s*.6,.28),'--deep':hsl2hex(h,s*.6,.09),
+    '--tint':hsl2hex(h,s?.55:0,.86),'--accA':acc+'1f','--accB':acc+'59'};
+  for(const k in v) st.setProperty(k,v[k]);
+}
+function applyLook(L){
+  LOOK={...LOOK_DEFAULT,...L};
+  const st=document.documentElement.style, [b0,b1,b2]=bodyStops(LOOK.body);
+  st.setProperty('--pupL',LOOK.pupL); st.setProperty('--pupR',LOOK.pupR);
+  st.setProperty('--whiteL',LOOK.whiteL); st.setProperty('--whiteR',LOOK.whiteR);
+  applyAccent(LOOK.pupL);
+  // eye whites that are about as dark as the body would vanish → outline them in the pupil colour
+  const near=w=>Math.abs(lum(w)-lum(LOOK.body))<.18;
+  st.setProperty('--lineL',near(LOOK.whiteL)?shade(LOOK.pupL,.1)+'c0':'none');
+  st.setProperty('--lineR',near(LOOK.whiteR)?shade(LOOK.pupR,.1)+'c0':'none');
+  st.setProperty('--body0',b0); st.setProperty('--body1',b1); st.setProperty('--body2',b2);
+  st.setProperty('--rim',lum(LOOK.body)<.12?'#262626':shade(LOOK.body,-.12));
+  EC.sclera=LOOK.whiteL;
+  const bk=document.getElementById('accBack'), fr=document.getElementById('accFront');
+  if(bk&&fr) SKIN_PARTS=drawSkin(bk,fr,LOOK);
+}
+function randomLook(L){
+  const hb=Math.random()*360, hp=Math.random()*360, hw=Math.random()*360, hp2=(hp+120+Math.random()*120)%360;
+  const body=Math.random()<.6?hsl2hex(hb,.2+Math.random()*.3,.06+Math.random()*.1):hsl2hex(hb,.45+Math.random()*.3,.42+Math.random()*.2);
+  const pL=hsl2hex(hp,.55+Math.random()*.3,.38+Math.random()*.14), wL=hsl2hex(hw,.6+Math.random()*.35,.85+Math.random()*.07);
+  return {body, pupL:pL, pupR:L.link?pL:hsl2hex(hp2,.6,.45), whiteL:wL, whiteR:L.link?wL:hsl2hex((hw+60)%360,.7,.87)};
+}
+let lookShown='', lookRolled=false;
+function syncLook(reroll){
+  const L={...LOOK_DEFAULT,...(info.look||{})};
+  if(L.random){ if(reroll||!lookRolled){ applyLook({...L,...randomLook(L)}); lookRolled=true; lookShown=''; } else if(L.skin!==LOOK.skin) applyLook({...LOOK,skin:L.skin}); return; }
+  lookRolled=false; const k=JSON.stringify(L); if(k!==lookShown){ applyLook(L); lookShown=k; }
+}
+const syncEye=syncLook;
+
+/* ---------------- skins: things he can wear. Drawn into a group behind the ball (ears etc.) and one in front (hats) */
+const SVGNS='http://www.w3.org/2000/svg';
+const sv=(tag,at,par)=>{ const e=document.createElementNS(SVGNS,tag); for(const k in at) e.setAttribute(k,at[k]); if(par) par.appendChild(e); return e; };
+const SKIN_LABELS={none:'none',cat:'cat ears',bunny:'bunny',bear:'bear',antenna:'antenna',devil:'devil',halo:'halo',crown:'crown',
+  sprout:'sprout',party:'party hat',headphones:'headphones',bow:'bow'};
+let SKIN_PARTS={};
+// simple, flat shapes in his own style: body-coloured (same glossy gradient as the ball) or one colour from his face
+function drawSkin(back,front,L,bodyFill='url(#ballG)'){
+  back.innerHTML=''; front.innerHTML='';
+  const F=L.skinColor||bodyFill, acc=L.skinColor||L.pupL, soft=L.skinColor||L.whiteL, parts={pivots:{}};
+  const R=(at)=>({...at,'stroke-linejoin':'round','stroke-linecap':'round'});
+  const pair=fn=>{ for(const s of [-1,1]){ const g=sv('g',{},back); fn(g,s); parts[s<0?'earL':'earR']=g; } };
+  switch(L.skin){
+    case 'cat': pair((g,s)=>{ sv('path',R({d:`M${52*s} -48L${50*s} -96L${20*s} -68Z`,fill:F,stroke:F,'stroke-width':13}),g);
+        parts.pivots[s<0?'earL':'earR']=[36*s,-58]; }); break;
+    case 'bunny': pair((g,s)=>{ sv('ellipse',{cx:24*s,cy:-110,rx:13,ry:38,fill:F,transform:`rotate(${14*s} ${20*s} -74)`},g);
+        parts.pivots[s<0?'earL':'earR']=[20*s,-74]; }); break;
+    case 'bear': pair((g,s)=>{ sv('circle',{cx:50*s,cy:-56,r:19,fill:F},g); parts.pivots[s<0?'earL':'earR']=[44*s,-50]; }); break;
+    case 'antenna': { const g=sv('g',{},back);
+        sv('line',R({x1:0,y1:-72,x2:0,y2:-106,stroke:F,'stroke-width':4.5}),g); sv('circle',{cx:0,cy:-110,r:7.5,fill:acc},g);
+        parts.wob=g; parts.pivots.wob=[0,-72]; break; }
+    case 'devil': pair((g,s)=>{ sv('path',R({d:`M${24*s} -70C${26*s} -86 ${36*s} -96 ${48*s} -102C${40*s} -92 ${38*s} -78 ${38*s} -64Z`,fill:acc,stroke:acc,'stroke-width':2.5}),g);
+        parts.pivots[s<0?'earL':'earR']=[31*s,-67]; }); break;
+    case 'halo': { const g=sv('g',{},front);
+        sv('ellipse',{cx:0,cy:-102,rx:30,ry:7,fill:'none',stroke:soft,'stroke-width':5},g); parts.halo=g; break; }
+    case 'crown': { const g=sv('g',{},front);
+        sv('path',R({d:'M-22 -68L-26 -94L-11 -80L0 -98L11 -80L26 -94L22 -68Z',fill:soft,stroke:soft,'stroke-width':6}),g); break; }
+    case 'sprout': { const g=sv('g',{},back);
+        sv('path',R({d:'M0 -72Q-2 -88 3 -98',fill:'none',stroke:acc,'stroke-width':3.5}),g);
+        sv('ellipse',{cx:-8,cy:-101,rx:10,ry:5,fill:acc,transform:'rotate(-28 -8 -101)'},g);
+        sv('ellipse',{cx:14,cy:-103,rx:11,ry:5.5,fill:acc,transform:'rotate(26 14 -103)'},g);
+        parts.wob=g; parts.pivots.wob=[0,-72]; break; }
+    case 'party': { const g=sv('g',{transform:'rotate(12 4 -70)'},front);
+        sv('path',R({d:'M-16 -68L22 -68L5 -116Z',fill:acc,stroke:acc,'stroke-width':7}),g); sv('circle',{cx:5,cy:-120,r:6,fill:soft},g); break; }
+    case 'headphones': { const g=sv('g',{},front);
+        sv('path',R({d:'M-80 -6A82 82 0 0 1 80 -6',fill:'none',stroke:acc,'stroke-width':6}),g);
+        for(const s of [-1,1]) sv('rect',{x:80*s-9,y:-24,width:18,height:40,rx:9,fill:acc},g); break; }
+    case 'bow': { const g=sv('g',{transform:'translate(38 -62) rotate(20)'},front);
+        sv('path',{d:'M0 0C-8 -13 -24 -12 -24 0C-24 12 -8 13 0 0Z',fill:acc},g);
+        sv('path',{d:'M0 0C8 -13 24 -12 24 0C24 12 8 13 0 0Z',fill:acc},g);
+        sv('circle',{r:5,fill:shade(acc,-.08)},g); break; }
+  }
+  return parts;
+}
+// little mini-Void for the settings preview + skin gallery (static, clickable parts)
+let miniN=0;
+function miniVoid(svg,L,clickable){
+  svg.innerHTML=''; const id='mg'+(miniN++), [b0,b1,b2]=bodyStops(L.body);
+  const defs=sv('defs',{},svg), gr=sv('radialGradient',{id,cx:-24,cy:-30,r:112,gradientUnits:'userSpaceOnUse'},defs);
+  [[0,b0],[.55,b1],[1,b2]].forEach(([o,c])=>sv('stop',{offset:o,'stop-color':c},gr));
+  const back=sv('g',{'data-part':clickable?'skin':''},svg), ball=sv('circle',{r:76,fill:`url(#${id})`,stroke:lum(L.body)<.12?'#2a2a2a':shade(L.body,-.12),'stroke-width':1.6,'data-part':'body'},svg);
+  for(const s of [-1,1]){ const k=s<0?'L':'R';
+    sv('ellipse',{cx:s*25.5,cy:-4.5,rx:23.5,ry:40.5,transform:`rotate(${-s*9} ${s*25.5} -4.5)`,fill:L['white'+k],'data-part':'white'+k},svg);
+    sv('ellipse',{cx:s*10.5,cy:-4,rx:clickable?4.2:3.2,ry:12.5,transform:`rotate(${-s*8} ${s*10.5} -4)`,fill:L['pup'+k],'data-part':'pup'+k},svg); }
+  const front=sv('g',{'data-part':clickable?'skin':''},svg);
+  drawSkin(back,front,L,`url(#${id})`);
+  svg.insertBefore(back,ball);
+  return svg;
+}
+
+/* ================= FACE =================
+   Proportions (ball radius = 76):
+     eye   – oval with 23.5 × 40.5 half-axes, centres at (±25.5, -4.5), leaning in 9° at the top ("/ \") so they touch up top
+     pupil – a thin upright slit, 3.05 × 12, ~15 in from the eye's centre toward the nose, leaning with the eye
+   Lids cut the finished shape: top – 0..1 from the top, tilted by `sl` (+ = inner corner down → cross, − = worried),
+   sagged by `tc`; bot – lower lid from the bottom, `bow` arches it. sq squashes the oval, es scales one eye.
+   Asleep (`shut`) an oval melts into a thin "‿" arc (per eye, so he can wink).  */
+const EYE={rx:23.5, ry:40.5, cx:27.5, cy:-4.5, tilt:0.157};
+const EYE_HALFW=Math.hypot(EYE.rx*Math.cos(EYE.tilt),EYE.ry*Math.sin(EYE.tilt));   // half the width of one leaning eye
+/* pupils morph smoothly between shapes — all flat, solid colour:
+     slit · circle · dot · big (huge circles) · small · heart · star
+   w/h = half-size, r = lean (mirrored per eye), dx = toward the nose, dy = down, hr = heart-ness, st = star-ness */
+const PUP={
+  slit:   {w:3.05, h:12,   r:.14, dx:15, dy:.5},
+  circle: {w:7.5,  h:7.5,  dx:11, dy:1},
+  dot:    {w:2.9,  h:2.9,  dx:12, dy:0},
+  big:    {w:13.5, h:13.5, dx:6,  dy:2},
+  small:  {w:5,    h:5,    dx:11, dy:0},
+  peek:   {w:3.05, h:12,   r:.14, dx:14, dy:2},     // half-lidded: slits tucked up under the lid
+  joy:    {w:11,   h:11,   dx:8,  dy:-6},           // happy squint: big circles peeking over the lower lid
+  heart:  {w:11,   h:11,   dx:7,  dy:1,  hr:1},
+  star:   {w:13,   h:13,   dx:6,  dy:1,  st:1},
+  plead:  {w:12,   h:13,   dx:6,  dy:3},            // big, a little low: puppy eyes
+  odd:    {w:[3,6],h:[3,6],dx:11, dy:0},            // confused: one small, one bigger
+};
+const PUP_KEYS=['w','h','r','dx','dy','hr','st'];
+for(const k in PUP) for(const e of PUP_KEYS) if(PUP[k][e]==null) PUP[k][e]=0;
+const PUP_STYLES=['slit','circle','dot'];   // the resting look is a setting
+/* moods. gaze/fx are handled in frame(); arrays are [left, right] */
+const MOODS={
+  idle:      {pu:'rest'},
+  listening: {sz:1.04, tilt:-3, pu:'big'},
+  thinking:  {top:[.1,.04], sl:[-.1,.1], tilt:4, pu:'small'},
+  reading:   {top:.16, bot:.06, pu:'circle'},                          // eyes sweeping along lines
+  editing:   {top:.3, sl:.12, bot:.12, sz:.98, pu:'slit'},              // squinting, concentrating
+  running:   {top:.08, sz:1.02, tilt:-2, pu:'circle'},                  // watching the terminal
+  searching: {sz:1.03, pu:'small'},                                     // darting all over
+  looking:   {sz:1.05, pu:'circle'},                                    // studying your screenshot
+  pleading:  {top:.14, sl:-.32, sz:1.03, tilt:-4, pu:'plead'},          // "can I?" puppy eyes
+  talking:   {pu:'circle'},
+  // talking faces — picked from what he's saying, one per sentence (see talkSentence). Gentle: no confetti or flashes.
+  t_explain: {es:1.02, pu:'circle'},                                     // just explaining
+  t_happy:   {bot:.3, bow:.06, sz:1.02, pu:'circle'},                     // good news: smiling eyes
+  t_beam:    {shut:1, cup:1, sz:1.04, pu:'circle'},                       // "^ ^" — proud of it ("done", "fixed", "all tests pass")
+  t_excited: {sz:1.06, es:1.05, pu:'big'},                                // wide-eyed
+  t_curious: {top:[0,.14], sl:[0,.1], es:[1.06,.95], pu:'circle'},        // asking you something: one brow up
+  t_unsure:  {top:[.06,.2], sl:[.1,.16], es:[.97,1.03], pu:'small'},      // "hmm, maybe…"
+  t_sorry:   {top:.18, sl:-.38, bot:.08, es:.97, pu:'plead'},             // apologetic
+  t_serious: {top:.24, sl:.14, sq:.95, pu:'small'},                       // careful / bad news / important
+  t_warm:    {bot:.2, bow:.12, es:1.02, pu:'circle'},                     // kind, gentle
+  t_think:   {top:[.08,.02], sl:[-.08,.08], pu:'small'},                  // working it out as he talks
+  t_surprised:{sz:1.06, es:1.06, pu:'dot'},                               // "oh!"
+  happy:     {bot:.46, bow:.08, sz:1.02, pu:'joy'},
+  excited:   {sz:1.08, pu:'star'},
+  love:      {bot:.28, bow:.4, sz:1.04, pu:'heart'},
+  wink:      {shut:[0,1], bot:[.2,0], bow:.3, tilt:-5, pu:'circle'},
+  curious:   {top:[0,.18], sl:[0,.1], es:[1.07,.94], tilt:-7, pu:'circle'},
+  surprised: {sz:1.07, pu:'dot'},
+  confused:  {top:[0,.3], sl:[0,.25], es:[1.06,.88], tilt:8, pu:'odd'},
+  error:     {top:.34, sl:-.4, sz:.98, tilt:-5, pu:'dot'},
+  annoyed:   {top:.55, sl:.03, sq:.88, sz:.92, tilt:3, pu:'peek'},
+  sleepy:    {shut:1, tilt:3, pu:'rest'},   // shut: just the "‿ ‿" arcs
+  joy:       {shut:1, cup:1, sz:1.04, tilt:-4, pu:'circle'},             // "^ ^" — beaming
+  sad:       {top:.24, sl:-.55, bot:.12, bow:.3, es:.96, tilt:-6, pu:'plead'},  // droopy, a tear rolls down
+  scared:    {es:1.1, sq:1.03, sz:1.06, tilt:2, pu:'dot'},             // huge round eyes, trembling little pupils
+  bored:     {top:.44, sq:.94, tilt:5, pu:'small'},                     // half-lidded, glancing away
+  shy:       {bot:.34, bow:.45, es:[1,.97], tilt:-8, pu:'circle'},       // bashful, looking down
+  purr:      {shut:1, cup:1, sz:1.03, tilt:-6, pu:'circle'},             // being petted: "^ ^"
+};
+
+const EYE_KEYS=['top','sl','tc','bot','bow','sq','shut','es','cup'];
+for(const k in MOODS){ const M=MOODS[k]; for(const e of EYE_KEYS) if(M[e]==null) M[e]=(e==='sq'||e==='es')?1:0;
+  if(M.sz==null) M.sz=1; if(M.tilt==null) M.tilt=0; }
+// orbiting sparks per mood: speed, radius, brightness; halo strength
+const AURA={
+  idle:{spd:.5,rad:1,a:.5,h:.45}, listening:{spd:1.3,rad:1.05,a:.95,h:.85}, thinking:{spd:2.4,rad:.93,a:.9,h:.6},
+  reading:{spd:1.6,rad:.97,a:.75,h:.55}, editing:{spd:3,rad:.95,a:1,h:.7}, running:{spd:3.4,rad:.98,a:1,h:.75},
+  searching:{spd:2.6,rad:1.06,a:.9,h:.65}, looking:{spd:1.2,rad:1.04,a:.8,h:.6}, pleading:{spd:.6,rad:1.02,a:.7,h:.8},
+  talking:{spd:.9,rad:1.02,a:.8,h:.6}, t_explain:{spd:.9,rad:1.02,a:.8,h:.6}, t_happy:{spd:1.3,rad:1.05,a:.9,h:.75},
+  t_beam:{spd:1.6,rad:1.08,a:1,h:.85}, t_excited:{spd:1.8,rad:1.08,a:1,h:.9}, t_curious:{spd:.8,rad:1.02,a:.75,h:.6},
+  t_unsure:{spd:.6,rad:1,a:.6,h:.5}, t_sorry:{spd:.5,rad:.98,a:.55,h:.5}, t_serious:{spd:.7,rad:.98,a:.7,h:.55},
+  t_warm:{spd:.9,rad:1.04,a:.85,h:.75}, t_think:{spd:1.6,rad:.96,a:.8,h:.55}, t_surprised:{spd:1.6,rad:1.08,a:1,h:.85}, happy:{spd:2,rad:1.12,a:1,h:.9}, excited:{spd:3,rad:1.15,a:1,h:1},
+  love:{spd:1.2,rad:1.08,a:.9,h:.9}, wink:{spd:1.2,rad:1.04,a:.8,h:.7}, curious:{spd:.8,rad:1.02,a:.7,h:.55},
+  surprised:{spd:1.4,rad:1.08,a:.9,h:.7}, confused:{spd:.5,rad:1,a:.6,h:.5}, error:{spd:.35,rad:.98,a:.55,h:.75},
+  annoyed:{spd:1.6,rad:1,a:.8,h:.8}, sleepy:{spd:.12,rad:.96,a:.12,h:.18},
+  joy:{spd:2.2,rad:1.12,a:1,h:.95}, sad:{spd:.25,rad:.95,a:.35,h:.3}, scared:{spd:3.4,rad:.92,a:.9,h:.6},
+  bored:{spd:.3,rad:1,a:.35,h:.3}, shy:{spd:.7,rad:1.04,a:.7,h:.7},
+  purr:{spd:.9,rad:1.06,a:.85,h:.85},
+};
+const TOOL_MOOD={Read:'reading',Glob:'reading',Grep:'reading',LS:'reading',NotebookRead:'reading',
+  Edit:'editing',Write:'editing',MultiEdit:'editing',NotebookEdit:'editing',
+  Bash:'running',BashOutput:'running',KillShell:'running',KillBash:'running',
+  WebSearch:'searching',WebFetch:'searching',Task:'thinking',Agent:'thinking',TodoWrite:'thinking'};
+let pendingAppr=null;
+function mood(now){
+  if(rec && !rec.stopping) return 'listening';
+  if(follow && !busy && !playing) return 'listening';
+  if(transient && now<transientUntil) return transient;
+  if(pendingAppr) return 'pleading';
+  if(now<errorUntil) return 'error';
+  if(transcribing || rec) return 'thinking';
+  if(playing) return now<talk.beamUntil?'t_beam':(talk.face||'talking');
+  if(busy) return toolMood||'thinking';
+  if(now-lastActive>(nightTime()?30000:75000)) return 'sleepy';
+  return 'idle';
+}
+function poke(m,ms){ transient=m; transientUntil=performance.now()+ms; lastActive=performance.now(); }
+function wake(){ lastActive=performance.now(); }
+
+// eye outline in front-view space, relative to the eye's centre: the leaning oval, then lids; side = -1 left, +1 right
+function eyePts(sc,L,side){
+  const {top,sl,tc,bot,bow,sq,shut}=L, N=72, rt=-side*EYE.tilt*(1-shut), c=Math.cos(rt), s=Math.sin(rt), pts=[];
+  let y0=1e9,y1=-1e9,x0=1e9,x1=-1e9;
+  for(let i=0;i<N;i++){ const a=i/N*Math.PI*2, u=Math.cos(a), v=Math.sin(a), ex=u*EYE.rx*sc, ey=v*EYE.ry*sc*sq;
+    let x=ex*c-ey*s, y=ex*s+ey*c;
+    if(shut>.001){ const w=Math.sqrt(1-u*u);                 // closed: flat in the middle, ends curling up, tapering to points
+      const down=12-4*u*u-3*(1-w), up=-(12-4*u*u-3*(1-w))+6, cup=L.cup||0;   // "‿" asleep … "^" beaming
+      x=lerp(x,u*21*sc,shut); y=lerp(y,(lerp(down,up,cup)+lerp(1.45,2.6,cup)*v)*sc,shut); }
+    pts.push([x,y]); y0=Math.min(y0,y); y1=Math.max(y1,y); x0=Math.min(x0,x); x1=Math.max(x1,x); }
+  if(top<=0.001 && bot<=0.001 && tc<=0.001) return pts;
+  const H=y1-y0, hw=(x1-x0)/2, mx=(x0+x1)/2;
+  return pts.map(([x,y])=>{ const u=clamp((x-mx)/hw,-1,1), inner=-side*u;
+    const tY=y0+top*H+sl*(H/2)*inner+tc*H*(1-u*u);
+    const bY=y1-bot*H*((1-bow)+bow*1.1*Math.sqrt(Math.max(0,1-u*u)));
+    y=Math.max(y,tY); y=Math.min(y,bY); if(tY>bY) y=(tY+bY)/2; return [x,y]; });
+}
+// pupil outline: an ellipse that can melt into a heart (hr) or a four-point star (st)
+function pupilPts(rx,ry,rot,hr,st,N=48){ const c=Math.cos(rot),s=Math.sin(rot),o=[], e=1-hr-st;
+  for(let i=0;i<N;i++){ const a=i/N*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a);
+    let x=ca*e, y=sa*e;
+    if(hr>0){ const t=a+Math.PI/2, sn=Math.sin(t);
+      x+=hr*16*sn*sn*sn/15; y+=hr*(-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/15+.12); }
+    if(st>0){ x+=st*Math.sign(ca)*Math.pow(Math.abs(ca),2.4)*1.12; y+=st*Math.sign(sa)*Math.pow(Math.abs(sa),2.4)*1.12; }
+    x*=rx; y*=ry; o.push([x*c-y*s,x*s+y*c]); } return o; }
+
+/* ---- the face is printed on a ball of radius R. Points are given as seen head-on, lifted onto the sphere,
+   and the ball turns a little by (yaw,pitch) when he glances around. */
+const R=76;
+function sph(x,y,cy,sy,cp,sp){
+  const X=x/R, Y=y/R, Z=Math.sqrt(Math.max(0,1-X*X-Y*Y));
+  const X1=X*cy+Z*sy, Z1=-X*sy+Z*cy;
+  const Y2=Y*cp+Z1*sp, Z2=-Y*sp+Z1*cp;
+  if(Z2<0){ const n=Math.hypot(X1,Y2)||1; return [X1/n*R,Y2/n*R,Z2]; }
+  return [X1*R,Y2*R,Z2];
+}
+const toD=pts=>'M'+pts.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join('L')+'Z';
+
+/* ================= animation =================
+   Time-based damped springs (smooth, no frame-rate dependence) + one-shot FX.
+   He stays put: no bobbing or hopping — all the life is in the eyes, a gentle sway and a little squish. */
+const NS='http://www.w3.org/2000/svg';
+const E={}; ['cam','body','eL','eR','pL','pR','cpL','cpR','hlL','hlR','zz','qmark','shadow','rays','raysW','fx','fxBack','think','anger','sweat',
+  'halo','haloW','vring','workW','orbBack','orbFront','tears'].forEach(k=>E[k]=document.getElementById(k));
+const val=(v,i)=>Array.isArray(v)?v[i]:v;
+
+class Spring{   // f = natural frequency (Hz), z = damping ratio (1 = no overshoot)
+  constructor(x,f=2,z=.8){ this.x=x; this.v=0; this.f=f; this.z=z; }
+  to(t,dt){ if(!Number.isFinite(t)) t=0; if(!Number.isFinite(this.x)||!Number.isFinite(this.v)){ this.x=t; this.v=0; }   // never get stuck on NaN
+    const w=2*Math.PI*this.f, n=Math.max(1,Math.ceil(dt/.008)), h=dt/n;
+    for(let i=0;i<n;i++){ this.v+=(w*w*(t-this.x)-2*this.z*w*this.v)*h; this.x+=this.v*h; } return this.x; }
+  kick(v){ this.v+=v; return this; } }
+const S={L:{},R:{}}; for(const k of EYE_KEYS){ S.L[k]=new Spring(val(MOODS.idle[k],0),2.1,.82); S.R[k]=new Spring(val(MOODS.idle[k],1),2.1,.82); }
+const SP={L:{},R:{}}; for(const k of PUP_KEYS){ SP.L[k]=new Spring(val(PUP.slit[k],0),2.3,.78); SP.R[k]=new Spring(val(PUP.slit[k],1),2.3,.78); }
+const G={ sz:new Spring(1,2,.75), tilt:new Spring(0,.8,.85), dx:new Spring(0,2.4,.55),
+  earL:new Spring(0,3.2,.32), earR:new Spring(0,3.2,.32), wob:new Spring(0,1.7,.22),
+  gx:new Spring(0,1.6,.86), gy:new Spring(0,1.6,.86), jelly:new Spring(0,2.2,.45), zoom:new Spring(1,1.6,.7),
+  appear:new Spring(.2,1.5,.55), open:new Spring(0,1.8,.55), think:new Spring(0,1.6,.6), anger:new Spring(0,1.8,.55), qm:new Spring(0,1.8,.55),
+  rays:new Spring(0,.6,1), spd:new Spring(.5,.5,1), rad:new Spring(1,.9,.8), oa:new Spring(.5,.7,1), ha:new Spring(.45,.8,1) };
+let idlePu=null, idleSwapAt=performance.now()+15000;
+const restPu=()=>PUP_STYLES.includes(info.pupil_style)?info.pupil_style:'slit';
+function popPupils(){ for(const e of [SP.L,SP.R]){ e.w.kick(10); e.h.kick(10); } }
+
+// sunburst (only shows up when he's thrilled)
+(()=>{ let d=''; const n=14; for(let i=0;i<n;i++){ const a0=i/n*Math.PI*2, a1=a0+Math.PI/n*.62;
+  d+=`M0 0L${(Math.cos(a0)*165).toFixed(1)} ${(Math.sin(a0)*165).toFixed(1)}L${(Math.cos(a1)*165).toFixed(1)} ${(Math.sin(a1)*165).toFixed(1)}Z`; } E.rays.setAttribute('d',d); })();
+
+// orbiting sparks: two tilted rings of particles that pass in front of and behind the ball
+// sparks: each one drifts on its own through a smooth, ever-changing current around him (no fixed rings),
+// held loosely at his edge, passing in front of and behind him
+const ORBS=[]; (()=>{ for(let i=0;i<20;i++){
+  const el=document.createElementNS(NS,'line'), th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), R0=94+Math.random()*30;
+  const rnd=()=>.25+Math.random()*.55, ang=()=>Math.random()*6.28;
+  ORBS.push({el, R0, p:[Math.cos(th)*Math.sin(ph)*R0, Math.cos(ph)*R0*.7, Math.sin(th)*Math.sin(ph)*R0], v:[0,0,0],
+    f:[rnd(),rnd(),rnd()], a:[ang(),ang(),ang()], size:.8+Math.random()*1.6, back:null, spin:Math.random()<.5?-1:1}); } })();
+let orbT=0, swoosh=0;
+
+let lx=0,ly=0,tx=0,ty=0, lvl=0, micLvl=0, blinkAt=-1e9, nextBlink=2500, prevMood='idle', saccadeAt=0, lastTs=0, lastMouse=-1e9;
+let perfAcc=0, perfN=0, lowFx=false;   // if frames get slow, drop the blur-glow filters
+let opened=false, openAt=0, shakeAmp=0, lift=0, ringAmt=0;
+function rms(an){ if(!an) return 0; const b=new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let s=0; for(const v of b) s+=v*v; return Math.sqrt(s/b.length); }
+
+/* ---- FX layer */
+const parts=[];
+const mk=(tag,at,par)=>{ const e=document.createElementNS(NS,tag); for(const k in at) e.setAttribute(k,at[k]); (par||E.fx).appendChild(e); return e; };
+const eOut=p=>1-Math.pow(1-p,3), eExpo=p=>p>=1?1:1-Math.pow(2,-9*p);
+function burstLines(color,n=9,r0=92){ const g=mk('g',{}), off=Math.random()*Math.PI, L=[], t0=performance.now();
+  for(let i=0;i<n;i++){ const a=off+i/n*Math.PI*2; L.push([mk('line',{stroke:color,'stroke-linecap':'round'},g),Math.cos(a),Math.sin(a)]); }
+  parts.push(now=>{ const p=(now-t0)/720; if(p>=1){ g.remove(); return false; }
+    const h=r0+6+eExpo(p)*46, tl=r0+eExpo(Math.max(0,p-.2)/.8)*50, w=(3.6*(1-p)+.3).toFixed(2);
+    for(const [l,c,s] of L){ l.setAttribute('x1',(c*tl).toFixed(1)); l.setAttribute('y1',(s*tl).toFixed(1)); l.setAttribute('x2',(c*h).toFixed(1)); l.setAttribute('y2',(s*h).toFixed(1)); l.setAttribute('stroke-width',w); }
+    return true; }); }
+function shock(color,big){ const c=mk('circle',{fill:'none',stroke:color},E.fxBack), t0=performance.now(), R1=big?160:140;
+  parts.push(now=>{ const p=(now-t0)/950; if(p>=1){ c.remove(); return false; } const e=eExpo(p);
+    c.setAttribute('r',(80+e*(R1-80)).toFixed(1)); c.setAttribute('stroke-width',(5*(1-e)+.3).toFixed(2)); c.setAttribute('opacity',(.9*(1-p)).toFixed(2)); return true; }); }
+function confetti(n=18){ const cols=[EC.acc,'#ffffff',EC.sclera,EC.hot,EC.eye], cy=-20;
+  for(let i=0;i<n;i++){ const g=mk('g',{}), col=cols[i%cols.length], k=i%4;
+    if(k===0) mk('rect',{x:-3,y:-5,width:6,height:10,rx:1.5,fill:col},g);
+    else if(k===1) mk('circle',{r:3.4,fill:col},g);
+    else if(k===2) mk('path',{d:'M0-5 5 4-5 4Z',fill:col},g);
+    else mk('path',{d:'M-6 0q3-5 6 0t6 0',fill:'none',stroke:col,'stroke-width':2.2,'stroke-linecap':'round'},g);
+    const a=-Math.PI/2+(Math.random()-.5)*2.4, sp=210+Math.random()*230;
+    const P={x:(Math.random()-.5)*30,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-60,r:Math.random()*360,vr:(Math.random()-.5)*700,f:Math.random()*6,t0:performance.now(),life:1700+Math.random()*700};
+    parts.push((now,dt)=>{ const p=(now-P.t0)/P.life; if(p>=1){ g.remove(); return false; }
+      P.vy+=520*dt; const dr=Math.exp(-1.6*dt); P.vx*=dr; P.vy*=dr; P.x+=P.vx*dt; P.y+=P.vy*dt; P.r+=P.vr*dt;
+      g.setAttribute('transform',`translate(${P.x.toFixed(1)},${P.y.toFixed(1)}) rotate(${P.r.toFixed(0)}) scale(${Math.cos(now/140+P.f).toFixed(2)},1)`);
+      g.setAttribute('opacity',(p<.65?1:1-(p-.65)/.35).toFixed(2)); return true; }); } }
+function hearts(n=6){ for(let i=0;i<n;i++){ const g=mk('g',{}), t0=performance.now()+i*170, x0=(Math.random()-.5)*110, sz=.6+Math.random()*.6;
+  mk('path',{d:'M0 3C-6-2-9-6-5-9C-3-10-1-9 0-7C1-9 3-10 5-9C9-6 6-2 0 3Z',fill:i%2?EC.hot:EC.acc},g);
+  parts.push(now=>{ const p=(now-t0)/1600; if(p<0){ g.setAttribute('opacity','0'); return true; } if(p>=1){ g.remove(); return false; }
+    g.setAttribute('transform',`translate(${(x0+Math.sin(p*7+i)*8).toFixed(1)},${(-60-eOut(p)*70).toFixed(1)}) scale(${(sz*(.5+eOut(Math.min(1,p*3))*.7)).toFixed(2)})`);
+    g.setAttribute('opacity',(p<.7?1:1-(p-.7)/.3).toFixed(2)); return true; }); } }
+function tear(side){ const g=mk('path',{d:'M0-6C3-1 4.5 2 4.5 4.2A4.5 4.5 0 0 1-4.5 4.2C-4.5 2-3-1 0-6Z',fill:'#bfe3ff',opacity:'0'},E.tears), t0=performance.now(), x=side*36;
+  parts.push(now=>{ const p=(now-t0)/1500; if(p>=1){ g.remove(); return false; }
+    g.setAttribute('transform',`translate(${(x+Math.sin(p*5)*1.5).toFixed(1)},${(30+p*p*48).toFixed(1)}) scale(${(.5+Math.min(1,p*4)*.5).toFixed(2)})`);
+    g.setAttribute('opacity',(p<.15?p/.15:p>.75?(1-p)/.25:1).toFixed(2)); return true; }); }
+const flashEl=$('#flash');
+function flash(col){ flashEl.style.setProperty('--flash',col); flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+
+function onMood(m){
+  document.body.classList.forEach(c=>{ if(c.startsWith('m-')) document.body.classList.remove(c); }); document.body.classList.add('m-'+m);
+  if(!opened) return;
+  if(isTalk(m)){ for(const e of [S.L,S.R]) e.es.kick(m==='t_excited'?.7:.35); if(m==='t_excited'||m==='t_beam') popPupils(); if(m==='t_beam') G.jelly.kick(.25); return; }
+  G.sz.kick(.12); G.jelly.kick(.15); popPupils(); G.earL.kick((Math.random()-.5)*80); G.earR.kick((Math.random()-.5)*80);
+  for(const e of [S.L,S.R]){ e.sq.kick(-1.1); e.es.kick(.8); }          // eyes "pop" with every new feeling
+  if(m==='happy'){ setTimeout(()=>confetti(18),120); burstLines(EC.hot,10); shock(EC.acc,true); flash(EC.acc); G.zoom.kick(.25); G.jelly.kick(.7); }
+  else if(m==='excited'){ burstLines('#ffffff',12,90); shock(EC.hot,true); flash(EC.hot); G.zoom.kick(.4); G.jelly.kick(.9); }
+  else if(m==='love'){ hearts(7); G.jelly.kick(.5); }
+  else if(m==='wink'){ G.jelly.kick(.4); G.tilt.kick(-14); }
+  else if(m==='surprised'){ burstLines('#ffffff',8,90); G.zoom.kick(.4); G.jelly.kick(-.6); }
+  else if(m==='annoyed'||m==='error'){ shakeAmp=2; shock('#ff1a1a'); flash('#ff0000'); G.jelly.kick(1.1); }
+  else if(m==='confused'){ G.tilt.kick(18); }
+  else if(m==='joy'){ burstLines(EC.hot,10); shock(EC.acc,true); G.jelly.kick(.8); setTimeout(()=>confetti(12),100); }
+  else if(m==='sad'){ G.jelly.kick(-.4); G.tilt.kick(-8); }
+  else if(m==='scared'){ shakeAmp=1.4; G.jelly.kick(-.9); G.zoom.kick(-.2); }
+  else if(m==='shy'){ G.tilt.kick(-12); }
+  else if(m==='listening'){ shock(EC.hot); G.sz.kick(.5); }
+  else if(m==='pleading'){ G.jelly.kick(-.5); shock('#ffb02a'); }
+  else if(['thinking','reading','editing','running','searching'].includes(m)){ G.tilt.kick(6); }
+  else if(m==='talking'){ G.jelly.kick(-.5); }
+}
+function entrance(){ G.appear.x=.15; G.appear.v=0; opened=false; G.open.x=0; G.open.v=0; openAt=performance.now()+260; }
+entrance();
+
+let dartAt=0, frameN=0, tearAt=0;
+/* idle routines: when nobody's doing anything, every few seconds he plays one of these little bits.
+   f(p,t,F) → overrides for this frame: gaze tx/ty, tilt, rot (whole-ball roll), eye-lid offsets, pupil shape, squish jt */
+const easeIO=p=>p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2, bump=(p,a,b)=>clamp((p-a)/(b-a),0,1);
+const FIDGETS={
+  lookaround:{dur:4200, f:p=>{ const seq=[[-7,-1],[7,-1],[5,-5],[-3,3],[0,0]], i=Math.min(4,p*5|0); return {tx:seq[i][0],ty:seq[i][1],tilt:seq[i][0]*.9}; }},
+  roll:      {dur:1500, start:()=>G.jelly.kick(.5), f:p=>({rot:360*easeIO(p), eye:{top:.2*Math.sin(Math.PI*p)}})},
+  eyeroll:   {dur:1700, f:p=>{ const a=-Math.PI/2-p*Math.PI*2; return {tx:Math.cos(a)*6.5,ty:Math.sin(a)*5.5,eye:{top:.22},pu:'small',tilt:-4}; }},
+  yawn:      {dur:3000, f:p=>{ const c=bump(p,0,.25)*(1-bump(p,.62,.72)); const wide=bump(p,.68,.76)*(1-bump(p,.85,1));
+               return {eye:{shut:c,cup:c,es:wide*.1},jt:p<.62?-.09*bump(p,.05,.3):0,tilt:-6*c,ty:-2*c,pu:wide>0?'small':null}; }},
+  chase:     {dur:4600, start:F=>{ F.k=Math.random()*ORBS.length|0; }, f:(p,t,F)=>{ const o=ORBS[F.k];
+               return {tx:clamp(o.p[0]/11,-7.5,7.5),ty:clamp(o.p[1]/11,-6,6),tilt:clamp(o.p[0]/14,-8,8),pu:'circle',eye:{es:.03}}; }},
+  hum:       {dur:3600, f:(p,t)=>({tilt:Math.sin(p*Math.PI*4)*8,tx:Math.sin(p*Math.PI*4)*3,eye:{bot:.24,bow:.3},pu:'circle'})},
+  peek:      {dur:2300, f:p=>p<.55?{tx:7,ty:0,eye:{top:.42,bot:.2},tilt:5}:{tx:0,ty:0,eye:{es:.08*(1-bump(p,.8,1))},pu:'dot',jt:p<.62?-.05:0}},
+  stretch:   {dur:1700, f:p=>({jt:p<.3?.07*bump(p,0,.15):p<.65?-.11*bump(p,.3,.42):0, eye:{top:p>.3&&p<.65?.32:0,cup:0}, ty:p>.3&&p<.65?-3:0})},
+  whistle:   {dur:3000, f:(p,t)=>({tx:-4+Math.sin(t*2)*.6,ty:-5,tilt:-6,pu:'small',eye:{bot:.12,sq:-.04}})},
+  dizzy:     {dur:2300, f:(p,t)=>{ const k=1-bump(p,.75,1); return {tx:Math.cos(t*9)*5*k,ty:Math.sin(t*9)*4*k,tilt:Math.sin(t*6)*9*k,pu:'odd'}; }},
+  shake:     {dur:1000, start:()=>{ shakeAmp=3; G.jelly.kick(.9); }, f:p=>({eye:{shut:.7*(1-bump(p,.5,1))},pu:'circle'})},
+  blinks:    {dur:1100, start:()=>{ const n=performance.now(); blinkAt=n; setTimeout(()=>blinkAt=performance.now(),300); setTimeout(()=>blinkAt=performance.now(),600); }, f:()=>({})},
+};
+let FID=null, nextFidAt=performance.now()+6000, lastFid='', earTwAt=0;
+function earKick(){ G.earL.kick(-120); G.earR.kick(120); } const paintEl=document.getElementById('paint');
+function frame(ts){
+  const rawDt=(ts-(lastTs||ts))/1000, dt=clamp(rawDt,0,.05); lastTs=ts; const t=ts/1000;
+  if(!lowFx && rawDt>0 && rawDt<.25 && document.visibilityState==='visible'){ perfAcc+=rawDt; perfN++;
+    if(perfN>=120){ if(perfAcc/perfN>.032){ lowFx=true; ['orbBack','orbFront','vring','workW'].forEach(k=>E[k].removeAttribute('filter')); console.log('[void] slow frames — glow off'); } perfAcc=0; perfN=0; } }
+  const m=mood(ts), T=MOODS[m], A=AURA[m];
+  if(m!==prevMood){ onMood(m); prevMood=m; }
+  // idle routines (not while he's the cursor, or busy with anything)
+  const hovering=document.body.classList.contains('hover');
+  if(m!=='idle'||hovering||menuOn) FID=null;
+  else if(!FID && ts>nextFidAt && ts-lastMouse>2500){ const names=Object.keys(FIDGETS).filter(n=>n!==lastFid), n=nightTime()&&lastFid!=='yawn'&&Math.random()<.45?'yawn':names[Math.random()*names.length|0];
+    FID={name:n,t0:ts,dur:FIDGETS[n].dur}; lastFid=n; FIDGETS[n].start&&FIDGETS[n].start(FID); }
+  let fx={};
+  if(FID){ const p=(ts-FID.t0)/FID.dur; if(p>=1){ FID=null; nextFidAt=ts+4500+Math.random()*7000; } else fx=FIDGETS[FID.name].f(p,t,FID)||{}; }
+  const fe=fx.eye||{};
+  for(const key of EYE_KEYS){ S.L[key].to(val(T[key],0)+(fe[key]||0),dt); S.R[key].to(val(T[key],1)+(fe[key]||0),dt); }
+  G.sz.to(T.sz,dt); G.tilt.to(T.tilt+(fx.tilt||0)+(isTalk(m)?talk.tiltT:0),dt);
+  // idle: now and then a little change of look — a blank dot stare, curious round eyes, a big-eyed "ooh", a head-tilt
+  if(m==='idle' && !FID && ts>idleSwapAt){
+    if(idlePu){ idlePu=null; idleSwapAt=ts+9000+Math.random()*13000; }
+    else if(Math.random()<.3){ poke(Math.random()<.5?'curious':'bored',2600); idleSwapAt=ts+12000+Math.random()*12000; }
+    else { const opts=['dot','circle','big'].filter(x=>x!==restPu()); idlePu=opts[Math.random()*opts.length|0];
+      idleSwapAt=ts+(idlePu==='big'?1800:2500)+Math.random()*2200; } }
+  if(m!=='idle') idlePu=null;
+  const want=fx.pu||(m==='idle'&&idlePu?idlePu:T.pu), pu=PUP[want==='rest'?restPu():want];
+  for(const key of PUP_KEYS){ SP.L[key].to(val(pu[key],0),dt); SP.R[key].to(val(pu[key],1),dt); }
+  { const sl=info.voice_native?spkLevel(ts):null; lvl=approach(lvl,clamp(sl!=null?sl:rms(spkAn)*5.5,0,1),dt,16); }
+  micLvl=approach(micLvl,rec&&!rec.stopping?micRaw:follow?hearRaw:0,dt,14);
+  if(playing&&info.voice_native&&!spkMap.size&&ts>spkGuard+4000) playing=false;      // safety: never stuck 'talking'
+
+  // ---- body: stays in place. Just a soft squish (on clicks / mood changes), slow breathing and a slight sway
+  let jt=0;
+  if(isTalk(m)) jt=-lvl*.03;
+  if(fx.jt!=null) jt=fx.jt;
+  const sq=G.jelly.to(jt,dt), sx=1+sq, sy=1-sq*1.05;
+  const pump=1+micLvl*.04+Math.sin(t*1.3)*.004;
+  lift=0;
+  const rot=G.tilt.x+Math.sin(t*.5)*.5+G.gx.v*.012+(fx.rot||0);
+  const dxp=G.dx.to(0,dt);
+  const bodyTr=`translate(${dxp.toFixed(2)},${(76*(1-sy*pump)).toFixed(2)}) rotate(${rot.toFixed(2)})`;
+  E.body.setAttribute('transform',`${bodyTr} scale(${(sx*pump).toFixed(4)},${(sy*pump).toFixed(4)})`);
+  E.shadow.setAttribute('transform',`scale(${sx.toFixed(3)},1)`);
+
+  // ---- camera: appear pop, punch-zoom, soft shake (side to side)
+  const ap=G.appear.to(1,dt), zm=G.zoom.to(1,dt); shakeAmp*=Math.exp(-5*dt);
+  const shx=shakeAmp*Math.sin(t*36);
+  E.cam.setAttribute('transform',`translate(${shx.toFixed(2)},0) scale(${Math.max(0,zm*ap).toFixed(4)})`);
+  if(!opened && ts>openAt && ap>.7) opened=true;
+
+  // ---- gaze: every mood has its own way of looking
+  const dart=(ms,ax,ay)=>{ if(ts>dartAt){ tx=(Math.random()-.5)*ax; ty=(Math.random()-.5)*ay; dartAt=ts+ms*(.6+Math.random()*.8); } };
+  if(m==='thinking'){ tx=-3.5+Math.cos(t*.9)*2; ty=-4+Math.sin(t*1.4)*1.2; }
+  else if(m==='reading'){ const ph=(t*1.1)%1; tx=-6+Math.min(1,ph*1.25)*12; ty=-2+((t*1.1|0)%4)*1.5; }      // left→right, line by line
+  else if(m==='editing'){ tx=Math.sin(t*1.3)*2.5; ty=3; }
+  else if(m==='running'){ tx=4+Math.sin(t*3)*.8; ty=4.5; }
+  else if(m==='searching') dart(420,15,10);
+  else if(m==='looking') dart(650,13,9);
+  else if(m==='pleading'||m==='love'||m==='listening'&&ts-lastMouse>1500){ tx=0; ty=m==='pleading'?1.5:0; }
+  else if(m==='confused'){ tx=Math.sin(t*.9)*2.5; ty=-2.5; }
+  else if(m==='sleepy'){ tx=0; ty=1; }
+  else if(m==='error'){ tx=0; ty=4; }
+  else if(m==='sad'){ tx=-1; ty=5; }
+  else if(m==='shy'){ tx=-4; ty=4.5; }
+  else if(m==='bored'){ tx=6*Math.sign(Math.sin(t*.25)||1); ty=1; }
+  else if(m==='scared') dart(260,6,4);
+  else if(isTalk(m)){ [tx,ty]=talkGaze(ts); }           // talking like a person: see talkWord()
+  else if(fx.tx!=null||fx.ty!=null){ tx=fx.tx??0; ty=fx.ty??0; }
+  else if(m==='idle' && ts>saccadeAt && ts-lastMouse>2500){ tx=(Math.random()-.5)*11; ty=(Math.random()-.5)*7; saccadeAt=ts+2400+Math.random()*3800; }
+  if(window.gazeHook){ const gz=gazeHook(tx,ty,m,ts); if(gz){ tx=gz[0]; ty=gz[1]; } }   // something else wants his eyes (the code panel)
+  lx=G.gx.to(tx,dt); ly=G.gy.to(ty,dt);
+
+  // ---- blink: soft close, slower open (sometimes a double blink)
+  if(ts>nextBlink && m!=='sleepy' && m!=='wink'){ blinkAt=ts; nextBlink=ts+(Math.random()<.18?320:2600+Math.random()*4200); }
+  const bp=(ts-blinkAt)/240, ss=x=>x*x*(3-2*x);
+  const blink=bp<0||bp>=1?0:bp<.38?ss(bp/.38):1-ss((bp-.38)/.62);
+  const open=G.open.to(opened?1:0,dt), openC=clamp(open,0,1), openPop=Math.max(1,open);
+
+  // ---- eyes: the pupils do most of the looking (it's a little screen), the ball only turns a touch
+  const yaw=lx*.03, pitch=ly*.03, cY=Math.cos(yaw), sY=Math.sin(yaw), cP=Math.cos(pitch), sP=Math.sin(pitch);
+  const P=(x,y)=>sph(x,y,cY,sY,cP,sP);
+  const voice=1+(isTalk(m)?lvl*.05:0)+(m==='listening'?micLvl*.05:0);      // eyes swell a touch with the voice
+  for(const [side,c,pc,p,cp,hl] of [[-1,S.L,SP.L,E.pL,E.cpL,E.hlL],[1,S.R,SP.R,E.pR,E.cpR,E.hlR]]){
+    const top=c.top.x+(1-c.top.x)*Math.max(blink*.97,1-openC), z=G.sz.x*openPop*c.es.x*voice;
+    const cx=side*Math.max(EYE.cx,EYE_HALFW*z+2.6), cy=EYE.cy;      // bigger eyes move apart: always a gap, never merged
+    const sq=c.sq.x, shut=clamp(c.shut.x,0,1);
+    const d=toD(eyePts(z,{top,sl:c.sl.x,tc:c.tc.x,bot:c.bot.x,bow:c.bow.x,sq,shut,cup:clamp(c.cup.x,0,1)},side).map(([x,y])=>P(cx+x,cy+y)));
+    p.setAttribute('d',d); cp.setAttribute('d',d);
+    const dil=1+(m==='listening'?micLvl*.12:0)+(isTalk(m)?lvl*.08:0)+(m==='love'?Math.sin(t*7)*.06:0);
+    const pw=Math.max(.3,pc.w.x*dil*z*(1-shut)), ph=Math.max(.3,pc.h.x*dil*z*(1-shut));
+    let qx=-side*pc.dx.x*z+lx*1.25+(m==='scared'?(Math.random()-.5)*1.6:0), qy=pc.dy.x*z+ly*1.5+(m==='scared'?(Math.random()-.5)*1.6:0);
+    const rt=-side*EYE.tilt, rc=Math.cos(rt), rs=Math.sin(rt);
+    let ux=qx*rc+qy*rs, uy=-qx*rs+qy*rc;
+    const ax=Math.max(1,EYE.rx*z-pw-1.5), ay=Math.max(1,EYE.ry*z*sq-ph-1.5), k=Math.hypot(ux/ax,uy/ay);
+    if(k>1){ ux/=k; uy/=k; } qx=ux*rc-uy*rs; qy=ux*rs+uy*rc;
+    const hr=clamp(pc.hr.x,0,1), st=clamp(pc.st.x,0,1-hr), spin=st*t*1.6;          // star pupils slowly spin
+    hl.setAttribute('d',toD(pupilPts(pw,ph,-side*pc.r.x+spin,hr,st).map(([x,y])=>P(cx+qx+x,cy+qy+y))));
+  }
+
+  // ---- aura: halo, voice ring, orbiting sparks
+  const spd=G.spd.to(A.spd,dt)+(m==='listening'?micLvl*2.2:0)+(isTalk(m)?lvl*1.4:0);
+  const rad=G.rad.to(A.rad,dt)+micLvl*.1, oa=G.oa.to(A.a,dt), ha=G.ha.to(A.h,dt);
+  orbT+=dt*spd;
+  const hs=1+micLvl*.07+lvl*.05+Math.sin(t*1.3)*.012;   // glow + ring + sparks move, squish and stretch with him
+  E.haloW.setAttribute('transform',`${bodyTr} scale(${(sx*pump*hs).toFixed(4)},${(sy*pump*hs).toFixed(4)})`);
+  const auraTr=`${bodyTr} scale(${(sx*pump).toFixed(4)},${(sy*pump).toFixed(4)})`;
+  E.vring.setAttribute('transform',auraTr); E.orbBack.setAttribute('transform',auraTr); E.orbFront.setAttribute('transform',auraTr);
+  E.halo.setAttribute('opacity',clamp(ha+Math.sin(t*1.3)*.07+micLvl*.3+lvl*.25,0,1).toFixed(3));
+  ringAmt=approach(ringAmt,m==='listening'?.25+micLvl*1.1:isTalk(m)?lvl*.9:0,dt,10);
+  if(ringAmt>.01){ const pts=[];
+    for(let i=0;i<72;i++){ const a=i/72*Math.PI*2, nz=.5*Math.sin(a*5+t*5)+.3*Math.sin(a*9-t*7.5)+.2*Math.sin(a*14+t*11);
+      const r=84+ringAmt*(3+8*(nz*.5+.5)); pts.push([Math.cos(a)*r,Math.sin(a)*r]); }
+    E.vring.setAttribute('d',toD(pts)); E.vring.setAttribute('opacity',clamp(ringAmt,0,.9).toFixed(3)); }
+  else E.vring.setAttribute('opacity','0');
+  // working: a bright spark chasing round him for as long as Claude is busy, so you can always tell
+  workAmt=approach(workAmt,busy?1:0,dt,busy?5:3);
+  if(workAmt>.01){ workRot=(workRot+dt*(toolMood==='running'?300:toolMood?220:150))%360;
+    E.workW.setAttribute('transform',`${auraTr} rotate(${workRot.toFixed(1)})`); E.workW.setAttribute('opacity',(workAmt*.95).toFixed(3)); }
+  else E.workW.setAttribute('opacity','0');
+  workChip();
+  // menu swoosh: 0 = sparks orbiting him … 1 = sparks gathered where the menu buttons are
+  swoosh=clamp(swoosh+(menuOn?1:-1)*dt/.45,0,1);
+  const sw2=swoosh<.5?4*swoosh**3:1-Math.pow(-2*swoosh+2,3)/2;
+  const flowA=26+spd*16, swirlK=.25+spd*.22;
+  for(let i=0;i<ORBS.length;i++){ const o=ORBS[i], P0=o.p;
+    // the current: overlapping slow waves, different for every spark → smooth, unpredictable wandering
+    const [x,y,z]=P0, r=Math.hypot(x,y,z)||1, f=o.f, A=o.a, tt=t*(.6+spd*.25);
+    const fx=Math.sin(y*.035+tt*f[0]+A[0])+.6*Math.sin(z*.05-tt*f[1]*.8+A[1]);
+    const fy=Math.sin(z*.035+tt*f[1]+A[1])+.6*Math.sin(x*.05+tt*f[2]*.8+A[2]);
+    const fz=Math.sin(x*.035+tt*f[2]+A[2])+.6*Math.sin(y*.05-tt*f[0]*.8+A[0]);
+    const Rt=o.R0*rad, pull=(Rt-r)*3.2/r;                     // stay loosely on a shell around him
+    const sx=-z*swirlK*o.spin, sz=x*swirlK*o.spin;            // a lazy swirl so the cloud keeps turning
+    const k=Math.exp(-1.8*dt);
+    o.v[0]=o.v[0]*k+(fx*flowA+x*pull+sx)*dt*1.6; o.v[1]=o.v[1]*k+(fy*flowA*.7+y*pull)*dt*1.6; o.v[2]=o.v[2]*k+(fz*flowA+z*pull+sz)*dt*1.6;
+    P0[0]+=o.v[0]*dt; P0[1]+=o.v[1]*dt; P0[2]+=o.v[2]*dt;
+    const r2=Math.hypot(P0[0],P0[1],P0[2]); if(r2<84){ const q=84/r2; P0[0]*=q; P0[1]*=q; P0[2]*=q; }   // never through his body
+    const sp=Math.hypot(o.v[0],o.v[1]), streak=clamp(sp*.11,3.5,20)/(sp||1);
+    let h=[P0[0],P0[1],P0[2]], tl=[P0[0]-o.v[0]*streak,P0[1]-o.v[1]*streak,P0[2]];
+    let depth=(P0[2]/r2+1)/2, op=oa*(.25+depth*.75), w=o.size*(.6+depth*.8);
+    if(sw2>.001){            // menu: swirl along a curve into the buttons, and vanish into them
+      const tg=MENU_XY[i%MENU_XY.length], jit=(i/MENU_XY.length|0)*5-2.5, sgn=Math.sign(h[0]*o.v[1]-h[1]*o.v[0])||o.spin;
+      const a0=Math.atan2(h[1],h[0]), r0=Math.hypot(h[0],h[1]), tx2=tg[0]+jit, ty2=tg[1]+jit*.6, a1=Math.atan2(ty2,tx2), r1=Math.hypot(tx2,ty2);
+      let da=a1-a0; while(da>Math.PI) da-=2*Math.PI; while(da<-Math.PI) da+=2*Math.PI; da+=sgn*(.8+(i%3)*.25);
+      const at=kk=>{ const e=clamp(kk,0,1), a=a0+da*e, rr=lerp(r0,r1,e)+Math.sin(Math.PI*e)*(22+(i%4)*6); return [Math.cos(a)*rr, Math.sin(a)*rr, 1]; };
+      h=at(sw2); tl=at(sw2-.09); depth=1;
+      op=lerp(op,1,Math.min(1,sw2*2))*(1-clamp((sw2-.7)/.3,0,1)); w=lerp(w,3.2,sw2);   // fully gone once they land
+    }
+    if(FID&&FID.name==='chase'&&FID.k===i&&sw2<.01){ op=1; w=3.6; }
+    const back=h[2]<0&&sw2<.01; if(back!==o.back){ (back?E.orbBack:E.orbFront).appendChild(o.el); o.back=back; }
+    o.el.setAttribute('x1',tl[0].toFixed(1)); o.el.setAttribute('y1',tl[1].toFixed(1)); o.el.setAttribute('x2',h[0].toFixed(1)); o.el.setAttribute('y2',h[1].toFixed(1));
+    o.el.setAttribute('stroke-width',w.toFixed(2));
+    o.el.setAttribute('opacity',op.toFixed(3));
+  }
+
+  // ---- extras
+  E.raysW.setAttribute('transform',`rotate(${(t*10)%360})`);
+  E.rays.setAttribute('opacity',Math.max(0,G.rays.to(m==='happy'||m==='excited'?.16:0,dt)).toFixed(3));
+  const thk=G.think.to(m==='thinking'?1:0,dt);
+  E.think.setAttribute('opacity',clamp(thk,0,1).toFixed(2));
+  [...E.think.children].forEach((c,i)=>c.setAttribute('transform',`translate(0,${(-Math.abs(Math.sin(t*3-i*.7))*5).toFixed(1)})`));
+  E.think.setAttribute('transform',`translate(60,-60) scale(${Math.max(0,thk).toFixed(3)}) translate(-60,60)`);
+  const an=G.anger.to(m==='annoyed'||m==='error'?1:0,dt);
+  E.anger.setAttribute('opacity',clamp(an,0,1).toFixed(2));
+  E.anger.setAttribute('transform',`translate(62,-62) scale(${(Math.max(0,an)*(1+Math.sin(t*7)*.1)).toFixed(3)})`);
+  const qm=G.qm.to(m==='confused'?1:0,dt);
+  E.qmark.setAttribute('opacity',clamp(qm,0,1).toFixed(2));
+  E.qmark.setAttribute('transform',`translate(80,-80) rotate(${(Math.sin(t*2.4)*12).toFixed(1)}) scale(${Math.max(0,qm).toFixed(3)}) translate(-80,80)`);
+  const sw=(t%1.8)/1.8;
+  E.sweat.setAttribute('opacity',m==='running'||m==='pleading'?(sw<.75?1:1-(sw-.75)/.25).toFixed(2):'0');
+  E.sweat.setAttribute('transform',`translate(-70,${(-44+eOut(sw)*18).toFixed(1)}) scale(${(.6+Math.min(sw*3,1)*.4).toFixed(2)})`);
+  // skin: ears follow his mood (droop, perk, flatten) and twitch now and then; antennas/sprouts wobble; halos float
+  const SP2=SKIN_PARTS||{};
+  if(SP2.earL||SP2.earR){
+    const base={sad:24,sleepy:20,bored:16,annoyed:34,error:30,listening:-10,surprised:-12,excited:-8,scared:-14,joy:6,purr:10,happy:4}[m]||0;
+    if(ts>earTwAt){ earTwAt=ts+3500+Math.random()*6000; (Math.random()<.5?G.earL:G.earR).kick((Math.random()<.5?-1:1)*90); }
+    for(const [side,key] of [[-1,'earL'],[1,'earR']]){ const g=SP2[key], pv=SP2.pivots[key]; if(!g||!pv) continue;
+      const a=side*(base+G[key].to(0,dt)); g.setAttribute('transform',`rotate(${a.toFixed(2)} ${pv[0]} ${pv[1]})`); } }
+  if(SP2.wob){ const pv=SP2.pivots.wob, w=G.wob.to(clamp(-G.tilt.v*1.6-G.gx.v*1.2-dxp*.08,-28,28),dt)+(LOOK.skin==='sprout'?Math.sin(t*1.3)*3:0);
+    SP2.wob.setAttribute('transform',`rotate(${w.toFixed(2)} ${pv[0]} ${pv[1]})`); }
+  if(SP2.halo) SP2.halo.setAttribute('transform',`translate(0,${(Math.sin(t*1.6)*2.2).toFixed(2)})`);
+  // tears
+  if(m==='sad' && ts>tearAt){ tearAt=ts+1900+Math.random()*900; tear(Math.random()<.6?-1:1); }
+  if(m==='scared') shakeAmp=Math.max(shakeAmp,.5);
+  E.zz.setAttribute('opacity',m==='sleepy'?(.5+Math.sin(t*1.2)*.5).toFixed(2):'0');
+  E.zz.setAttribute('transform',`translate(0,${(-((t*6)%14)).toFixed(1)})`);
+  for(let i=parts.length-1;i>=0;i--) if(!parts[i](ts,dt)) parts.splice(i,1);
+  capTick(ts);
+  if(NATIVE){ const a=(frameN++&1)?'rgba(0,0,0,.004)':'rgba(0,0,0,.006)';   // forces WebKit to repaint the whole window every frame —
+    paintEl.style.background=a; document.documentElement.style.background=a; }  // both the page and the root, so the widened edge is covered too
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ================= voice out (sentence-streamed) ================= */
+let actx=null, spkAn=null, srcs=[], curIt=null, playing=false, gen=0, nextAt=0, pumpGen=-1; const q=[];
+function ac(){ if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); return actx; }
+// enqueue(text, {cap:true}) also puts the words on screen, one by one, as he says them
+// When the server can play audio itself (info.voice_native), his voice doesn't go through this page at all — see
+// Speaker in server.py. We just say what to speak; the server tells us when each sentence actually starts.
+const spkMap=new Map(); let spkSeq=0, spkLv=[], spkGuard=0, sayChain=Promise.resolve();
+function enqueue(text,o={}){
+  text=(text||'').trim();
+  if(muted||!/[a-z0-9]/i.test(text)){ if(o.cap) karaNow(o.cap===true?text:o.cap,o.fresh); return; }
+  if(info.voice_native){ const id=++spkSeq; spkMap.set(id,{cap:o.cap?(o.cap===true?text:o.cap):'',fresh:!!o.fresh});
+    playing=true; spkGuard=performance.now();
+    sayChain=sayChain.then(()=>post('/api/say',{text,id})).catch(()=>{ const it=spkMap.get(id); spkMap.delete(id); if(it&&it.cap) karaNow(it.cap,it.fresh); quietNative(); });   // one after another: keeps them in order
+    return; }
+  const g=gen; q.push({cap:o.cap?(o.cap===true?text:o.cap):'',fresh:!!o.fresh,
+    p:post('/api/tts',{text}).then(async r=>{ if(r.status!==200) return null;
+      const rate=+(r.headers.get('X-Void-Rate')||1), pause=+(r.headers.get('X-Void-Pause')||.08);
+      let words=null; try{ words=JSON.parse(r.headers.get('X-Void-Words')||'null'); }catch(e){}
+      const b=await ac().decodeAudioData(await r.arrayBuffer()); return {b,rate,pause,words}; }).catch(()=>null).then(x=>g===gen?x:null)});
+  pump();
+}
+/* karaoke captions: each spoken sentence's words are timed across its audio (longer words and pauses after
+   punctuation get more time), and appear right as he reaches them */
+let kara=[];
+const voiced=()=>!muted&&!!info.tts;
+function karaWords(text){ return karaParse(text).ws; }
+function capSpeak(text,dur,fresh,t0,times,rate){ const kp=karaParse(text), ws=kp.ws, fc=kp.faces, guess=kp.tagged?null:text; if(!ws.length) return;
+  if(times&&times.length){                     // the server measured when each word is actually said
+    if(fresh) kara.push({reset:true,at:t0-1});
+    const n=ws.length, m=times.length, r=rate||1;
+    ws.forEach((w,i)=>{ const j=m===n?i:Math.min(m-1,Math.floor(i*m/n)); kara.push({w,at:t0+times[j][0]/r*1000,sent:i?null:guess,face:fc[i]}); });
+    return; }
+  const wt=w=>w.replace(/[^\p{L}\p{N}]/gu,'').length+1.6+(/[,;:—–]$/.test(w)?3:0)+(/[.!?]$/.test(w)?6:0);
+  const tot=ws.reduce((a,w)=>a+wt(w),0), span=Math.max(.2,dur-.08)*1000; let acc=0; t0=t0||performance.now()+80;
+  if(fresh) kara.push({reset:true,at:t0-1});
+  ws.forEach((w,i)=>{ kara.push({w,at:t0+acc/tot*span,sent:i?null:guess,face:fc[i]}); acc+=wt(w); }); }
+function karaNow(text,fresh,instant){ const ws=karaWords(text), n=performance.now();
+  if(fresh) kara.push({reset:true,at:n});
+  ws.forEach((w,i)=>kara.push({w,at:instant?0:n+Math.min(i*38,420)})); if(instant) karaFlush(); }
+/* ---- talking like a person: mostly looking at you, little eye movements round your face, glancing off to the side
+   while he finds the words at the start of a thought, a small nod at the end of a sentence, a head tilt on a question,
+   and a new head angle for each phrase. All of it is driven by the words as he actually says them (karaoke timing). */
+const talk={awayUntil:0, away:[0,0], micro:[0,0], microAt:0, tiltT:0, nodAt:-1e9, newPhrase:true, face:null, beamUntil:0, beam:false};
+const isTalk=m=>m==='talking'||(m.length>2&&m[0]==='t'&&m[1]==='_');
+const SENT={
+  pos:/\b(great|awesome|nice|perfect|done|fixed|works?|working|passe[sd]|pass|succe(ss|ssful(ly)?|eded)|ready|all set|sure|of course|yes|yep|cool|neat|exactly|happy to|glad|easy|good|clean)\b/i,
+  wow:/\b(wow|whoa|amazing|incredible|finally|nailed|love it)\b/i,
+  sorry:/\b(sorry|unfortunately|sadly|apologi[sz]e|my bad|oops)\b/i,
+  bad:/\b(can'?t|cannot|couldn'?t|fail(ed|s|ing|ure)?|errors?|broke(n)?|crash(ed|es|ing)?|problems?|issues?|wrong|bugs?|missing|not found|doesn'?t|didn'?t|won'?t|unable|stuck)\b/i,
+  unsure:/\b(maybe|might|perhaps|probably|i think|not sure|i guess|seems|possibly|hmm|could be|i believe|not certain)\b/i,
+  warn:/\b(careful|warning|important|make sure|don'?t|never|danger(ous)?|delete[sd]?|remov(e|ing)|sudo|root|password|irreversible|permanent(ly)?|heads up)\b/i };
+// what is this sentence? → how he looks while he says it
+// Claude said how it means this bit → the face to match, right on that word
+function talkFace(tag){
+  const n=performance.now();
+  talk.beam=false;
+  switch(tag){
+    case 'proud':    talk.face='t_happy'; talk.beam=true; break;                 // smiling, then "^ ^" at the end of the sentence
+    case 'happy':    talk.face='t_happy'; break;
+    case 'excited':  talk.face='t_excited'; break;
+    case 'laugh':    talk.face='t_happy'; talk.beamUntil=n+900; G.jelly.kick(.35); setTimeout(()=>G.jelly.kick(-.25),180); setTimeout(()=>G.jelly.kick(.18),360); break;
+    case 'warm':     talk.face='t_warm'; break;
+    case 'curious':  talk.face='t_curious'; talk.tiltT=(Math.random()<.5?-1:1)*8; break;
+    case 'unsure':   talk.face='t_unsure'; talk.tiltT=(Math.random()<.5?-1:1)*5; break;
+    case 'thinking': talk.face='t_think'; { const sd=Math.random()<.5?-1:1; talk.away=[sd*5.5,-4.2]; talk.awayUntil=n+1100; } break;  // looks up and away
+    case 'surprised':talk.face='t_surprised'; G.jelly.kick(-.3); break;
+    case 'sorry':    talk.face='t_sorry'; break;
+    case 'serious':  talk.face='t_serious'; talk.awayUntil=0; break;              // serious: looks right at you
+    default:         talk.face='t_explain';
+  }
+}
+function talkSentence(t){
+  t=String(t||''); let f='t_explain';
+  if(/\?\s*["')]*\s*$/.test(t)) f='t_curious';
+  else if(SENT.sorry.test(t)) f='t_sorry';
+  else if(SENT.wow.test(t)||/!\s*["')]*\s*$/.test(t)) f='t_excited';
+  else if(SENT.bad.test(t)) f=SENT.pos.test(t)?'t_happy':'t_serious';        // "I fixed the crash" is good news
+  else if(SENT.warn.test(t)) f='t_serious';
+  else if(SENT.unsure.test(t)) f='t_unsure';
+  else if(SENT.pos.test(t)) f='t_happy';
+  else if(Math.random()<.3) f='talking';
+  talk.face=f;
+  talk.beam=(f==='t_happy'||f==='t_excited')&&/\b(done|fixed|pass(ed|es)?|works( now)?|all set|nailed|ready|success)\b/i.test(t);
+}
+function talkWord(w){
+  const n=performance.now();
+  if(talk.newPhrase){ talk.newPhrase=false;
+    if(Math.random()<.55){ const sd=Math.random()<.5?-1:1; talk.away=[sd*(4+Math.random()*3.5),-(1.5+Math.random()*2.8)]; talk.awayUntil=n+420+Math.random()*750; }
+    talk.tiltT=(Math.random()-.5)*9; }
+  if(/[.!]['")\]]*$/.test(w)){ talk.nodAt=n; talk.awayUntil=0; talk.newPhrase=true; talk.tiltT*=.3; G.jelly.kick(.16);       // end of a sentence: nod, eyes on you
+    if(talk.beam){ talk.beamUntil=n+750; talk.beam=false; }                 // …and a proud "^ ^" if it was good news
+    if(Math.random()<.4) blinkAt=n+120; }
+  else if(/\?['")\]]*$/.test(w)){ talk.tiltT=(Math.random()<.5?-1:1)*11; talk.awayUntil=0; talk.newPhrase=true; G.jelly.kick(.1); } // a question
+  else if(/[,;:—–]$/.test(w)){ talk.newPhrase=true; talk.tiltT*=-.6; }
+  else if(w.replace(/[^\p{L}\p{N}]/gu,'').length>=7&&Math.random()<.3){ talk.tiltT+=(Math.random()-.5)*7; G.jelly.kick(.07); for(const e of [S.L,S.R]) e.es.kick(.3); } // a big word: brows up a little
+}
+function talkGaze(ts){
+  if(ts<talk.awayUntil) return talk.away;
+  if(ts>talk.microAt){ talk.micro=[(Math.random()-.5)*2.8,(Math.random()-.5)*1.5]; talk.microAt=ts+260+Math.random()*700; }
+  const nd=(ts-talk.nodAt)/430, dip=nd>=0&&nd<1?Math.sin(nd*Math.PI)*3.4:0;
+  return [talk.micro[0],talk.micro[1]+dip];
+}
+function karaPut(k,quiet){ if(!k.reset&&!quiet&&playing){ if(k.face) talkFace(k.face); else if(k.sent) talkSentence(k.sent); talkWord(k.w); }
+  if(k.reset){ talk.newPhrase=true; himEl.classList.remove('err'); himEl.innerHTML=''; shownTxt=''; return; }
+  let ln=himEl.querySelector('.ln'); if(!ln){ himEl.innerHTML='<div class="ln"></div>'; ln=himEl.firstChild; }
+  if(ln.childNodes.length) ln.appendChild(document.createTextNode(' '));
+  const w=document.createElement('span'); w.className='w k'+(/^`.*`[.,!?:;]?$/.test(k.w)?' c':''); w.textContent=k.w.replace(/`/g,''); ln.appendChild(w);
+  while(ln.childNodes.length>320) ln.removeChild(ln.firstChild); }
+function karaTick(n){ while(kara.length&&kara[0].at<=n){ const k=kara.shift(); if(!capOn) capShow(); karaPut(k); } }
+function karaFlush(){ while(kara.length) karaPut(kara.shift(),true); }
+function karaDrop(){ kara.length=0; }
+function speaking(on){ if(info.voice_native) return; if(info.wake_word||info.barge_in) post('/api/speaking',{on}).catch(()=>{}); }
+/* tiny synth blips — soft and short. sfx('wake'|'menu'|'close'|'ok'|'done'|'error'|'remind'|'purr'|'pop') */
+function sfx(name){
+  if(!info.sfx) return; let a; try{ a=ac(); }catch(e){ return; }
+  const now=a.currentTime, out=a.createGain(); out.gain.value=.16; out.connect(a.destination);
+  const tone=(f,t0,d,type='sine',f2=null,vol=1)=>{ const o=a.createOscillator(), g=a.createGain(); o.type=type; o.frequency.setValueAtTime(f,now+t0);
+    if(f2) o.frequency.exponentialRampToValueAtTime(f2,now+t0+d); g.gain.setValueAtTime(0,now+t0); g.gain.linearRampToValueAtTime(vol,now+t0+.012);
+    g.gain.exponentialRampToValueAtTime(.001,now+t0+d); o.connect(g); g.connect(out); o.start(now+t0); o.stop(now+t0+d+.02); };
+  const noise=(t0,d,f0,f1,vol=.6)=>{ const n=a.createBuffer(1,a.sampleRate*d,a.sampleRate), ch=n.getChannelData(0); for(let i=0;i<ch.length;i++) ch[i]=Math.random()*2-1;
+    const src=a.createBufferSource(), bp=a.createBiquadFilter(), g=a.createGain(); src.buffer=n; bp.type='bandpass'; bp.Q.value=1.2;
+    bp.frequency.setValueAtTime(f0,now+t0); bp.frequency.exponentialRampToValueAtTime(f1,now+t0+d); g.gain.setValueAtTime(0,now+t0);
+    g.gain.linearRampToValueAtTime(vol,now+t0+d*.35); g.gain.linearRampToValueAtTime(0,now+t0+d); src.connect(bp); bp.connect(g); g.connect(out); src.start(now+t0); };
+  ({wake:()=>{ tone(660,0,.12); tone(990,.09,.16); },
+    menu:()=>noise(0,.32,500,3200), close:()=>noise(0,.26,2800,450,.45),
+    ok:()=>{ tone(880,0,.09,'triangle'); tone(1320,.07,.12,'triangle',null,.8); },
+    done:()=>{ tone(784,0,.22); tone(988,.08,.22); tone(1175,.16,.3); },
+    error:()=>{ tone(330,0,.16,'triangle'); tone(247,.13,.24,'triangle'); },
+    remind:()=>{ for(let i=0;i<3;i++){ tone(1568,i*.32,.28); tone(2093,i*.32+.04,.25,'sine',null,.4); } },
+    purr:()=>{ tone(70,0,.7,'sawtooth',62,.25); },
+    pop:()=>tone(520,0,.08,'sine',260)})[name]?.();
+}
+// Sentences are scheduled back-to-back on the audio clock as soon as each one is ready — not started when the last one
+// "ends" (that event arrives late and leaves little gaps: the stutter). A natural pause goes between sentences, and a
+// tiny fade in/out stops clicks at the joins.
+async function pump(){
+  if(pumpGen===gen||!q.length) return; const g=pumpGen=gen;
+  if(!playing){ playing=true; speaking(true); }
+  while(q.length&&g===gen){
+    const it=curIt=q[0], item=await it.p; if(g!==gen) break; q.shift(); curIt=null;
+    if(!item){ if(it.cap) karaNow(it.cap,it.fresh); continue; }           // no audio for this one: just show it
+    const a=ac(); if(!spkAn){ spkAn=a.createAnalyser(); spkAn.fftSize=1024; spkAn.connect(a.destination); }
+    const src=a.createBufferSource(), gn=a.createGain(), r=item.rate||1, dur=item.b.duration/r;
+    src.buffer=item.b; src.playbackRate.value=r; src.connect(gn); gn.connect(spkAn);
+    const when=Math.max(a.currentTime+.05,nextAt);
+    gn.gain.setValueAtTime(0,when); gn.gain.linearRampToValueAtTime(1,when+.006);
+    gn.gain.setValueAtTime(1,Math.max(when+.006,when+dur-.01)); gn.gain.linearRampToValueAtTime(0,when+dur);
+    src.start(when); srcs.push(src); nextAt=when+dur+(item.pause||.08);
+    src.onended=()=>{ srcs=srcs.filter(x=>x!==src); if(g===gen) quietCheck(); };
+    if(it.cap){ const lat=(a.outputLatency||a.baseLatency||0); capSpeak(it.cap,dur,it.fresh,performance.now()+(when-a.currentTime+lat)*1000,item.words,r); }
+  }
+  if(pumpGen===g) pumpGen=-1;
+  if(g===gen) quietCheck();
+}
+function quietNative(){ if(!spkMap.size&&playing&&info.voice_native&&!q.length){ playing=false; talk.face=null; } }
+// his "mouth": the server sends each sentence's loudness (every ~40 ms) with its start time
+function spkLevel(ts){ for(const L of spkLv){ if(ts>=L.t0&&ts<L.t0+L.level.length*L.step){ return L.level[((ts-L.t0)/L.step)|0]/100; } }
+  if(spkLv.length&&ts>spkLv[spkLv.length-1].t0+spkLv[spkLv.length-1].level.length*spkLv[spkLv.length-1].step+2000) spkLv=[];
+  return null; }
+function quietCheck(){ if(!srcs.length&&!q.length&&pumpGen!==gen&&playing){ playing=false; speaking(false); } }
+// shush: stop talking. Anything he hadn't said yet still lands on screen (mute mid-answer, or you cut in)
+function shush(){ gen++; const rest=q.splice(0), pend=curIt; curIt=null; karaFlush();
+  if(info.voice_native&&(spkMap.size||playing)){ post('/api/say/stop').catch(()=>{}); for(const it of spkMap.values()) if(it.cap) karaNow(it.cap,it.fresh,true); spkMap.clear(); spkLv=[]; }
+  if(pend&&pend.cap) karaNow(pend.cap,pend.fresh,true); for(const it of rest) if(it.cap) karaNow(it.cap,it.fresh,true);
+  for(const x of srcs) try{ x.stop(); }catch(e){} srcs=[]; nextAt=0; pumpGen=-1; if(playing) speaking(false); playing=false; }
+const untilQuiet=async()=>{ for(let i=0;i<400 && (playing||q.length);i++) await sleep(100); };
+
+/* ================= server-sent events ================= */
+async function readSSE(res,handle){
+  const rd=res.body.getReader(), dec=new TextDecoder(); let pend='';
+  for(;;){ const {value,done}=await rd.read(); if(done) break; pend+=dec.decode(value,{stream:true}); let i;
+    while((i=pend.indexOf('\n\n'))>=0){ const c=pend.slice(0,i); pend=pend.slice(i+2); if(c.startsWith('data: ')) try{ handle(JSON.parse(c.slice(6))); }catch(e){ console.log('[void] event error',e); } } }
+}
+// one long-lived stream for things the server starts: "hey Void", approval questions
+async function events(){
+  for(;;){
+    try{ const r=await post('/api/events'); if(r.ok) await readSSE(r,onEvent); }catch(e){}
+    await sleep(2000);
+  }
+}
+function onEvent(ev){
+  if(ev.t==='follow'){ follow=!!ev.on; hearRaw=0; if(follow) wake(); return; }
+  if(ev.t==='hear'){ hearRaw=ev.v; return; }
+  if(ev.t==='wake'){ if(rec||transcribing) return;
+    if(hiddenNow) native('show');
+    if(info.hover){ comeBack().then(()=>onEvent(ev)); return; }
+    if(ev.follow){ if(busy) return; wake(); send(ev.text,{follow:true}); return; }   // talked right after he answered: no "hey Void" needed
+    poke('surprised',500); wake(); sfx('wake');
+    if(ev.text && ev.text.split(/\s+/).length>=2) send(ev.text); else if(!busy) startRec('auto'); else tick("one sec — I'm still on the last thing");
+  }
+  else if(ev.t==='barge'){ if(!playing) return; shush(); sfx('pop'); poke('surprised',600);
+    if(ev.listen){ if(ev.text&&ev.text.split(/\s+/).length>=2) send(ev.text); else startRec('auto'); } else tick('okay, okay — shh'); }
+  else if(ev.t==='remind'){ if(hiddenNow) native('show'); if(info.hover) comeBack(); sfx('remind'); poke('excited',1800); say(ev.text); tick('⏰ '+ev.text); }
+  else if(ev.t==='spk'){ const it=spkMap.get(ev.id); if(!it) return; spkMap.delete(ev.id); spkGuard=performance.now()+ev.at+ev.dur*1000;
+    const t0=performance.now()+ev.at;
+    if(ev.level) spkLv.push({t0,level:ev.level,step:ev.step||40}); if(spkLv.length>12) spkLv.shift();
+    if(it.cap) capSpeak(it.cap,ev.dur,it.fresh,t0,ev.words,1); }
+  else if(ev.t==='spk_skip'){ const it=spkMap.get(ev.id); spkMap.delete(ev.id); if(it&&it.cap) karaNow(it.cap,it.fresh); quietNative(); }
+  else if(ev.t==='spk_done'){ quietNative(); }
+  else if(ev.t==='approve') queueApproval(ev);
+  else if(ev.t==='approve_done') approvalGone(ev.id);
+  else if(ev.t==='askpass') askPass(ev);
+  else if(ev.t==='askpass_done') pwGone(ev.id);
+}
+
+/* ================= mic (recorded by the server — no browser permissions involved) ================= */
+async function startRec(mode){
+  if(rec||transcribing||(busy&&mode!=='approve')) return null;
+  if(mode!=='approve') shush();
+  wake(); hideAsk(); menu(false);
+  const r=rec={mode,stopping:false,opened:false,cancelled:false};
+  if(mode!=='approve'){ capShow(); setYou('listening…'); himSet(''); sfx('wake'); }
+  let text=null, err=null;
+  try{
+    const res=await post('/api/listen',{mode:mode==='approve'?'auto':mode});
+    if(!res.ok){ const j=await res.json().catch(()=>({})); throw new Error(j.error||res.statusText); }
+    await readSSE(res,ev=>{ switch(ev.t){
+      case 'open': r.opened=true; if(r.stopping) post('/api/listen/stop',{cancel:r.cancelled}); break;
+      case 'lvl': micRaw=ev.v; break;
+      case 'speech': if(mode!=='approve') setYou('…'); break;
+      case 'note': tick(ev.text,true); break;
+      case 'transcribing': r.stopping=true; transcribing=true; break;
+      case 'text': text=ev.text; break;
+      case 'error': err=ev.text; break; } });
+  }catch(e){ err=e.message; }
+  if(rec===r) rec=null; transcribing=false; micRaw=0;
+  if(mode==='approve') return text||'';
+  if(err){ fail('mic: '+err); return null; }
+  if(text) send(text);
+  else { setYou(''); if(!r.cancelled){ himSet("didn't catch that"); poke('confused',1600); } capQuiet(); }
+  return text;
+}
+function stopRec(cancel){ const r=rec; if(!r) return; r.stopping=true; if(cancel) r.cancelled=true; if(r.opened) post('/api/listen/stop',{cancel:!!cancel}); }
+
+/* ================= caption ================= */
+// Claude tags how it means each sentence ("[proud] Fixed it.") — see VOICE_PROMPT in server.py. The tags drive his face
+// and are never shown or spoken.
+const FACE_TAG=/\[(neutral|happy|proud|excited|laugh|warm|curious|unsure|thinking|surprised|sorry|serious)\]\s*/gi;
+const untag=s=>String(s||'').replace(FACE_TAG,'');
+function karaParse(text){ const ws=[], faces=[]; let pend=null, tagged=false;
+  for(const tok of plain(String(text||'')).replace(FACE_TAG,m=>' '+m.trim()+' ').split(/\s+/)){
+    if(!tok) continue; const m=tok.match(/^\[(neutral|happy|proud|excited|laugh|warm|curious|unsure|thinking|surprised|sorry|serious)\]$/i);
+    if(m){ pend=m[1].toLowerCase(); tagged=true; continue; }
+    ws.push(tok); faces.push(pend); pend=null; }
+  return {ws,faces,tagged}; }
+function plain(s){ return s.replace(/```[\s\S]*?(```|$)/g,' [code] ').replace(/\*\*|__|^#+\s*/gm,''); }
+let shownTxt='', capOn=false, quietSince=0;
+function capShow(){ cap.classList.remove('off'); capOn=true; quietSince=performance.now(); }
+function capQuiet(){ quietSince=performance.now(); }
+let lastAnswer=''; const moreEl=$('#moreB');
+moreEl.addEventListener('click',()=>openPanel('reply'));
+function capTick(ts){ if(!capOn){ if(kara.length) karaTick(ts); if(moreEl.classList.contains('on')&&!busy) moreEl.classList.remove('on'); return; }
+  karaTick(ts);
+  if(busy||playing||kara.length||rec||transcribing||ask.classList.contains('on')){ quietSince=ts; return; }
+  if(ts-quietSince>(himEl.classList.contains('err')?9000:6500)){ cap.classList.add('off'); capOn=false; } }
+function setYou(t){ youEl.textContent=t; youEl.classList.remove('pop'); void youEl.offsetWidth; youEl.classList.add('pop'); }
+function himSet(t,bad){ karaDrop(); himEl.classList.toggle('err',!!bad); himEl.textContent=''; shownTxt=''; if(t) showHim(t,true); }
+function showHim(s,end){
+  const p=untag(plain(s)).trim(); let ln=himEl.querySelector('.ln'), fresh=false;
+  if(!ln||!p.startsWith(shownTxt)){ himEl.innerHTML='<div class="ln"></div>'; ln=himEl.firstChild; shownTxt=''; fresh=true; }
+  const upto=end?p.length:Math.max(p.lastIndexOf(' '),p.lastIndexOf('\n'))+1;
+  if(upto<=shownTxt.length) return;
+  const add=p.slice(shownTxt.length,upto); shownTxt=p.slice(0,upto);
+  const toks=add.split(/(\s+)/), words=toks.filter(x=>x&&!/^\s+$/.test(x)).length; let i=0;
+  for(const tk of toks){ if(!tk) continue;
+    if(/^\s+$/.test(tk)){ ln.appendChild(document.createTextNode(' ')); continue; }
+    const w=document.createElement('span'); w.className='w'+(/^`.*`[.,!?:;]?$/.test(tk)?' c':''); w.textContent=tk.replace(/`/g,'');
+    const idx=i++; if(fresh&&idx<words-14) w.style.animation='none'; else w.style.animationDelay=Math.min(idx*40,420)+'ms';
+    ln.appendChild(w); }
+  while(ln.childNodes.length>320) ln.removeChild(ln.firstChild);
+}
+let chipT=null; function tick(t,bad){ chip.textContent=t; chip.dataset.w=''; chip.className='on'+(bad?' bad':''); clearTimeout(chipT);
+  chipT=setTimeout(()=>{ chipT=null; chip.className=''; workChip(); },bad?6500:3400); }
+// while Claude works: "⟳ reading app.py · 0:12" stays up top the whole time
+function workChip(){ if(chipT) return;
+  if(!busy){ if(chip.classList.contains('work')) chip.className=''; return; }
+  const s=Math.floor((performance.now()-workT0)/1000), txt=`${workWhat||'thinking'} · ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  if(chip.dataset.w!==txt){ chip.dataset.w=txt; chip.innerHTML='<i class="spin"></i>'; chip.appendChild(document.createTextNode(txt)); }
+  if(chip.className!=='on work') chip.className='on work'; }
+function say(t){ capShow(); setYou(''); if(voiced()){ himSet(''); enqueue(t,{cap:true,fresh:true}); } else { himSet(t); enqueue(t); } capQuiet(); }
+function fail(t){ capShow(); himSet(t,true); errorUntil=performance.now()+2200; capQuiet(); }
+const base=p=>String(p||'').split('/').filter(Boolean).pop()||p;
+function toolLabel(name,detail){
+  const d=detail||'';
+  if(name==='TodoWrite') return 'planning';
+  switch(TOOL_MOOD[name]){
+    case 'reading': return name==='Grep'||name==='Glob'?`looking for ${d}`:`reading ${base(d)}`;
+    case 'editing': return `${name==='Write'?'writing':'editing'} ${base(d)}`;
+    case 'running': return `running ${d}`;
+    case 'searching': return name==='WebSearch'?`searching: ${d}`:`opening ${d.replace(/^https?:\/\//,'')}`;
+  }
+  return name.startsWith('mcp__')?name.split('__').slice(1).join(' · ')+(d?' · '+d:''):`${name}${d?' · '+d:''}`;
+}
+
+/* ================= ask box ================= */
+function showAsk(pre){ menu(false); closePanels(); ask.classList.add('on'); if(pre!=null) input.value=pre; input.focus(); }
+function hideAsk(){ ask.classList.remove('on'); input.blur(); }
+ask.addEventListener('submit',e=>{ e.preventDefault(); const v=input.value; input.value=''; hideAsk(); send(v); });
+
+/* ================= attachments: screenshots & clipboard ================= */
+let atts=[];
+function renderAtts(){ $('#atts').innerHTML=atts.map((a,i)=>`<div class="at">${a.kind==='clip'?'📋':'📷'} ${esc(a.label)}<button data-rm="${i}" title="remove">✕</button></div>`).join(''); }
+$('#atts').addEventListener('click',e=>{ const b=e.target.closest('[data-rm]'); if(b){ atts.splice(+b.dataset.rm,1); renderAtts(); } });
+async function shoot(kind){
+  const hideMe=kind==='screen'&&NATIVE&&!hiddenNow;
+  try{
+    if(hideMe){ native('peek:hide'); await sleep(260); }
+    const r=await post('/api/capture',{kind}); const j=await r.json();
+    if(hideMe) native('peek:show');
+    if(!r.ok) throw new Error(j.error||'capture failed');
+    atts=atts.filter(a=>!(a.kind===j.kind)); atts.push(j); renderAtts();
+    poke('looking',1600); tick(kind==='clipboard'?`got your ${j.label}`:'got it — I can see your screen');
+    return j;
+  }catch(e){ if(hideMe) native('peek:show'); if(e.message!=='cancelled') tick(e.message,true); return null; }
+}
+$('#clipB').addEventListener('click',()=>shoot('screen').then(()=>input.focus()));
+$('#clipB').addEventListener('contextmenu',e=>{ e.preventDefault(); e.stopPropagation(); shoot('clipboard').then(()=>input.focus()); });
+const SCREEN_RE=/\b(my|the|this|on( the)?) screen\b|\bscreenshot\b|\bwhat am i looking at\b|\blook at (this|that|it)\b|\bsee (this|that)\b/i;
+const CLIP_RE=/\bclipboard\b|\b(i|i've|i have|i just) (just )?copied\b|\bwhat i copied\b|\bthis (error|text) i copied\b/i;
+
+/* ================= sudo password: a card right next to him (no separate window) ================= */
+let pwReq=null; const pwEl=$('#pwbox'), pwIn=$('#pwIn');
+function askPass(ev){
+  pwReq=ev; if(hiddenNow) native('show'); if(info.hover) comeBack();
+  $('#pwQ').textContent=ev.retry?'That didn\'t work — try again':'He needs root for this';
+  $('#pwHint').textContent=ev.ultra?'Ultra root: I\'ll remember it until Void restarts (memory only, never saved)':'typed straight to sudo — never saved';
+  pwIn.value=''; pwEl.classList.add('on'); document.body.classList.add('pw'); if(ev.retry){ pwEl.classList.remove('bad'); void pwEl.offsetWidth; pwEl.classList.add('bad'); }
+  native('kbd:grab'); setTimeout(()=>pwIn.focus(),60); poke(ev.retry?'sad':'pleading',1600); sfx('remind');
+}
+function pwAnswer(pw){ const r=pwReq; if(!r) return; post('/api/askpass/answer',{id:r.id,pw}); pwClose(); poke(pw==null?'sad':'joy',900); }
+function pwClose(){ pwReq=null; pwIn.value=''; pwEl.classList.remove('on','bad'); document.body.classList.remove('pw'); native('kbd:release'); pwIn.blur(); }
+function pwGone(id){ if(pwReq&&pwReq.id===id) pwClose(); }
+pwEl.addEventListener('submit',e=>{ e.preventDefault(); if(pwIn.value) pwAnswer(pwIn.value); });
+pwEl.addEventListener('click',e=>{ if(e.target.closest('[data-pw="no"]')) pwAnswer(null); });
+pwIn.addEventListener('keydown',e=>{ e.stopPropagation(); if(e.key==='Escape'){ e.preventDefault(); pwAnswer(null); } });
+
+/* ================= approvals ("ask me first") ================= */
+const apprQ=[]; const apEl=$('#appr');
+function queueApproval(ev){ apprQ.push(ev); if(!pendingAppr) nextApproval(); }
+function nextApproval(){
+  pendingAppr=apprQ.shift()||null;
+  document.body.classList.toggle('appr',!!pendingAppr); apEl.classList.toggle('on',!!pendingAppr);
+  if(!pendingAppr) return;
+  const a=pendingAppr;
+  if(hiddenNow) native('show');
+  const what=a.tool==='Bash'?'Can I run this?':a.tool==='WebFetch'?'Can I open this page?':a.tool==='WebSearch'?'Can I search the web?':`Can I use ${a.tool}?`;
+  $('#apQ').textContent=what; $('#apCmd').textContent=a.detail;
+  const spoken=a.say||what;   // the server says what it does in plain words (the card shows the real command)
+  askAloud(a,spoken);
+}
+async function askAloud(a,spoken){
+  if(!muted){ enqueue(spoken); await untilQuiet(); }
+  for(let tries=0; tries<2 && pendingAppr===a; tries++){
+    const said=(await startRec('approve'))||'';
+    if(pendingAppr!==a) return;
+    const ans=/\b(always|every time|don'?t ask)\b/i.test(said)?'always':/\b(no|nope|nah|don'?t|stop|cancel|wait|never)\b/i.test(said)?'no':
+      /\b(yes|yeah|yep|yup|sure|ok|okay|go|go ahead|do it|run it|fine|please|alright|sounds good)\b/i.test(said)?'yes':null;
+    if(ans){ answer(ans); return; }
+    if(said) tick('say “yes” or “no” (or click)');
+  }
+}
+function answer(ans){ const a=pendingAppr; if(!a) return;
+  if(rec&&rec.mode==='approve') stopRec(true);
+  post('/api/approve/answer',{id:a.id,ans});
+  tick(ans==='no'?'okay — not running that':ans==='always'?`okay — won't ask again for that this chat`:'okay!',ans==='no');
+  poke(ans==='no'?'sad':'joy',ans==='no'?1100:800);
+  pendingAppr=null; nextApproval(); }
+function approvalGone(id){ if(pendingAppr&&pendingAppr.id===id){ if(rec&&rec.mode==='approve') stopRec(true); pendingAppr=null; nextApproval(); }
+  else { const i=apprQ.findIndex(x=>x.id===id); if(i>=0) apprQ.splice(i,1); } }
+apEl.addEventListener('click',e=>{ const b=e.target.closest('[data-ans]'); if(b) answer(b.dataset.ans); });
+
+/* ================= talk to claude code ================= */
+const MEM_ADD=/^(?:hey\s+void[,\s]+)?(?:please\s+)?(?:remember|don'?t forget|note down|make a note)\s*(?:that|this|:)?\s+(.{3,})$/i;
+const MEM_DEL=/^(?:hey\s+void[,\s]+)?(?:please\s+)?forget\s+(?:that|about|the)?\s*(.{3,})$/i;
+const MEM_SHOW=/^(?:hey\s+void[,\s]+)?what (?:do|did) you (?:remember|know about me)\b/i;
+const PROJ_ADD=/^(?:hey\s+void[,\s]+)?(?:remember|note)\s+(?:that\s+)?((?:my|the)\s+.+?)\s+(?:project\s+|folder\s+|repo\s+)?(?:is|lives)\s+(?:in|at)\s+(~?\/?[\w.\/-]+)\s*\.?$/i;
+const NICE=/\b(thank(s| you)|good job|well done|nice( one| work)?|love you|you'?re (the best|awesome|cute|great)|good boy|cutie)\b/i;
+async function send(text,opts={}){
+  text=(text||'').trim(); if(!text&&!atts.length) return; wake();
+  if(text.startsWith('/')) return slash(text);
+  // memory: handled right here, instantly
+  let mm; const question=/\?\s*$/.test(text)||/^(?:hey\s+void[,\s]+)?(?:do|did|can|could) you\b|^remember (what|when|how|where|why|which|who|if|the time)\b/i.test(text);
+  if(!question && (mm=text.match(PROJ_ADD))){ const r=await (await post('/api/projects',{op:'add',name:mm[1],path:mm[2]})).json();
+    if(!r.error){ info.projects=r.projects; capShow(); setYou(text); say(`Got it — say “switch to ${mm[1].replace(/^(my|the) /i,'')}” any time.`); poke('wink',1300); sfx('ok'); return; } }
+  if(!question && (mm=text.match(MEM_ADD))){ const r=await (await post('/api/memory',{op:'add',text:mm[1].replace(/[.!]+$/,'')})).json();
+    info.memory_count=r.items.length; capShow(); setYou(text); say(r.added?"Got it — I'll remember that.":'I already had that one!'); poke('wink',1300); return; }
+  if((mm=text.match(MEM_DEL))){ const r=await (await post('/api/memory',{op:'del',match:mm[1].replace(/[.!]+$/,'')})).json();
+    info.memory_count=r.items.length; capShow(); setYou(text); say(r.removed?'Okay, forgotten.':"I couldn't find that in my notes — opening them so you can pick."); if(!r.removed) openPanel('memory'); return; }
+  if(MEM_SHOW.test(text)){ capShow(); setYou(text); const n=info.memory_count||0; say(n?`I have ${n} note${n>1?'s':''} — here they are.`:"Nothing yet! Say “remember …” and I'll keep it."); openPanel('memory'); return; }
+  if(!atts.length && text && !opts.claude){
+    try{ const q=await (await post('/api/quick',{text})).json();
+      if(q.handled){ capShow(); setYou(text); say(q.say); poke(q.mood||'happy',1300); if(q.sfx) sfx(q.sfx); if(q.state){ info=q.state; showInfo(); } return; } }catch(e){} }
+  if(busy){ tick("one sec — I'm still on the last thing"); return; }
+  if(!atts.length && SCREEN_RE.test(text)) await shoot('screen');
+  if(!atts.some(a=>a.kind.startsWith('clip')) && CLIP_RE.test(text)) await shoot('clipboard');
+  if(NICE.test(text)) poke(/cute|love/i.test(text)?'shy':'love',1800);
+  shush(); capShow(); setYou(text||'(look at this)'); himSet('');
+  const attach=atts; atts=[]; renderAtts();
+  busy=true; toolMood=null; workWhat='thinking'; workT0=performance.now(); document.body.classList.add('busy');
+  const kv=voiced(); let fresh=true;        // kv: the caption follows his voice instead of racing ahead of it
+  let buf='', spoken=0, all='', failed=false, stopped=false, ignored=false, tools=0; const t0=performance.now();
+  const flush=end=>{ const rest=buf.slice(spoken); if((buf.match(/```/g)||[]).length%2 && !end) return;
+    const m2=end?[rest]:(rest.match(/^[\s\S]*[.!?:](?=\s)/)||(spoken===0?rest.match(/^[\s\S]{70,}?[,;—–](?=\s)/):null)); if(m2&&m2[0].trim()){ const raw=plain(m2[0]); if(kv){ enqueue(untag(raw),{cap:raw,fresh}); fresh=false; } else enqueue(untag(raw)); spoken+=m2[0].length; } };
+  const handle=ev=>{ switch(ev.t){
+    case 'break': flush(true); if(buf.trim()) fresh=true; buf=''; spoken=0; break;
+    case 'delta': CP.answer(); toolMood=null; workWhat='answering'; buf+=ev.text; all+=ev.text; if(!kv) showHim(buf); flush(false); break;
+    case 'tool': tools++; toolMood=TOOL_MOOD[ev.name]||'thinking'; workWhat=toolLabel(ev.name,ev.detail); CP.tool(ev); break;
+    case 'toolres': CP.result(ev); break;
+    case 'denied': tick('✕ not allowed: '+ev.tools.join(', ')+' — change “How much can he do” in settings',true); poke('sad',2200); break;
+    case 'note': tick(ev.text); break;
+    case 'result': if(ev.is_error) failed=true; if(!all.trim()&&ev.text){ buf=ev.text; if(!kv||ev.is_error) showHim(ev.text,true); } break;
+    case 'error': failed=true; himSet(ev.text.split('\n').slice(-3).join(' '),true); break;
+    case 'stopped': stopped=true; tick('stopped'); poke('scared',900); break;
+    case 'ignored': ignored=true; break; } };   // a follow-up that wasn't meant for him
+  try{
+    const res=await post('/api/ask',{prompt:text,attach,follow:!!opts.follow});
+    if(!res.ok){ const j=await res.json().catch(()=>({})); throw new Error(j.error||res.statusText); }
+    await readSSE(res,handle);
+  }catch(e){ failed=true; himSet(e.message,true); }
+  busy=false; toolMood=null; wake(); capQuiet(); document.body.classList.remove('busy'); workChip(); CP.done();
+  while(apprQ.length) apprQ.pop(); if(pendingAppr){ pendingAppr=null; nextApproval(); }
+  if(ignored){ setYou(''); himSet(''); cap.classList.add('off'); capOn=false; return; }   // you weren't talking to him: say and show nothing
+  const answerText=untag(buf||all).trim();
+  lastAnswer=answerText; moreEl.classList.toggle('on',answerText.length>220||/```/.test(answerText));
+  sfx(failed?'error':stopped?'pop':'done');
+  if(hiddenNow && performance.now()-t0>8000){
+    if(info.notify_done) post('/api/notify',{title:failed?'Void hit a problem':'Void is done',body:plain(answerText).slice(0,240)||text});
+    if(info.popup_done) native('show');
+  }
+  if(failed){ poke('sad',2800); return; }
+  if(buf&&!kv) showHim(buf,true);
+  if(!stopped){ flush(true);
+    const big=tools>=3||/\b(all (tests )?pass(ed)?|passing|success(fully)?|fixed|done!|works now|nailed)\b/i.test(answerText);
+    if(!playing) poke(big?(Math.random()<.5?'excited':'joy'):['happy','happy','wink','joy'][Math.random()*4|0],1700); }
+  refresh();
+}
+
+/* ================= panels: history, memory, quick actions ================= */
+const panelEl=$('#panel'); let panelKind=null;
+const ago=ts=>{ const s=Date.now()/1000-ts; return s<60?'just now':s<3600?`${s/60|0} min ago`:s<86400?`${s/3600|0} h ago`:`${s/86400|0} d ago`; };
+function closePanels(){ const was=panelEl.classList.contains('on')||setEl.classList.contains('on'); panelEl.classList.remove('on'); panelKind=null; setEl.classList.remove('on'); document.body.classList.remove('pnl'); if(was) native('wide:off'); }
+async function openPanel(kind){
+  menu(false); hideAsk(); setEl.classList.remove('on'); panelKind=kind; panelEl.classList.add('on'); document.body.classList.add('pnl'); native('wide:on');
+  const body=$('#pBody'), tools=$('#pTools'); tools.innerHTML='';
+  if(kind==='reply'){
+    $('#pTitle').textContent='Answer';
+    tools.innerHTML='<button class="btn sm" id="copyAll">copy</button>';
+    body.innerHTML=`<div class="md">${md(lastAnswer)}</div>`;
+    body._code=[...lastAnswer.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(m=>m[1]);
+  } else if(kind==='history'){
+    $('#pTitle').textContent='History';
+    body.innerHTML='<div class="empty">loading…</div>';
+    const items=(await (await post('/api/history',{limit:60})).json()).items||[];
+    tools.innerHTML=items.length?'<button class="btn sm danger" id="hClear">clear</button>':'';
+    body.innerHTML=items.length?items.map((h,i)=>`<div class="item" data-i="${i}"><div class="meta"><span>${ago(h.ts)}</span><span>· ${esc(h.cwd_display||'')}</span>${h.ok===false?'<span class="bad">· failed</span>':''}${(h.attach||[]).length?'<span>· 📎</span>':''}</div>
+      <div class="y">${esc(h.you)}</div><div class="a">${esc(h.him||'…')}</div>
+      <div class="bar"><button class="btn sm pri" data-h="cont">↩ continue this chat</button><button class="btn sm" data-h="again">ask again</button><button class="btn sm" data-h="copy">copy answer</button></div></div>`).join('')
+      :'<div class="empty">Nothing yet — everything you ask shows up here,<br>so you can reread answers or pick a chat back up.</div>';
+    body._items=items;
+  } else if(kind==='memory'){
+    $('#pTitle').textContent='Memory';
+    const items=(await (await post('/api/memory',{op:'list'})).json()).items||[];
+    info.memory_count=items.length;
+    body.innerHTML=`<div class="h" style="color:#8d8d8d;font-size:11.5px;margin:2px 0 9px">He knows these in every chat. Say “remember …” / “forget …”, or edit here.</div>
+      <div class="bar" style="margin-bottom:9px"><input type="text" id="memNew" placeholder="e.g. my main project is in ~/code/app" style="flex:1"><button class="btn pri sm" id="memAdd">add</button></div>`
+      +(items.length?items.slice().reverse().map(n=>`<div class="note"><span>${esc(n.text)}</span><button data-del="${n.id}" title="forget">✕</button></div>`).join('')
+        :'<div class="empty">No notes yet.</div>');
+  } else if(kind==='actions'){
+    $('#pTitle').textContent='Quick actions';
+    const qa=info.quick_actions||[];
+    tools.innerHTML='<button class="btn sm" id="qaEditBtn">edit</button>';
+    body.innerHTML=qa.length?`<div class="qa">${qa.map((a,i)=>`<button data-qa="${i}">${a.attach==='screen'?'📷 ':a.attach==='clipboard'?'📋 ':'⚡ '}${esc(a.label)}<small>${esc(a.prompt)}</small></button>`).join('')}</div>`
+      :'<div class="empty">No quick actions — add some in Settings → Brain.</div>';
+  }
+  sendRegion(true);
+}
+const copy=async t=>{ try{ await navigator.clipboard.writeText(t); tick('copied'); sfx('ok'); }catch(err){ tick("couldn't copy",true); } };
+// a small, safe markdown → HTML for answers (code blocks get a copy button)
+function md(src){
+  const out=[]; let i=0; const parts=String(src||'').split(/```/);
+  parts.forEach((chunk,k)=>{
+    if(k%2){ const nl=chunk.indexOf('\n'), code=nl>=0?chunk.slice(nl+1):chunk; out.push(`<div class="cb"><button data-copy="${i++}">copy</button><pre>${esc(code.replace(/\n$/,''))}</pre></div>`); return; }
+    const inline=t=>esc(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    let list=null;
+    for(const ln of chunk.split('\n')){
+      const li=ln.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)/), h=ln.match(/^#{1,3}\s+(.*)/);
+      if(li){ if(!list){ list=[]; } list.push(`<li>${inline(li[1])}</li>`); continue; }
+      if(list){ out.push(`<ul>${list.join('')}</ul>`); list=null; }
+      if(h) out.push(`<h3>${inline(h[1])}</h3>`); else if(ln.trim()) out.push(`<p>${inline(ln)}</p>`);
+    }
+    if(list) out.push(`<ul>${list.join('')}</ul>`);
+  });
+  return out.join('');
+}
+panelEl.addEventListener('click',async e=>{
+  if(e.target.closest('[data-close]')) return closePanels();
+  const body=$('#pBody');
+  if(panelKind==='reply'){ const c=e.target.closest('[data-copy]'); if(c) return copy(body._code[+c.dataset.copy]||''); if(e.target.closest('#copyAll')) return copy(lastAnswer); return; }
+  if(panelKind==='history'){
+    if(e.target.closest('#hClear')){ await post('/api/history',{op:'clear'}); return openPanel('history'); }
+    const it=e.target.closest('.item'); if(!it) return; const h=body._items[+it.dataset.i]; const b=e.target.closest('[data-h]');
+    if(!b){ it.classList.toggle('open'); return; }
+    if(b.dataset.h==='copy'){ try{ await navigator.clipboard.writeText(h.him||''); tick('copied'); }catch(err){ tick("couldn't copy",true); } }
+    if(b.dataset.h==='again'){ closePanels(); send(h.you); }
+    if(b.dataset.h==='cont'){ const r=await post('/api/resume',{session:h.session,cwd:h.cwd}); const j=await r.json();
+      if(j.error) return tick(j.error,true); info=j; showInfo(); closePanels(); tick('↩ back in that chat · '+j.cwd_display); poke('happy',900); capShow(); setYou(h.you); himSet(h.him); }
+  } else if(panelKind==='memory'){
+    const del=e.target.closest('[data-del]');
+    if(del){ await post('/api/memory',{op:'del',id:del.dataset.del}); return openPanel('memory'); }
+    if(e.target.closest('#memAdd')){ const v=$('#memNew').value.trim(); if(v){ await post('/api/memory',{op:'add',text:v}); poke('wink',1100); openPanel('memory'); } }
+  } else if(panelKind==='actions'){
+    if(e.target.closest('#qaEditBtn')){ settings(true,'brain'); return; }
+    const b=e.target.closest('[data-qa]'); if(!b) return; const a=(info.quick_actions||[])[+b.dataset.qa]; closePanels();
+    if(a.attach) await shoot(a.attach);
+    send(a.prompt);
+  }
+});
+panelEl.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='memNew'){ e.preventDefault(); $('#memAdd').click(); } });
+
+/* ================= right-click menu ================= */
+const ICON={
+  new:'<path d="M12 5v14M5 12h14"/>',
+  cd:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  talk:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
+  look:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  hover:'<path d="M5 3l14 7-6 2-2 6z"/><circle cx="18" cy="18" r="3"/>',
+  set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  hide:'<path d="M6 6l12 12M18 6 6 18"/>',
+};
+const MENU=[['talk','talk'],['new','new chat'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['set','settings'],['hide','hide']];
+const MENU_XY=[];
+menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*Math.PI/180, r=122;
+  MENU_XY[i]=[Math.cos(ang)*r/1.1, Math.sin(ang)*r/1.1];                 // same spot in the face's SVG units (330px = 300 units)
+  return `<button class="mb" data-a="${a}" style="--x:${(Math.cos(ang)*r).toFixed(0)}px;--y:${(Math.sin(ang)*r).toFixed(0)}px;--d:${(.26+i*.025).toFixed(3)}s" title="${l}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[a]}</svg><span${a==='cd'?' id="cwdLbl"':''}>${l}</span></button>`; }).join('');
+let menuOn=false;
+function menu(on){ if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
+menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
+  ({talk:()=>startRec('auto'), new:()=>slash('/new'), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
+    look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
+function dismiss(){ menu(false); hideAsk(); closePanels(); if(!native('hide')) poke('sleepy',1200); }
+
+/* ================= hover mode ================= */
+function setHoverClass(on){ document.body.classList.toggle('hover',on); sendRegion(true); }
+async function toggleHover(force){
+  const on=typeof force==='boolean'?force:!info.hover;
+  if(!NATIVE){ tick('hover mode works in the Void window (not the browser fallback)',true); return; }
+  await setSetting({hover:on}); native(on?'hover:on':'hover:off'); setHoverClass(on);
+  poke(on?'curious':'wink',1200);
+}
+window.voidHover=on=>setHoverClass(on);
+window.voidHoverUnsupported=()=>{ tick('hover mode needs Hyprland or X11 on this desktop',true); setSetting({hover:false}); setHoverClass(false); };
+window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
+  if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };
+
+/* ================= settings ================= */
+const MODELS=[['auto','Auto'],['default','Default'],['opus','Opus'],['sonnet','Sonnet'],['haiku','Haiku']];
+const STT=[['tiny.en','Fastest'],['base.en','Fast'],['auto','Balanced'],['medium.en','Best']];
+const TRUST=[['ask','✋','Ask me first','Edits files on his own; asks you (out loud) before running commands or going online.'],
+  ['trust','⚡','Just do it','Runs anything without asking. Fast, but you won’t get a say.'],
+  ['readonly','👀','Look, don’t touch','Can read and explain things, but changes nothing.']];
+const setEl=$('#set');
+function settings(on,tab){ setEl.classList.toggle('on',on); document.body.classList.toggle('pnl',on); if(!panelEl.classList.contains('on')) native(on?'wide:on':'wide:off');
+  if(on){ menu(false); hideAsk(); panelEl.classList.remove('on'); panelKind=null; if(tab) showTab(tab); renderSettings(); loadMics(); requestAnimationFrame(moveInd); }
+  sendRegion(true); }
+function moveInd(){ const b=$('#tabs button.on'), ind=$('#tabInd'); if(!b||!ind) return; ind.style.width=b.offsetWidth+'px'; ind.style.transform=`translateX(${b.offsetLeft-3}px)`; }
+function showTab(t){ $$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t)); $$('#set .tab').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));
+  moveInd(); try{ localStorage.setItem('void.tab',t); }catch(e){} }
+try{ const t=localStorage.getItem('void.tab'); if(t) showTab(t); }catch(e){}
+$('#tabs').addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(b) showTab(b.dataset.tab); });
+
+/* ---------- the colour picker: tap a part of him (or a chip), then pick ---------- */
+const PART_LABEL={body:'body',pupL:'left pupil',pupR:'right pupil',whiteL:'left eye white',whiteR:'right eye white',skin:'skin colour'};
+const SWATCH={
+  pup:['#3d9b74','#2fb07a','#3a86e0','#24b5c4','#8a5cf0','#e0569a','#d8453a','#e89a2c','#f2c94c','#1c1c1c','#ffffff','#7a4b2a'],
+  white:['#f3dccf','#ffffff','#ffd3de','#ffd9b3','#fff1ad','#cdf3df','#cfe5ff','#e2d5ff','#d9d9d9','#1a1a1a','#ffb3b3','#b8f0ff'],
+  body:['#0b0b0b','#1d1d2b','#2b1d3a','#3a1d1d','#14301f','#0f2a3a','#c9a8f0','#f5b8cf','#a8d8f0','#f3e7c9','#ffffff','#e8e05a'],
+  skin:['','#c4213f','#f5c542','#ffd76a','#5fcf6d','#ff6fa8','#2b2b2b','#ffffff','#3a86e0','#8a5cf0','#e89a2c','#f3dccf']};
+let pkPart='pupL', pkHSV=[150,.6,.6], saveT=null;
+const hsv2hex=(h,s,v)=>{ const f=n=>{ const k=(n+h/60)%6; return v-v*s*Math.max(0,Math.min(k,4-k,1)); }; return rgb2hex([f(5),f(3),f(1)]); };
+function hex2hsv(hex){ const [r,g,b]=hex2rgb(hex), mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0; if(d){ h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4; h*=60; if(h<0) h+=360; } return [h, mx?d/mx:0, mx]; }
+function curLook(){ return {...LOOK_DEFAULT,...(info.look||{})}; }
+function partColour(L,p){ return p==='skin'?(L.skinColor||L.body):L[p]; }
+function editKeys(L,p){ if(L.link&&(p==='pupL'||p==='pupR')) return ['pupL','pupR']; if(L.link&&(p==='whiteL'||p==='whiteR')) return ['whiteL','whiteR'];
+  return [p==='skin'?'skinColor':p]; }
+function setPart(hex,{save=true,fromPicker=false}={}){
+  const L=curLook(); for(const k of editKeys(L,pkPart)) L[k]=hex; L.random=false;
+  info.look=L; applyLook(L); lookShown=JSON.stringify(L);
+  if(!fromPicker&&hex){ pkHSV=hex2hsv(hex); }
+  drawPicker(); drawPreview();
+  if(save){ clearTimeout(saveT); saveT=setTimeout(()=>{ post('/api/settings',{look:curLook()}).then(r=>r.json()).then(j=>{ info=j; }).catch(()=>{}); addRecent(hex); },450); }
+}
+function addRecent(hex){ if(!okHex(hex)) return; let r=[]; try{ r=JSON.parse(localStorage.getItem('void.recent')||'[]'); }catch(e){}
+  r=[hex,...r.filter(x=>x!==hex)].slice(0,10); try{ localStorage.setItem('void.recent',JSON.stringify(r)); }catch(e){} renderRecent(); }
+function renderRecent(){ let r=[]; try{ r=JSON.parse(localStorage.getItem('void.recent')||'[]'); }catch(e){}
+  $('#pkRecent').innerHTML=r.map(c=>`<button data-sw="${c}" style="--c:${c}" title="${c}"></button>`).join(''); }
+function selectPart(p){
+  const L=curLook(); if(L.link&&p==='pupR') p='pupL'; if(L.link&&p==='whiteR') p='whiteL';
+  pkPart=p; pkHSV=hex2hsv(partColour(L,p)||'#000000');
+  $('#partName').textContent=L.link&&(p==='pupL'||p==='whiteL')?(p==='pupL'?'both pupils':'both eye whites'):PART_LABEL[p];
+  renderParts(); drawPicker(); drawPreview();
+  const kind=p.startsWith('pup')?'pup':p.startsWith('white')?'white':p;
+  $('#pkSw').innerHTML=SWATCH[kind].map(c=>c===''?`<button class="auto" data-sw="" style="--c:${L.body}" title="match his body"></button>`:`<button data-sw="${c}" style="--c:${c}" title="${c}"></button>`).join('');
+}
+function renderParts(){ const L=curLook();
+  const list=L.link?[['body','Body'],['pupL','Both pupils'],['whiteL','Both eye whites']]
+    :[['body','Body'],['pupL','Left pupil'],['pupR','Right pupil'],['whiteL','Left eye white'],['whiteR','Right eye white']];
+  if(L.skin!=='none') list.push(['skin','Skin']);
+  $('#partChips').innerHTML=list.map(([p,l])=>`<button data-part="${p}" class="${pkPart===p?'on':''}"><i style="--c:${partColour(L,p)}"></i>${l}</button>`).join(''); }
+function drawPreview(){ const L=curLook(), svg=$('#lookPrev'); miniVoid(svg,L,true);
+  const sel=L.link&&pkPart==='pupL'?['pupL','pupR']:L.link&&pkPart==='whiteL'?['whiteL','whiteR']:[pkPart];
+  svg.querySelectorAll('[data-part]').forEach(e=>{ if(sel.includes(e.dataset.part)&&e.tagName!=='g') e.classList.add('sel'); }); }
+function drawPicker(){
+  const [h,s,v]=pkHSV, cv=$('#pkSVc'), x=cv.getContext('2d'), W=cv.width, H=cv.height;
+  x.fillStyle=hsv2hex(h,1,1); x.fillRect(0,0,W,H);
+  let g=x.createLinearGradient(0,0,W,0); g.addColorStop(0,'#fff'); g.addColorStop(1,'#fff0'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  g=x.createLinearGradient(0,0,0,H); g.addColorStop(0,'#0000'); g.addColorStop(1,'#000'); x.fillStyle=g; x.fillRect(0,0,W,H);
+  $('#pkSVd').style.left=(s*100)+'%'; $('#pkSVd').style.top=((1-v)*100)+'%'; $('#pkHued').style.left=(h/360*100)+'%';
+  const L=curLook(), cur=partColour(L,pkPart)||hsv2hex(h,s,v);
+  $('#pkCur').style.setProperty('--c',cur); if(document.activeElement!==$('#pkHex')) $('#pkHex').value=pkPart==='skin'&&!L.skinColor?'auto':cur;
+}
+function dragOn(el,fn){ el.addEventListener('pointerdown',e=>{ el.setPointerCapture(e.pointerId); fn(e); const mv=ev=>fn(ev);
+  const up=()=>{ el.removeEventListener('pointermove',mv); el.removeEventListener('pointerup',up); setPart(hsv2hex(...pkHSV),{fromPicker:true}); };
+  el.addEventListener('pointermove',mv); el.addEventListener('pointerup',up); }); }
+dragOn($('#pkSV'),e=>{ const r=$('#pkSV').getBoundingClientRect(); pkHSV[1]=clamp((e.clientX-r.left)/r.width,0,1); pkHSV[2]=clamp(1-(e.clientY-r.top)/r.height,0,1); setPart(hsv2hex(...pkHSV),{save:false,fromPicker:true}); });
+dragOn($('#pkHue'),e=>{ const r=$('#pkHue').getBoundingClientRect(); pkHSV[0]=clamp((e.clientX-r.left)/r.width,0,.999)*360; if(pkHSV[1]<.05) pkHSV[1]=.6; if(pkHSV[2]<.05) pkHSV[2]=.6; setPart(hsv2hex(...pkHSV),{save:false,fromPicker:true}); });
+$('#pkHex').addEventListener('input',e=>{ let v=e.target.value.trim().toLowerCase(); if(!v.startsWith('#')) v='#'+v; if(okHex(v)) setPart(v); });
+$('#pkHex').addEventListener('keydown',e=>{ if(e.key==='Enter') e.target.blur(); e.stopPropagation(); });
+$('#pkRnd').addEventListener('click',()=>{ const kind=pkPart.startsWith('white')?'white':pkPart;
+  setPart(kind==='white'?hsl2hex(Math.random()*360,.6+Math.random()*.35,.84+Math.random()*.08):kind==='body'&&Math.random()<.5?hsl2hex(Math.random()*360,.3,.08+Math.random()*.1):hsl2hex(Math.random()*360,.6+Math.random()*.3,.4+Math.random()*.15)); });
+$('#pkAll').addEventListener('click',()=>{ const L=curLook(), R=randomLook(L); Object.assign(L,R); L.random=false; info.look=L; applyLook(L);
+  post('/api/settings',{look:L}).then(r=>r.json()).then(j=>{ info=j; }); selectPart(pkPart); poke('excited',900); });
+
+function renderSettings(){
+  const cur=(info.model||'default');
+  $('#modelChips').innerHTML=MODELS.map(([id,l])=>`<button data-m="${id}" class="${cur===id?'on':''}">${l}</button>`).join('');
+  $('#voiceChips').innerHTML=(info.voices||[]).map(v=>`<button data-v="${v.id}" class="${info.voice===v.id?'on':''}">${v.label}${v.downloading?'<i>⇣</i>':''}</button>`).join('');
+  const sw={rootSw:info.root,ultraSw:info.ultra_root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
+    clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random};
+  for(const k in sw){ const e=document.getElementById(k); if(e) e.checked=!!sw[k]; }
+  const ps=restPu();
+  $('#pupChips').innerHTML=[['slit','▮ slits'],['circle','● circles'],['dot','• dots']].map(([id,l])=>`<button data-ps="${id}" class="${ps===id?'on':''}">${l}</button>`).join('');
+  for(const bt of document.querySelectorAll('#faceChips button')) bt.classList.toggle('on',(info.code_face||'him')===bt.dataset.face);
+  { const ve=$('#voiceEng'); if(ve) ve.textContent=({kokoro:'(Kokoro voices)',piper:'(piper voices — run ./install.sh for the nicer Kokoro voices)',espeak:'(robot voice only — run ./install.sh)'})[info.voice_engine]||''; }
+  $('#sttChips').innerHTML=STT.map(([id,l])=>`<button data-stt="${id}" class="${(info.whisper_model||'auto')===id?'on':''}">${l}</button>`).join('');
+  const tr=info.trust==='root'?'trust':(info.trust||'ask');
+  $('#trustOpts').innerHTML=TRUST.map(([id,ic,t,d])=>`<button class="opt${tr===id&&!info.root?' on':''}" data-trust="${id}"><span class="ic">${ic}</span><span><b>${t}</b><small>${d}</small></span></button>`).join('');
+  $('#memCount').textContent=info.memory_count?`(${info.memory_count})`:'';
+  const pr=info.projects||{};
+  $('#projList').innerHTML=Object.keys(pr).length?Object.entries(pr).map(([n,p])=>`<div class="proj"><b>${esc(n)}</b><span title="${esc(p)}">${esc(p.replace(/^\/home\/[^/]+/,'~'))}</span><button data-pdel="${esc(n)}" title="remove">✕</button></div>`).join('')
+    :'<div class="h" style="margin:0">none yet</div>';
+  // look
+  const L=curLook();
+  $('#skinGrid').innerHTML=(info.skins||Object.keys(SKIN_LABELS)).map(k=>`<button data-skin="${k}" class="${L.skin===k?'on':''}"><svg viewBox="-125 -150 250 250"></svg>${SKIN_LABELS[k]||k}</button>`).join('');
+  $$('#skinGrid button').forEach(b=>miniVoid(b.querySelector('svg'),{...L,skin:b.dataset.skin},false));
+  selectPart(pkPart); renderRecent();
+}
+async function loadMics(){
+  try{ const j=await (await post('/api/devices')).json(), cur=info.mic_device||'';
+    $('#micSel').innerHTML=`<option value="">System default</option>`+(j.mics||[]).map(m=>`<option value="${esc(m.id)}"${m.id===cur?' selected':''}>${esc(m.label)}</option>`).join('');
+  }catch(e){} }
+async function setSetting(b){ try{ info=await (await post('/api/settings',b)).json(); showInfo(); if(setEl.classList.contains('on')) renderSettings(); }catch(e){ tick('settings: '+e.message,true); } }
+function setLook(patch){ clearTimeout(saveT); const L={...curLook(),...patch}; info.look=L; applyLook(L); lookShown=JSON.stringify(L); return setSetting({look:L}); }
+setEl.addEventListener('click',e=>{
+  if(e.target.closest('[data-close]')) return settings(false);
+  const g=k=>e.target.closest(`[data-${k}]`);
+  const bm=g('m'), bv=g('v'), bp=g('ps'), bs=g('stt'), bt=g('trust'), bo=g('open'), bk=g('skin'), bsw=g('sw'), bpd=g('pdel');
+  const part=e.target.closest('#lookPrev [data-part], #partChips [data-part]');
+  if(part&&part.dataset.part) return selectPart(part.dataset.part);
+  if(bsw){ const v=bsw.dataset.sw; if(v===''){ const L=curLook(); L.skinColor=''; setLook({skinColor:''}).then(()=>selectPart('skin')); } else setPart(v); return; }
+  if(bk){ setLook({skin:bk.dataset.skin}).then(()=>{ poke(bk.dataset.skin==='none'?'wink':'excited',900); if(SKIN_PARTS.earL) earKick(); }); return; }
+  if(bm) setSetting({model:bm.dataset.m}).then(()=>tick('model → '+bm.textContent));
+  if(bv) setSetting({voice:bv.dataset.v}).then(()=>{ const vv=(info.voices||[]).find(x=>x.id===bv.dataset.v);
+    if(vv&&!vv.ready) tick('downloading that voice… using another one till it lands');
+    if(muted) toggleMute(); shush(); say(['hi! this is my new voice.','how do i sound?','ooh, i like this one.'][Math.random()*3|0]); });
+  if(bp) setSetting({pupil_style:bp.dataset.ps}).then(()=>{ idlePu=null; idleSwapAt=performance.now()+12000; popPupils(); });
+  if(bs) setSetting({whisper_model:bs.dataset.stt}).then(()=>tick('speech recognition: '+bs.textContent+' (loading…)'));
+  const bf=e.target.closest('[data-face]'); if(bf) setSetting({code_face:bf.dataset.face}).then(()=>{ document.body.classList.toggle('faceyou',info.code_face==='you'); tick(info.code_face==='you'?'terminal faces you now':'terminal faces him now'); });
+  if(bt){ const tr=bt.dataset.trust; setSetting({trust:tr}).then(()=>{ poke(tr==='trust'?'excited':tr==='readonly'?'curious':'wink',1000);
+    tick({ask:"I'll ask before running anything",trust:"okay — I'll just do it",readonly:"looking only, no touching"}[tr]); }); }
+  if(bpd) post('/api/projects',{op:'del',name:bpd.dataset.pdel}).then(()=>refresh()).then(renderSettings);
+  if(e.target.closest('#projAdd')){ const n=$('#projName').value.trim(), p=$('#projPath').value.trim(); if(!n||!p) return tick('give it a name and a folder',true);
+    post('/api/projects',{op:'add',name:n,path:p}).then(r=>r.json()).then(j=>{ if(j.error) return tick(j.error,true); $('#projName').value=''; $('#projPath').value=''; tick('added '+n); return refresh().then(renderSettings); }); }
+  if(bo){ settings(false); openPanel(bo.dataset.open); }
+});
+setEl.addEventListener('change',e=>{
+  const id=e.target.id, on=e.target.checked;
+  if(id==='ultraSw') setSetting({ultra_root:on}).then(()=>{ tick(on?'ultra root ON — I\'ll fill in your sudo password after the first time':'ultra root off — password forgotten',on); poke(on?'scared':'happy',900); });
+  if(id==='rootSw') setSetting(on?{root:true}:{root:false,trust:'ask'}).then(()=>{ tick(on?'root mode ON — he can run anything (I\'ll ask for your sudo password)':'root mode off',on); poke(on?'scared':'happy',900); });
+  if(id==='speakSw' && on===muted) toggleMute();
+  if(id==='autoSw') setSetting({autostart:on}).then(()=>tick(on?'I’ll start when you log in':'won’t start at login'));
+  if(id==='listenShowSw') setSetting({listen_on_show:on});
+  if(id==='wakeSw') setSetting({wake_word:on}).then(()=>tick(on?'say “hey Void” any time':'wake word off'));
+  if(id==='bargeSw') setSetting({barge_in:on});
+  if(id==='sfxSw') setSetting({sfx:on}).then(()=>on&&sfx('ok'));
+  if(id==='hoverSw') toggleHover(on);
+  if(id==='clickSw') setSetting({click_through:on}).then(()=>sendRegion(true));
+  if(id==='notifySw') setSetting({notify_done:on});
+  if(id==='popupSw') setSetting({popup_done:on});
+  if(id==='codeSw'){ setSetting({code_panel:on}); if(!on) CP.hide(); }
+  if(id==='micSel') setSetting({mic_device:e.target.value}).then(()=>tick('microphone changed'));
+  if(id==='linkSw'){ const L=curLook(); const patch={link:on}; if(on){ patch.pupR=L.pupL; patch.whiteR=L.whiteL; } setLook(patch).then(()=>selectPart(pkPart.replace('R','L'))); }
+  if(id==='rndSw') setLook({random:on}).then(()=>{ if(on){ lookRolled=false; syncLook(true); } else { lookShown=''; syncLook(); } renderSettings(); });
+});
+setEl.addEventListener('keydown',e=>{ if(e.target.matches('input[type=text]')) e.stopPropagation(); if(e.key==='Enter'&&(e.target.id==='projPath'||e.target.id==='projName')) $('#projAdd').click(); });
+setInterval(()=>{ if(setEl.classList.contains('on') && (info.voices||[]).some(v=>v.downloading)) refresh().then(renderSettings); },1500);
+
+/* ================= slash commands ================= */
+async function slash(cmd){
+  const [c,...r]=cmd.slice(1).split(' '), arg=r.join(' ').trim();
+  if(c==='new'){ await post('/api/new'); shush(); tick('new chat'); poke('wink',1000); return refresh(); }
+  if(c==='cd'){ const j=await (await post('/api/cd',{path:arg||'~'})).json(); if(j.error) tick(j.error,true); else { info=j; showInfo(); tick('→ '+j.cwd_display+' · new chat'); poke('happy',1100); } return; }
+  if(c==='mute') return toggleMute();
+  if(c==='stop') return post('/api/stop');
+  if(c==='hide') return dismiss();
+  if(c==='hover') return toggleHover();
+  if(c==='history') return openPanel('history');
+  if(c==='memory'||c==='notes') return openPanel('memory');
+  if(c==='look'||c==='shot') return shoot('screen');
+  if(c==='clip'||c==='clipboard') return shoot('clipboard');
+  if(c==='remember') return send('remember '+arg);
+  if(c==='forget') return send('forget '+arg);
+  if(c==='model'){ await setSetting({model:arg||'default'}); tick('model → '+(info.model||'default')); return; }
+  if(c==='voice'){ if(arg) await setSetting({voice:arg}); else settings(true,'voice'); return; }
+  if(c==='settings') return settings(true);
+  if(['eyes','eye','pupil','white','whites','body'].includes(c)){ if(!arg) return settings(true,'look');
+    const a=arg.toLowerCase(), named={green:'#3d9b74',blue:'#3a86e0',teal:'#24b5c4',purple:'#8a5cf0',pink:'#e0569a',red:'#d8453a',amber:'#e89a2c',
+      black:'#1c1c1c',white:'#ffffff',cream:'#f3dccf',peach:'#ffd9b3',lemon:'#fff1ad',mint:'#cdf3df',sky:'#cfe5ff',lavender:'#e2d5ff',yellow:'#f2c94c',orange:'#e89a2c'};
+    if(c.startsWith('pupil')||c.startsWith('eye')){ if(PUP_STYLES.includes(a)){ await setSetting({pupil_style:a}); popPupils(); return; } }
+    if(a==='random') return setLook({random:true}).then(()=>{ lookRolled=false; syncLook(true); });
+    const v=named[a]||(/^#?[0-9a-f]{6}$/.test(a)?'#'+a.replace('#',''):null);
+    if(!v) return tick(`/${c} <colour name|#rrggbb|random>`,true);
+    const k=c==='body'?{body:v}:c.startsWith('white')?{whiteL:v,whiteR:v}:{pupL:v,pupR:v};
+    return setLook({...k,random:false}).then(popPupils); }
+  if(c==='skin'){ const k=(arg||'').toLowerCase().replace(/ ears?$/,'').replace(' hat','');
+    if(!SKIN_LABELS[k]) return tick('/skin <'+Object.keys(SKIN_LABELS).join('|')+'>',true); return setLook({skin:k}); }
+  if(c==='pupils'){ if(!PUP_STYLES.includes(arg)) return tick('/pupils <slit|circle|dot>',true); await setSetting({pupil_style:arg}); popPupils(); return; }
+  if(c==='status'){ await refresh(); tick(`${info.cwd_display} · ${info.trust} · ${info.model} · voice ${info.tts||'none'}`); return; }
+  tick('/new · /cd · /history · /memory · /remember · /look · /clip · /hover · /model · /voice · /eyes · /mute · /stop');
+}
+
+/* ================= wiring ================= */
+function showInfo(){ syncEye(); document.body.classList.toggle('faceyou',info.code_face==='you'); input.placeholder=`ask in ${info.cwd_display||'~'}…`; const l=$('#cwdLbl'); if(l) l.textContent=info.cwd_display||'folder';
+  document.body.classList.toggle('root',!!info.root); }
+async function refresh(){ try{ info=await (await fetch('/api/state')).json(); showInfo(); }catch(e){} }
+function toggleMute(){ muted=!muted; try{localStorage.setItem('void.muted',muted?'1':'0');}catch(e){} if(muted) shush(); tick(muted?'voice off':'voice on'); if(setEl.classList.contains('on')) renderSettings(); }
+
+window.voidHidden=()=>{ hiddenNow=true; if(rec&&rec.mode!=='approve') stopRec(true); menu(false); hideAsk(); };
+window.voidShown=()=>{ hiddenNow=false; entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
+  if(info.listen_on_show&&!info.hover) setTimeout(()=>startRec('auto'),450); else setTimeout(()=>poke('wink',900),350); }); };
+async function comeBack(){ if(!info.hover) return; await toggleHover(false); await sleep(700); }
+window.voidCmd=async c=>{ hiddenNow=false;
+  if(c==='home'){ return comeBack(); }
+  if(c==='listen'){ await comeBack(); if(rec) stopRec(false); else startRec('auto'); }
+  else if(c==='look'){ await comeBack(); shoot('screen').then(j=>{ if(j) startRec('auto'); }); }
+  else if(c==='hover') toggleHover(); else if(c==='hover-on') toggleHover(true); else if(c==='hover-off') toggleHover(false); };
+
+// click-through: tell the window which bits are solid (the ball + whatever is open); the rest passes clicks to your desktop
+let lastRegion='';
+function calmCheck(){ document.body.classList.toggle('calm', setEl.classList.contains('on')||panelEl.classList.contains('on')||apEl.classList.contains('on')); }
+// the page is laid out for 340×460: if the window ends up a different size, scale/centre it instead of cutting things off
+let fitK=1, layoutX=0;
+function fit(){ const k=Math.min(1, innerWidth/340, innerHeight/460); fitK=k>0.995?1:k; const bs=document.body.style;
+  bs.transformOrigin='0 0'; bs.margin='0'; bs.marginLeft=layoutX+'px';
+  bs.transform=fitK===1?'':`scale(${fitK})`;
+  if(NATIVE&&fitK<1) console.log(`[void] window is ${innerWidth}x${innerHeight} (expected 340x460) — scaling the page to fit`); }
+// the window widened for a panel: it grew to the left by ox px, so shift the page back and he stays exactly where he was
+window.voidLayout=ox=>{ layoutX=ox|0; fit(); sendRegion(true); requestAnimationFrame(moveInd); };
+addEventListener('resize',()=>{ fit(); sendRegion(true); moveInd(); }); fit();
+function sendRegion(force){
+  calmCheck();
+  if(!NATIVE) return;
+  if(document.body.classList.contains('hover')){ const s2='[]'; if(force||lastRegion!==s2){ lastRegion=s2; native('region:'+s2); } return; }
+  if(!info.click_through){ if(lastRegion!=='off'){ lastRegion='off'; native('region:null'); } return; }
+  const rs=[], add=(el,pad=0)=>{ if(!el) return; const r=el.getBoundingClientRect(); if(!(r.width&&r.height)) return; const g=16, x0=Math.floor((r.left-pad)/g)*g, y0=Math.floor((r.top-pad)/g)*g, x1=Math.ceil((r.right+pad)/g)*g, y1=Math.ceil((r.bottom+pad)/g)*g;
+    rs.push([x0,y0,x1-x0,y1-y0]); };   // coarse grid: the region only changes when something opens/closes, not as he sways
+  add(E.body,8);
+  if(menuOn) $$('.mb').forEach(b=>add(b,2));
+  if(ask.classList.contains('on')) add(ask,4);
+  if(setEl.classList.contains('on')) add(setEl,4);
+  if(panelEl.classList.contains('on')) add(panelEl,4);
+  if(apEl.classList.contains('on')) add(apEl,4); if(pwEl.classList.contains('on')) add(pwEl,4);
+  $$('#atts .at').forEach(a=>add(a,2));
+  if(moreEl.classList.contains('on')) add(moreEl,2);
+  const s=JSON.stringify(rs); if(!force&&s===lastRegion) return; lastRegion=s; native('region:'+s);
+}
+setInterval(()=>sendRegion(false),400);
+// panels slide in — re-measure once they've landed so their clickable area matches what you see
+addEventListener('transitionend',e=>{ if(e.target.matches&&e.target.matches('#menu,.pn,#appr,#ask,#pwbox')) sendRegion(true); });
+
+// the ball: click = talk (hands-free), drag = move the window, right-click = menu
+let downAt=null, dragged=false, clicks=[];
+E.body.addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=[e.clientX,e.clientY]; dragged=false; });
+let mode={layer:false,cursor:true}, dragNative=false;
+window.voidMode=m=>{ mode=m;
+  // he couldn't be an overlay: say why, right on screen, instead of silently being a window
+  if(m&&!m.layer&&m.why&&!window.__whyShown){ window.__whyShown=true; setTimeout(()=>{ tick("I can't stay on top here — "+m.why,true); console.log('[void] not on top: '+m.why); },2500); } };
+// petting: rub the mouse back and forth over him
+let petDir=0, petFlips=[], petCool=0;
+E.body.addEventListener('mousemove',ev=>{ if(ev.buttons) return; const d=Math.sign(ev.movementX||0); if(!d||Math.abs(ev.movementX)<2) return;
+  const n=performance.now(); if(d!==petDir){ petDir=d; petFlips=petFlips.filter(x=>n-x<1300); petFlips.push(n); }
+  if(petFlips.length>=5 && n>petCool && !busy && !rec){ petFlips=[]; petCool=n+2600; poke('purr',1900); sfx('purr'); hearts(3); G.jelly.kick(.5); } });
+function dodge(){ G.dx.kick((Math.random()<.5?-1:1)*1100); G.jelly.kick(-.6); sfx('pop'); }
+// time of day: sleepier late at night
+function nightTime(){ const h=new Date().getHours(); return h>=23||h<5; }
+addEventListener('mousemove',ev=>{ wake(); lastMouse=performance.now();
+  if(downAt && (ev.buttons&1) && !dragged && Math.hypot(ev.clientX-downAt[0],ev.clientY-downAt[1])>5){ dragged=true; dragNative=native('drag'); if(dragNative&&!(mode.layer&&!mode.cursor)) downAt=null; }
+  // overlay without a global cursor (e.g. sway): tell the window how far you've dragged from where you grabbed him
+  if(dragged && downAt && mode.layer && !mode.cursor && (ev.buttons&1)) native(`dragby:${(ev.clientX-downAt[0]).toFixed(0)},${(ev.clientY-downAt[1]).toFixed(0)}`);
+  if(!(ev.buttons&1)) downAt=null;
+  if(document.body.classList.contains('hover')) return;
+  const r=$('#guy').getBoundingClientRect(); tx=clamp((ev.clientX-r.left-r.width/2)/innerWidth*16,-7,7); ty=clamp((ev.clientY-r.top-r.height/2)/innerHeight*12,-6,6); });
+// cut him off: stop Claude (if it's working) and stop talking. Click / Space then go straight to listening.
+async function interrupt(){ const was=busy; shush(); CP.hide(); sfx('pop'); poke('surprised',650); G.jelly.kick(.5);
+  if(was){ post('/api/stop'); for(let i=0;i<80&&busy;i++) await sleep(50); } }
+let spaceHeld=false;
+// left-click: talk (or cut in) · right-click: his sparks swoosh out into the menu
+E.body.addEventListener('click',()=>{ if(dragged){ dragged=false; return; } downAt=null; menu(false);
+  const n=performance.now(); clicks=clicks.filter(c=>n-c<1400); clicks.push(n);
+  if(clicks.length>=6){ clicks=[]; dodge(); poke('annoyed',1600); return; }
+  if(clicks.length===4){ dodge(); poke('surprised',800); return; }
+  G.jelly.kick(.6);
+  if(pendingAppr) return;
+  if(follow){ post('/api/follow',{act:'finish'}); return; }   // he's hearing you after his answer: click = I'm done, go
+  if(rec) stopRec(false); else if(busy||playing) interrupt().then(()=>{ if(!busy&&!rec) startRec('auto'); }); else startRec('auto'); });
+E.body.addEventListener('contextmenu',e=>{ e.preventDefault(); hideAsk(); closePanels(); G.jelly.kick(.4); menu(!menuOn); });
+addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('mouseup',()=>{ if(dragNative){ dragNative=false; native('dragend'); } downAt=null; });
+addEventListener('mousedown',e=>{ if(!e.target.closest('#body,#menu,#ask,.pn,#appr,#atts,#pwbox')){ menu(false); closePanels(); if(!input.value) hideAsk(); } });
+
+addEventListener('keydown',e=>{ wake();
+  const askOn=ask.classList.contains('on'), k=e.key.toLowerCase(), typing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&document.activeElement!==input;
+  if(pendingAppr && !askOn && !typing){ if(e.key==='Enter'||k==='y'){ e.preventDefault(); return answer('yes'); } if(e.key==='Escape'||k==='n'){ e.preventDefault(); return answer('no'); } }
+  if(e.key==='Escape'){ e.preventDefault();
+    if(menuOn) return menu(false);
+    if(setEl.classList.contains('on')||panelEl.classList.contains('on')) return closePanels(), sendRegion(true);
+    if(askOn&&input.value){ input.value=''; return; }
+    if(askOn) return hideAsk();
+    if(follow) return post('/api/follow',{act:'cancel'});
+    if(rec) return stopRec(true);
+    if(busy){ post('/api/stop'); return; }
+    if(playing) return shush();
+    return dismiss(); }
+  if(typing) return;
+  if(e.code==='Space' && !e.repeat && !e.ctrlKey && !(askOn&&input.value) && !setEl.classList.contains('on') && !panelEl.classList.contains('on')){ e.preventDefault(); spaceHeld=true;
+    if(follow){ post('/api/follow',{act:'cancel'}); return; }   // he's hearing you after his answer: Space = stop listening
+    if((busy||playing)&&!pendingAppr){ interrupt().then(()=>{ if(spaceHeld&&!busy&&!rec) startRec('ptt'); else if(!rec) tick('stopped'); }); return; }   // tap = stop · hold = stop and talk
+    startRec('ptt'); return; }
+  if(e.ctrlKey&&k==='n'){ e.preventDefault(); return slash('/new'); }
+  if(e.ctrlKey&&k==='m'){ e.preventDefault(); return toggleMute(); }
+  if(e.ctrlKey&&k==='h'){ e.preventDefault(); return openPanel('history'); }
+  if(e.ctrlKey&&k===','){ e.preventDefault(); return settings(true); }
+  if(e.key==='Enter'&&!askOn){ e.preventDefault(); return showAsk(); }
+  if(!e.ctrlKey&&!e.altKey&&!e.metaKey&&e.key.length===1&&document.activeElement!==input&&!setEl.classList.contains('on')&&!panelEl.classList.contains('on')) showAsk();
+});
+addEventListener('keyup',e=>{ if(e.code==='Space'){ spaceHeld=false; if(rec&&rec.mode==='ptt'){ e.preventDefault(); stopRec(false); } } });
+addEventListener('blur',()=>{ spaceHeld=false; if(rec&&rec.mode==='ptt') stopRec(false); });
+
+/* ================= the terminal =================
+   Keep it simple: a small flat terminal that slowly circles around him while Claude works and shows what's really
+   happening — the code going into a file, the command and its output, the file being read, search hits, the to-do list.
+   His eyes keep an eye on it. */
+const CP=(()=>{
+  const el=$('#code'), out=el.querySelector('.lines'), titleEl=el.querySelector('.tb b'), stEl=el.querySelector('.tb span');
+  const W=136, H=80, ROWS=5;                       // size, visible lines
+  let on=false, last=0, wide=false, offT=null, pos=null;
+  const sp={x:0,y:0,vx:0,vy:0,r:0};                // held in a "hand": follows where he looks, with a little lag and tilt
+  let look=[0,4.5], lookUntil=0, glancing=false;
+  const ball=()=>document.querySelector('#body > circle').getBoundingClientRect();
+
+  // ---- like a guy holding a piece of paper: it sits just under his eyes. By default it's turned to face HIM (you see it
+  // from the back: mirrored text, top leaning toward you); Settings → Look → Terminal can turn it to face YOU so you can
+  // read along. While he reads, his eyes rest on it and the paper stays put. Only when he looks away does he take the
+  // paper with him — and only to a side where there's room (he's often parked in a screen corner).
+  const faceYou=()=>info.code_face==='you';
+  function geo(){ const b=ball(); return {cx:b.left+b.width/2, cy:b.top+b.height/2, r:b.width/2}; }
+  function roomFor(gx){ if(!gx) return true; const {cx}=geo(), x=cx+gx*15, half=W/2+14;     // would the paper fit there?
+    return x-half>=0 && x+half<=innerWidth; }
+  window.gazeHook=(tx,ty,m,ts)=>{
+    if(!on) return null;
+    if(ts>lookUntil){
+      glancing=!glancing&&Math.random()<.75;
+      if(glancing){
+        const opts=[[-7.5,-1],[7.5,-1],[-7,-3.5],[7,-3.5],[-6,2.5],[6,2.5],[0,0],[0,0]].filter(l=>roomFor(l[0]));
+        look=opts[Math.random()*opts.length|0]; lookUntil=ts+1600+Math.random()*1200;
+      } else lookUntil=ts+6000+Math.random()*5000;
+    }
+    return glancing?look:[Math.sin(ts/2600)*1.2,4.2];     // reading: eyes down on the page, a slow small drift
+  };
+  function tick(ts){
+    requestAnimationFrame(tick);
+    const dt=Math.min(.05,(ts-(last||ts))/1000); last=ts;
+    if(!on&&!el.classList.contains('on')) return;
+    const {cx,cy,r}=geo();
+    // the paper only goes where he's *looking away to* — not with every flick of his eyes
+    const gx=glancing?look[0]:0, gy=glancing?look[1]:4.2, half=W/2+14;
+    const tx=clamp(cx+gx*15,half,innerWidth-half);          // never off the edge (rotation + tilt included)
+    const dx=tx-cx, clear=Math.abs(dx)-(W/2+r*.62);          // > 0: it's fully beside his face, so it may come up
+    const under=cy+r*.56+H/2+2, side=clamp(clear/(r*.4),0,1);
+    const yMin=under+(cy-r*.5-under)*side;
+    const ty=clamp(Math.max(cy+r*.5+gy*6,yMin)+Math.sin(ts/1400)*.8,H/2+4,innerHeight-H/2-4);
+    if(!pos){ sp.x=cx; sp.y=cy+r*.4; sp.vx=sp.vy=0; }      // comes out from in front of him
+    sp.vx+=((tx-sp.x)*45-sp.vx*9.5)*dt; sp.vy+=((ty-sp.y)*45-sp.vy*9.5)*dt; sp.x+=sp.vx*dt; sp.y+=sp.vy*dt;
+    sp.x=clamp(sp.x,half-6,innerWidth-half+6);              // a springy overshoot mustn't poke out of the window
+    sp.r+=(clamp(sp.vx*.02,-6,6)-sp.r)*Math.min(1,dt*8);   // tips a little only while it's moving
+    pos={x:sp.x,y:sp.y,cx,cy};
+    const turn=clamp((sp.x-cx)/(r+W/2),-1,1);
+    // facing him: flipped, swung toward his middle at the sides, leaning back toward his eyes (top wider from your side)
+    // facing you: readable, just angled a little toward him, leaning back slightly like a page he's holding up for you
+    const yaw=faceYou()?turn*-22:180+turn*45, lean=faceYou()?-8:22-clamp((cy-sp.y)/r,0,1)*14;
+    el.style.transform=`translate(${(sp.x-W/2).toFixed(1)}px,${(sp.y-H/2).toFixed(1)}px) rotate(${sp.r.toFixed(2)}deg) perspective(420px) rotateY(${yaw.toFixed(1)}deg) rotateX(${lean.toFixed(1)}deg)`;
+  }
+  requestAnimationFrame(tick);
+
+  // ---- show / hide (the window gets a bit wider while it's out, so it has room to go round)
+  function show(){ if(info.code_panel===false||document.body.classList.contains('hover')) return; clearTimeout(offT);
+    if(!wide){ wide=true; native('code:on'); } if(!on&&!el.classList.contains('on')){ pos=null; glancing=false; lookUntil=performance.now()+4500; } on=true; el.classList.add('on'); document.body.classList.add('term'); }
+  function hide(){ on=false; el.classList.remove('on'); document.body.classList.remove('term'); clearTimeout(offT); offT=setTimeout(()=>{ if(!on&&wide){ wide=false; native('code:off'); } },400); }
+
+  // ---- writing to it
+  const KW=/\b(def|return|if|elif|else|for|while|in|not|and|or|import|from|try|except|with|as|const|let|var|function|async|await|new|null|None|True|False|true|false|fn|pub|use|match|export|raise|throw)\b/g;
+  const hl=t=>esc(t).replace(/(&quot;.*?&quot;|"[^"]*"|'[^']*')/g,'<i class="s">$1</i>').replace(KW,'<i class="k">$1</i>').replace(/(#.*|\/\/.*)$/,'<i class="c">$1</i>');
+  function line(html,cls=''){ const d=document.createElement('div'); d.className='l '+cls; d.innerHTML=html; out.appendChild(d);
+    while(out.children.length>ROWS) out.firstChild.remove(); return d; }
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  let q=[], running=false, answering=false; const RES={};
+  const hurry=()=>q.length>0||!busy;              // more waiting (or he's done)? skip the typing
+  async function type(pre,text,cls='',cps=60){
+    const d=line('',cls);
+    if(hurry()||text.length>120){ d.innerHTML=pre+hl(text); return; }
+    for(let i=1;i<=text.length;i++){ d.innerHTML=pre+hl(text.slice(0,i))+'<i class="cur"></i>'; await wait(1000/cps); if(hurry()) break; }
+    d.innerHTML=pre+hl(text);
+  }
+  function open(title,root){ titleEl.textContent=title; stEl.textContent='…'; stEl.className=''; el.classList.toggle('root',!!root); el.classList.toggle('rootmode',!!info.root); out.innerHTML=''; show(); }
+  function done(ok){ stEl.textContent=ok?'✓':'✕'; stEl.className=ok?'ok':'bad'; }
+  async function result(id){ for(let i=0;i<1200&&!RES[id]&&busy;i++){ if(q.length&&i>20) break; await wait(50); } return RES[id]; }
+  const rows=(t,n)=>String(t||'').replace(/\r/g,'').split('\n').filter(x=>x.trim()).slice(0,n);
+  const name=p=>String(p||'').split('/').pop();
+  const P=()=>info.root?'<i class="rt">#</i> ':'<i class="pr">$</i> ';
+
+  const VIEWS={
+    async Edit(ev){ const x=ev.input||{}; open('editing '+name(x.file_path));
+      for(const e of (x.edits||[{old_string:x.old_string,new_string:x.new_string}]).slice(0,3)){
+        for(const t of rows(e.old_string,3)){ line('- '+hl(t),'del'); await wait(hurry()?0:120); }
+        for(const t of rows(e.new_string,8)) await type('+ ',t,'add');
+      }
+      const r=await result(ev.id); done(!(r&&r.is_error)); await wait(hurry()?200:900); },
+    async Write(ev){ const x=ev.input||{}; open('writing '+name(x.file_path));
+      for(const t of rows(x.content,8)) await type('+ ',t,'add',90);
+      const r=await result(ev.id); done(!(r&&r.is_error)); await wait(hurry()?200:900); },
+    async Bash(ev){ const x=ev.input||{}; open(x.description||'terminal',info.root);
+      await type(P(),x.command||'','',45);
+      const r=await result(ev.id);
+      if(r){ for(const t of rows(r.text,30)){ line(esc(t),r.is_error?'bad':'out'); await wait(hurry()?0:60); } done(!r.is_error); }
+      await wait(hurry()?200:1000); },
+    async Read(ev){ const x=ev.input||{}; open('reading '+name(x.file_path));
+      const r=await result(ev.id);
+      for(const t of rows(r&&r.text,40).map(t=>t.replace(/^\s*\d+[\t→]/,'')).filter(t=>t.trim()).slice(0,24)){ line(hl(t),'out'); await wait(hurry()?0:90); }
+      await wait(hurry()?100:500); },
+    async Grep(ev){ const x=ev.input||{}; open('searching');
+      await type('<i class="pr">⌕</i> ',x.pattern||x.glob||x.path||'','',50);
+      const r=await result(ev.id); for(const t of rows(r&&r.text,12)){ line(esc(name(t)),'out'); await wait(hurry()?0:60); }
+      await wait(hurry()?100:700); },
+    async WebSearch(ev){ const x=ev.input||{}; open('on the web');
+      await type('<i class="pr">⌕</i> ',x.query||x.url||'','',50);
+      const r=await result(ev.id); for(const t of rows(r&&r.text,8)){ line(esc(t.slice(0,120)),'out'); await wait(hurry()?0:80); }
+      await wait(hurry()?100:700); },
+    async TodoWrite(ev){ open('the plan');
+      for(const t of ((ev.input||{}).todos||[])){ const st=t.status; line(`<i class="${st==='completed'?'ok':'pr'}">${st==='completed'?'✓':st==='in_progress'?'▸':'○'}</i> ${esc(t.content)}`,st==='completed'?'out':''); await wait(hurry()?0:150); }
+      await wait(hurry()?200:1200); },
+    async other(ev){ open(ev.name.startsWith('mcp__')?ev.name.split('__').slice(1).join(' · '):ev.name);
+      if(ev.detail) await type('<i class="pr">›</i> ',ev.detail);
+      const r=await result(ev.id); if(r){ for(const t of rows(r.text,6)) line(esc(t.slice(0,120)),r.is_error?'bad':'out'); done(!r.is_error); }
+      await wait(hurry()?100:700); },
+  };
+  VIEWS.MultiEdit=VIEWS.Edit; VIEWS.NotebookEdit=VIEWS.Edit; VIEWS.Glob=VIEWS.Grep; VIEWS.LS=VIEWS.Grep; VIEWS.WebFetch=VIEWS.WebSearch;
+
+  async function run(){ running=true;
+    while(q.length){ const ev=q.shift(); try{ await (VIEWS[ev.name]||VIEWS.other)(ev); }catch(e){ console.log('[void] terminal',e); } }
+    running=false; if(!busy||answering) hide(); }
+  return {
+    tool(ev){ if(info.code_panel===false) return; answering=false; q.push(ev); if(!running) run(); },
+    result(ev){ RES[ev.id]={text:ev.text||'',is_error:!!ev.is_error}; },
+    answer(){ answering=true; if(!running) hide(); },
+    done(){ answering=false; if(!running) hide(); },
+    hide,
+  };
+})();
+
+refresh().then(()=>{
+  if(info.hover && NATIVE){ native('hover:on'); setHoverClass(true); }
+  if(info.claude===false){ fail("I can't find Claude Code — install it and run `claude` once to sign in."); }
+  else if(info.mic===false) tick('no mic recorder — install libpulse or alsa-utils',true);
+  else if(!info.tts && !muted) tick('no voice engine — install espeak-ng or piper',true);
+  setTimeout(()=>poke('wink',900),700);
+});
+applyLook(LOOK_DEFAULT);
+events();
+setInterval(()=>{ if(!busy) refresh(); },15000);
+</script>
+</body>
+</html>
