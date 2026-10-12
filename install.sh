@@ -24,14 +24,14 @@ if command -v pacman >/dev/null 2>&1; then
   get(){ sudo pacman -S --needed --noconfirm "$@"; }
 elif command -v apt-get >/dev/null 2>&1; then
   PM=apt
-  pkgs=(espeak-ng curl pulseaudio-utils alsa-utils python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+  pkgs=(espeak-ng curl pulseaudio-utils alsa-utils python3-venv python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1
         gstreamer1.0-plugins-base gstreamer1.0-plugins-good grim slurp wl-clipboard maim xclip libnotify-bin
         gir1.2-gtklayershell-0.1 playerctl brightnessctl)
   have(){ dpkg -s "$1" >/dev/null 2>&1; }
   get(){ sudo apt-get install -y "$@"; }
 elif command -v dnf >/dev/null 2>&1; then
   PM=dnf
-  pkgs=(uv espeak-ng curl pulseaudio-utils alsa-utils python3-gobject python3-cairo gtk3 webkit2gtk4.1
+  pkgs=(uv python3.12 espeak-ng curl pulseaudio-utils alsa-utils python3-gobject python3-cairo gtk3 webkit2gtk4.1
         gstreamer1-plugins-base gstreamer1-plugins-good grim slurp wl-clipboard maim xclip libnotify gtk-layer-shell
         playerctl brightnessctl)
   have(){ rpm -q "$1" >/dev/null 2>&1; }
@@ -62,9 +62,15 @@ if ! /usr/bin/python3 -c 'import gi; gi.require_version("Gtk","3.0"); gi.require
   exit 1
 fi
 if ! command -v uv >/dev/null 2>&1; then
-  say "Installing uv (Python environment tool) into $BIN…"
-  curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN" INSTALLER_NO_MODIFY_PATH=1 sh \
-    || { warn "couldn't install uv — see https://docs.astral.sh/uv/ and run ./install.sh again"; exit 1; }
+  say "Installing uv (Python environment tool)…"
+  mkdir -p "$BIN" "$ROOT"
+  # from PyPI (where the speech libraries come from too), else from astral.sh
+  if python3 -m venv "$ROOT/uv-tool" >/dev/null 2>&1 && "$ROOT/uv-tool/bin/pip" install -q uv; then
+    ln -sf "$ROOT/uv-tool/bin/uv" "$BIN/uv"
+  else
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$BIN" INSTALLER_NO_MODIFY_PATH=1 sh \
+      || { warn "couldn't install uv — see https://docs.astral.sh/uv/ and run ./install.sh again"; exit 1; }
+  fi
 fi
 
 say "Copying app to $ROOT"
@@ -73,7 +79,13 @@ rm -rf "$ROOT/app"; cp -r "$SRC/app" "$ROOT/app"
 rm -f "$ROOT/window.mode"     # re-pick the window render mode with the new defaults
 
 say "Python env (3.12 via uv — the speech libraries don't all support the newest Python yet)…"
-[ -x "$ROOT/venv/bin/python" ] || uv venv --python 3.12 "$ROOT/venv"
+# 3.12 from the system if it has it, else uv fetches one; last resort: the system's own python3
+if [ ! -x "$ROOT/venv/bin/python" ]; then
+  uv venv --python 3.12 "$ROOT/venv" 2>/dev/null \
+    || { uv python install 3.12 && uv venv --python 3.12 "$ROOT/venv"; } \
+    || { warn "no Python 3.12 available — trying your system Python (some speech libraries may not install)"
+         uv venv --python "$(command -v python3)" "$ROOT/venv"; }
+fi
 uv pip install --python "$ROOT/venv/bin/python" -U faster-whisper
 uv pip install --python "$ROOT/venv/bin/python" -U piper-tts \
   || warn "piper-tts failed to install — Void will use espeak-ng (robotic) instead"
