@@ -99,6 +99,9 @@ Settings → Look → "Click through around him" lets clicks on the see-through 
   it's on, everything you say comes with a fresh picture of your window, so "why is this red?" just works. He only
   opens the picture when your question is about the screen, and nothing at all is sent while you're quiet. Say
   **"stop watching"** to end it; it also turns itself off after 10 quiet minutes (`live_minutes` in the config).
+- **He looks by himself when a task needs it:** if you ask "is the build still running?" or "did that fix the
+  layout?", he can take a quick look at your window on his own (`void see`) — you'll see him glance with his looking
+  face. He only looks during a task that needs it, never in the background, and he can only look: no clicking or typing.
 - Screenshots go to `~/.cache/void/shots` (only the last 30 are kept).
 
 ### Hover mode
@@ -220,7 +223,7 @@ few times. Move the mouse over him and he stops to look at you.
 
 ## Commands
 
-`void` (show/hide) · `void listen` · `void look` · `void hover` · `void doctor` (mic check) · `void stress` (voice stutter test) · `void render default|nodmabuf|nocomp` (how he's drawn) · `void restart` · `void stop` · `void log`
+`void` (show/hide) · `void listen` · `void look` · `void live` · `void see` · `void hover` · `void doctor` (mic check) · `void stress` (voice stutter test) · `void render default|nodmabuf|nocomp` (how he's drawn) · `void restart` · `void stop` · `void log`
 
 In the typing box: `/new` `/cd <dir>` `/history` `/memory` `/remember …` `/forget …` `/look` `/clip` `/hover`
 `/model <opus|sonnet|haiku>` `/voice` `/eyes <colour|random>` `/whites <colour|random>` `/pupils <slit|circle|dot>` `/mute` `/stop`

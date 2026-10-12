@@ -3,6 +3,7 @@
 #   void            show / hide him (bind this to a hotkey)
 #   void listen     pop up and start listening right away (great on a hotkey)
 #   void look       take a screenshot, then listen ("what's this error?")
+#   void see [screen]  print a picture of your window (or whole screen) — Claude uses this to look when it needs to
 #   void live       live view on/off: he sees your screen with everything you say, until you turn it off
 #   void hover      toggle hover mode (he floats next to your mouse)
 #   void show|hide|quit
@@ -30,7 +31,8 @@ quitwin(){ pkill -f "$APP/window.py" >/dev/null 2>&1 || true; killbrowser
 
 case "${1:-}" in
   stop)    stop; quitwin; echo "Void stopped"; exit 0 ;;
-  stress)  exec "$PY" "$APP/server.py" --stress-voice "${@:2}" ;;     # speak under heavy load, report any stutter
+  stress)  exec "$PY" "$APP/server.py" --stress-voice "${@:2}" ;;
+  see)     exec "$PY" "$APP/server.py" --see "${2:-window}" ;;            # view-only picture of your screen (for Claude)     # speak under heavy load, report any stutter
   doctor)  echo "── window ──"
            for c in /usr/bin/python3 /usr/bin/python; do [ -x "$c" ] && { "$c" "$APP/window.py" --check 2>&1 | tail -n 3 || echo "overlay: window can't start (pacman -S python-gobject webkit2gtk-4.1 gtk-layer-shell)"; break; }; done
            echo "env: WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset} GDK_BACKEND=${GDK_BACKEND:-unset} XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unset}"

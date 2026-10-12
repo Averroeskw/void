@@ -49,6 +49,9 @@ VOICE_PROMPT = (
     "Whenever you run a Bash command, always fill in its description with a short plain-English summary of what it "
     "does, for someone who isn't technical (e.g. \"Restart Firefox\", \"Clear out old package downloads to free up "
     "space\"); Void reads it aloud when asking the user for permission. "
+    "When a task needs you to see the user's screen (they mention something on it, or you need to check what happened), "
+    "run `void see` for the window they're using or `void see screen` for everything; it prints the path of a small "
+    "picture to open with the Read tool. It only looks, it can't click or type. Don't look when the task doesn't need it. "
     "Void has an expressive face. In your final spoken reply only, start each sentence with one tag in square brackets "
     "saying how you mean it, so the face matches your words: [neutral] [happy] [proud] [excited] [laugh] [warm] "
     "[curious] [unsure] [thinking] [surprised] [sorry] [serious]. Example: \"[proud] Fixed it, all nine tests pass now. "
@@ -393,6 +396,9 @@ def approval_say(tool, inp):
     if tool == "WebSearch":
         return "Can I search the web?"
     return f"Can I use {tool}?"
+
+
+SEE_RE = re.compile(r"(?:\S*/)?void see(?: window| screen)?")
 
 
 class Approvals:
@@ -2264,6 +2270,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"projects": quick.projects()})
             if p == "/api/approve":
                 b = json.loads(self._body() or b"{}")
+                cmd = str((b.get("input") or {}).get("command") or "").strip()
+                if b.get("tool") == "Bash" and SEE_RE.fullmatch(cmd):     # only looking at the screen: no card
+                    return self._json({"ok": True, "why": "just looking at the screen"})
                 return self._json(APPROVALS.ask(str(b.get("tool") or "?"), b.get("input") or {}))
             if p == "/api/askpass":                   # askpass.py (sudo -A) is waiting for the password
                 b = json.loads(self._body() or b"{}")
@@ -2281,9 +2290,13 @@ class Handler(BaseHTTPRequestHandler):
                 Wake.talking_until(time.monotonic() + (60 if b.get("on") else 0.8))
                 return self._json({"ok": True})
             if p == "/api/capture":
-                kind = json.loads(self._body() or b"{}").get("kind", "screen")
+                b = json.loads(self._body() or b"{}")
+                kind = b.get("kind", "screen")
                 try:
-                    return self._json(capture(kind))
+                    shot = capture(kind)
+                    if b.get("by") == "claude":          # `void see` during a task: show him looking
+                        BUS.pub(t="saw", kind=shot["kind"])
+                    return self._json(shot)
                 except Exception as e:  # noqa: BLE001
                     return self._json({"error": str(e)}, 400)
             if p == "/api/notify":
@@ -2528,7 +2541,22 @@ def main():
     ap.add_argument("--sync-autostart", action="store_true", help="add/remove login startup to match the config")
     ap.add_argument("--stress-voice", action="store_true", help="test the voice for stutters under heavy load")
     ap.add_argument("--silent", action="store_true", help="with --stress-voice: don't actually play the sound")
+    ap.add_argument("--see", choices=("window", "screen"), help="`void see`: ask the running Void for a picture, print its path")
     args = ap.parse_args()
+    if args.see:                                 # view-only: no clicking or typing, ever
+        try:
+            rt = json.loads((DATA_DIR / "runtime.json").read_text())
+            port, tok = os.environ.get("VOID_PORT") or rt["port"], os.environ.get("VOID_TOKEN") or rt["token"]
+            import urllib.request
+            req = urllib.request.Request(f"http://127.0.0.1:{port}/api/capture",
+                                         data=json.dumps({"kind": args.see, "by": "claude"}).encode(),
+                                         headers={"Content-Type": "application/json", "X-Void-Token": tok})
+            j = json.load(urllib.request.urlopen(req, timeout=30))
+        except Exception as e:  # noqa: BLE001
+            print(f"couldn't look: {getattr(e, 'read', lambda: b'')().decode() or e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"{j['path']}  ({j['label']} — open it with the Read tool)")
+        sys.exit(0)
     if args.sync_autostart:
         sync_autostart()
         print("autostart:", "on" if CFG.get("autostart") else "off")

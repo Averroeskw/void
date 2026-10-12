@@ -1263,6 +1263,7 @@ async function events(){
   }
 }
 function onEvent(ev){
+  if(ev.t==='saw'){ poke('looking',1800); wake(); return; }   // Claude took a look at your screen (`void see`)
   if(ev.t==='follow'){ follow=!!ev.on; hearRaw=0; if(follow) wake(); return; }
   if(ev.t==='hear'){ hearRaw=ev.v; return; }
   if(ev.t==='wake'){ if(rec||transcribing) return;
