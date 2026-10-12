@@ -116,6 +116,8 @@ DEFAULTS = {
     "barge_in": True,
     # for this many seconds after he stops talking, just talk — no "hey Void" needed (0 = off)
     "follow_up": 4,
+    # live view ("watch my screen"): turns itself off after this many minutes without you saying anything
+    "live_minutes": 10,
     # little sound effects
     "sfx": True,
     # how he looks: body + each eye + each eye white, a skin (accessory), and whether to roll random colours each time
@@ -512,15 +514,64 @@ def _run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, timeout=kw.pop("timeout", 30), **kw)
 
 
+def _active_window():
+    """Where the window you're using is, as (x, y, w, h) on the whole desktop — or None if we can't tell (or it's Void)."""
+    try:
+        if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+            w = json.loads(_run(["hyprctl", "activewindow", "-j"], timeout=3).stdout or b"{}")
+            if w.get("size") and w.get("class") != "Void":
+                return (*w["at"], *w["size"])
+        elif os.environ.get("SWAYSOCK") and shutil.which("swaymsg"):
+            def find(n):
+                if n.get("focused") and n.get("type") in ("con", "floating_con"):
+                    return n
+                for c in n.get("nodes", []) + n.get("floating_nodes", []):
+                    f = find(c)
+                    if f:
+                        return f
+            n = find(json.loads(_run(["swaymsg", "-t", "get_tree"], timeout=3).stdout or b"{}"))
+            if n and n.get("app_id") != "Void":
+                r = n["rect"]
+                return r["x"], r["y"], r["width"], r["height"]
+        elif not os.environ.get("WAYLAND_DISPLAY") and shutil.which("xdotool"):
+            if _run(["xdotool", "getactivewindow", "getwindowclassname"], timeout=3).stdout.strip() != b"Void":
+                g = dict(ln.split("=", 1) for ln in _run(["xdotool", "getactivewindow", "getwindowgeometry", "--shell"],
+                                                          timeout=3).stdout.decode().split() if "=" in ln)
+                return int(g["X"]), int(g["Y"]), int(g["WIDTH"]), int(g["HEIGHT"])
+    except Exception as e:  # noqa: BLE001
+        print(f"[void] couldn't find the active window: {e}", file=sys.stderr)
+    return None
+
+
+def _shrink(path):
+    """Make a picture cheap for Claude: longest side ≤ 1280 px, JPEG. (Image tokens ≈ width × height / 750.)"""
+    try:
+        from PIL import Image
+        im = Image.open(path)
+        im.thumbnail((1280, 1280))
+        small = path.with_suffix(".jpg")
+        im.convert("RGB").save(small, quality=82)
+        if small != path:
+            path.unlink(missing_ok=True)
+        return small
+    except Exception as e:  # noqa: BLE001  (no Pillow / odd file: send it as it is)
+        print(f"[void] couldn't shrink the picture: {e}", file=sys.stderr)
+        return path
+
+
 def capture(kind):
-    """kind: screen | region | clipboard → dict describing the attachment."""
+    """kind: window | screen | region | clipboard → dict describing the attachment."""
     SHOTS.mkdir(parents=True, exist_ok=True)
-    for old in sorted(SHOTS.glob("void-*.png"))[:-30]:      # keep the folder small
+    for old in sorted(SHOTS.glob("void-*.*"))[:-30]:        # keep the folder small
         old.unlink(missing_ok=True)
     out = SHOTS / f"void-{time.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}.png"
     wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
-    if kind in ("screen", "region"):
-        area = kind == "region"
+    geo = _active_window() if kind == "window" else None
+    if kind == "window" and not geo and not (wayland and (shutil.which("spectacle") or shutil.which("gnome-screenshot"))):
+        kind = "screen"                                       # can't tell which window: the whole screen it is
+    if kind in ("window", "screen", "region"):
+        area, win = kind == "region", kind == "window"
+        gs = f"{geo[0]},{geo[1]} {geo[2]}x{geo[3]}" if geo else None
         # every desktop has its own screenshot tool: try the ones that are installed until one works
         tries = []
         if wayland:
@@ -542,35 +593,41 @@ def capture(kind):
                     if g.returncode != 0:
                         raise RuntimeError("cancelled")
                     cmd += ["-g", g.stdout.decode().strip()]
+                elif win and gs:
+                    cmd += ["-g", gs]
                 r = _run(cmd + [str(out)])
             elif tool == "spectacle":
-                r = _run(["spectacle", "-b", "-n", "-r" if area else "-f", "-o", str(out)], timeout=120)
+                r = _run(["spectacle", "-b", "-n", "-r" if area else "-a" if win else "-f", "-o", str(out)], timeout=120)
             elif tool == "gnome-screenshot":
-                r = _run(["gnome-screenshot"] + (["-a"] if area else []) + ["-f", str(out)], timeout=120)
+                r = _run(["gnome-screenshot"] + (["-a"] if area else ["-w"] if win else []) + ["-f", str(out)], timeout=120)
             elif tool == "maim":
-                r = _run(["maim"] + (["-s"] if area else []) + [str(out)], timeout=120)
+                g = ["-g", f"{geo[2]}x{geo[3]}+{geo[0]}+{geo[1]}"] if win and geo else []
+                r = _run(["maim"] + (["-s"] if area else g) + [str(out)], timeout=120)
             elif tool == "scrot":
-                r = _run(["scrot"] + (["-s"] if area else []) + ["-o", str(out)], timeout=120)
+                g = ["-a", f"{geo[0]},{geo[1]},{geo[2]},{geo[3]}"] if win and geo else []
+                r = _run(["scrot"] + (["-s"] if area else g) + ["-o", str(out)], timeout=120)
             else:
-                r = _run(["import"] + ([] if area else ["-window", "root"]) + [str(out)], timeout=120)
+                crop = ["-crop", f"{geo[2]}x{geo[3]}+{geo[0]}+{geo[1]}"] if win and geo else []
+                r = _run(["import"] + ([] if area else ["-window", "root"] + crop) + [str(out)], timeout=120)
             if r.returncode == 0 and out.exists():
                 break
         if r is None or r.returncode != 0 or not out.exists():
             raise RuntimeError("screenshot failed: " + (r.stderr or b"").decode(errors="replace")[-200:])
-        return {"kind": kind, "path": str(out), "label": "screenshot" if kind == "screen" else "screen area"}
+        return {"kind": kind, "path": str(_shrink(out)),
+                "label": {"screen": "screenshot", "window": "your window", "region": "screen area"}[kind]}
     if kind == "clipboard":
         if wayland and shutil.which("wl-paste"):
             types = _run(["wl-paste", "--list-types"]).stdout.decode(errors="replace").split()
             img = next((t for t in types if t.startswith("image/")), None)
             if img:
                 out.write_bytes(_run(["wl-paste", "--type", img]).stdout)
-                return {"kind": "clipimg", "path": str(out), "label": "copied image"}
+                return {"kind": "clipimg", "path": str(_shrink(out)), "label": "copied image"}
             r = _run(["wl-paste", "--no-newline"])
         elif shutil.which("xclip"):
             tg = _run(["xclip", "-selection", "clipboard", "-t", "TARGETS", "-o"]).stdout.decode(errors="replace")
             if "image/png" in tg:
                 out.write_bytes(_run(["xclip", "-selection", "clipboard", "-t", "image/png", "-o"]).stdout)
-                return {"kind": "clipimg", "path": str(out), "label": "copied image"}
+                return {"kind": "clipimg", "path": str(_shrink(out)), "label": "copied image"}
             r = _run(["xclip", "-selection", "clipboard", "-o"])
         elif shutil.which("xsel"):
             r = _run(["xsel", "-b", "-o"])
@@ -587,10 +644,14 @@ def attach_prompt(atts):
     parts = []
     for a in atts or []:
         k = a.get("kind")
-        if k in ("screen", "region", "clipimg") and a.get("path") and Path(a["path"]).is_file():
-            what = {"screen": "a screenshot of their whole screen", "region": "a screenshot of part of their screen",
-                    "clipimg": "an image they copied"}[k]
-            parts.append(f"[The user attached {what}: {a['path']} — open it with the Read tool to see it.]")
+        if k in ("window", "screen", "region", "clipimg") and a.get("path") and Path(a["path"]).is_file():
+            what = {"window": "a screenshot of the window they're using", "screen": "a screenshot of their whole screen",
+                    "region": "a screenshot of part of their screen", "clipimg": "an image they copied"}[k]
+            if a.get("live"):          # live view: a fresh picture comes with everything they say
+                parts.append(f"[Live view is on — this is what the user is looking at right now: {a['path']}. "
+                             "Open it with the Read tool only if their message is about something on screen.]")
+            else:
+                parts.append(f"[The user attached {what}: {a['path']} — open it with the Read tool to see it.]")
         elif k == "clip" and a.get("text"):
             parts.append("[What's on the user's clipboard:]\n```\n" + a["text"][:12000] + "\n```")
     return "\n".join(parts)
@@ -1995,7 +2056,7 @@ def state_info():
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")),
         "ultra_root": bool(CFG.get("root_mode") and CFG.get("ultra_root")), "pw_remembered": AskPass.remembered is not None,
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),
-        "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
+        "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "live_minutes": int(CFG.get("live_minutes") or 10), "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
         "click_through": bool(CFG.get("click_through")),
         "autostart": bool(CFG.get("autostart")), "listen_on_show": bool(CFG.get("listen_on_show")),
         "barge_in": bool(CFG.get("barge_in")), "sfx": bool(CFG.get("sfx")), "look": look(), "skins": SKINS,

@@ -86,7 +86,7 @@ if [ ! -x "$ROOT/venv/bin/python" ]; then
     || { warn "no Python 3.12 available — trying your system Python (some speech libraries may not install)"
          uv venv --python "$(command -v python3)" "$ROOT/venv"; }
 fi
-uv pip install --python "$ROOT/venv/bin/python" -U faster-whisper
+uv pip install --python "$ROOT/venv/bin/python" -U faster-whisper pillow   # pillow: shrinks screenshots (fewer tokens)
 uv pip install --python "$ROOT/venv/bin/python" -U piper-tts \
   || warn "piper-tts failed to install — Void will use espeak-ng (robotic) instead"
 

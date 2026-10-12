@@ -93,6 +93,12 @@ Settings → Look → "Click through around him" lets clicks on the see-through 
 ### Showing him things
 - Say "look at my screen", "what's this error on my screen?" or "explain what I copied", and he grabs a screenshot or your
   clipboard and sends it along. You can also use 📷 in the typing box, "show my screen" in the menu, or `void look`.
+  He takes just the window you're using (say "my whole screen" for everything) and shrinks it, so a look costs about a
+  third fewer tokens.
+- **Live view:** say **"watch my screen"** (or `void live`, `/live`) and a green **LIVE** sticker appears on him. While
+  it's on, everything you say comes with a fresh picture of your window, so "why is this red?" just works. He only
+  opens the picture when your question is about the screen, and nothing at all is sent while you're quiet. Say
+  **"stop watching"** to end it; it also turns itself off after 10 quiet minutes (`live_minutes` in the config).
 - Screenshots go to `~/.cache/void/shots` (only the last 30 are kept).
 
 ### Hover mode

@@ -3,6 +3,7 @@
 #   void            show / hide him (bind this to a hotkey)
 #   void listen     pop up and start listening right away (great on a hotkey)
 #   void look       take a screenshot, then listen ("what's this error?")
+#   void live       live view on/off: he sees your screen with everything you say, until you turn it off
 #   void hover      toggle hover mode (he floats next to your mouse)
 #   void show|hide|quit
 #   void doctor     check mic, voice and Claude Code
@@ -53,8 +54,8 @@ if ! up; then
 fi
 
 CMD="${1:-toggle}"
-case "$CMD" in toggle|show|hide|quit|restart|listen|look|hover|hover-on|hover-off) ;;
-  *) echo "usage: void [listen|look|hover|show|hide|quit|doctor|stress|render|stop|restart|log|server]" >&2; exit 2 ;; esac
+case "$CMD" in toggle|show|hide|quit|restart|listen|look|live|hover|hover-on|hover-off) ;;
+  *) echo "usage: void [listen|look|live|hover|show|hide|quit|doctor|stress|render|stop|restart|log|server]" >&2; exit 2 ;; esac
 [ "$CMD" = restart ] && CMD=show
 FIRST="$CMD"; [ "$FIRST" = toggle ] && FIRST=show
 

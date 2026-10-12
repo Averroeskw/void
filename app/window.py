@@ -776,7 +776,7 @@ class VoidWindow:
             finally:
                 c.close()
             fn = {"toggle": self.toggle, "show": self.show, "hide": self.hide, "quit": self.quit,
-                  "listen": lambda: self.cmd("listen"), "look": lambda: self.cmd("look"),
+                  "listen": lambda: self.cmd("listen"), "look": lambda: self.cmd("look"), "live": lambda: self.cmd("live"),
                   "hover": lambda: self.cmd("hover"), "hover-on": lambda: self.cmd("hover-on"),
                   "hover-off": lambda: self.cmd("hover-off")}.get(cmd)
             if fn:
@@ -800,7 +800,7 @@ def main():
     if cmd in ("hide", "quit"):
         return
     win = VoidWindow(url)
-    if cmd in ("listen", "look", "hover", "hover-on"):
+    if cmd in ("listen", "look", "live", "hover", "hover-on"):
         GLib.timeout_add(1800, lambda: (win.cmd(cmd), False)[1])     # first launch: let the page load, then do it
     try:
         Gtk.main()

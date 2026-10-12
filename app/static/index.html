@@ -314,6 +314,7 @@ body.hover #moreB,body.pnl #moreB,body.appr #moreB{display:none}
 #code .lines{padding:3px 8px;height:60px;overflow:hidden}
 /* root mode: a red sticker on the side of the paper you see — so it reads the right way round even though the page is
    turned toward him */
+#liveDot{animation:liveBeat 1.6s ease-in-out infinite} @keyframes liveBeat{50%{opacity:.25}} body.hover #liveTag{display:none}
 #code .rootb{display:none;position:absolute;top:-13px;left:-9px;transform:rotateY(180deg);font:700 9px var(--mono);letter-spacing:.12em;
   color:#fff;background:#9a0000;border-radius:6px;padding:3px 6px;box-shadow:0 0 10px #ff000066,0 2px 6px #000a}
 #code.rootmode .rootb{display:block}
@@ -370,6 +371,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <ellipse cx="34" cy="50" rx="18" ry="6" transform="rotate(-40 34 50)" fill="url(#glossG)" opacity=".45" pointer-events="none"/>
         <circle id="rim" r="75" fill="none" stroke-width="1.6" pointer-events="none"/>
         <g id="accFront"></g>
+        <g id="liveTag" transform="translate(50 58) rotate(-14)" display="none"><rect x="-21" y="-8.5" width="42" height="17" rx="6" fill="#2f8f66" stroke="#7fd6ae" stroke-width="1"/><circle id="liveDot" cx="-12" cy="0" r="2.6" fill="#fff"/><text x="4" y="3.6" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff" font-family="monospace" letter-spacing="1">LIVE</text></g>
         <g id="think" opacity="0"><circle class="thk" cx="64" cy="-70" r="4"/><circle class="thk" cx="79" cy="-86" r="6"/><circle class="thk" cx="99" cy="-106" r="9"/></g>
         <g id="anger" opacity="0"><path class="ang" d="M-10-3Q-3-3-3-10M3-10Q3-3 10-3M10 3Q3 3 3 10M-3 10Q-3 3-10 3"/></g>
         <path id="sweat" opacity="0" fill="#cfe8ff" d="M0-8C4-2 6 2 6 5A6 6 0 0 1-6 5C-6 2-4-2 0-8Z"/>
@@ -1383,21 +1385,34 @@ ask.addEventListener('submit',e=>{ e.preventDefault(); const v=input.value; inpu
 let atts=[];
 function renderAtts(){ $('#atts').innerHTML=atts.map((a,i)=>`<div class="at">${a.kind==='clip'?'📋':'📷'} ${esc(a.label)}<button data-rm="${i}" title="remove">✕</button></div>`).join(''); }
 $('#atts').addEventListener('click',e=>{ const b=e.target.closest('[data-rm]'); if(b){ atts.splice(+b.dataset.rm,1); renderAtts(); } });
-async function shoot(kind){
-  const hideMe=kind==='screen'&&NATIVE&&!hiddenNow;
+async function shoot(kind,quiet){
+  const hideMe=(kind==='screen'||kind==='window')&&NATIVE&&!hiddenNow;
   try{
     if(hideMe){ native('peek:hide'); await sleep(260); }
     const r=await post('/api/capture',{kind}); const j=await r.json();
     if(hideMe) native('peek:show');
     if(!r.ok) throw new Error(j.error||'capture failed');
     atts=atts.filter(a=>!(a.kind===j.kind)); atts.push(j); renderAtts();
-    poke('looking',1600); tick(kind==='clipboard'?`got your ${j.label}`:'got it — I can see your screen');
+    if(!quiet){ poke('looking',1600); tick(kind==='clipboard'?`got your ${j.label}`:'got it — I can see your screen'); }
     return j;
   }catch(e){ if(hideMe) native('peek:show'); if(e.message!=='cancelled') tick(e.message,true); return null; }
 }
-$('#clipB').addEventListener('click',()=>shoot('screen').then(()=>input.focus()));
+$('#clipB').addEventListener('click',()=>shoot('window').then(()=>input.focus()));
 $('#clipB').addEventListener('contextmenu',e=>{ e.preventDefault(); e.stopPropagation(); shoot('clipboard').then(()=>input.focus()); });
 const SCREEN_RE=/\b(my|the|this|on( the)?) screen\b|\bscreenshot\b|\bwhat am i looking at\b|\blook at (this|that|it)\b|\bsee (this|that)\b/i;
+const WHOLE_RE=/\b(whole|entire|full) screen\b|\ball (my )?(screens|monitors)\b/i;   // otherwise just the window you're using
+// live view: he sees your screen only while you've told him to — a fresh picture rides along with each thing you say
+const LIVE_ON=/^(?:hey\s+void[,\s]+)?(?:please\s+)?(?:(?:start|turn on|open)\s+)?(?:live view|live mode|watch(?:ing)? (?:my |the )?screen|keep an eye on (?:my |the )?screen|look live|see (?:my screen )?live)\b/i;
+const LIVE_OFF=/^(?:hey\s+void[,\s]+)?(?:please\s+)?(?:stop (?:watching|looking)(?: (?:at )?(?:my |the )?screen)?|(?:turn off|stop|close|end) (?:the )?live(?: view| mode)?|live(?: view)? off)\b/i;
+let liveUntil=0, liveT=null;
+function setLive(on,why){
+  clearTimeout(liveT); liveUntil=on?Date.now()+(info.live_minutes||10)*60000:0;
+  $('#liveTag').setAttribute('display',on?'inline':'none');
+  if(on) liveT=setTimeout(()=>setLive(false,'timeout'),(info.live_minutes||10)*60000);
+  else if(why==='timeout') tick('live view off');
+}
+const liveOn=()=>liveUntil>Date.now();
+function toggleLive(){ const on=!liveOn(); setLive(on); say(on?"Okay, I'm watching. Say “stop watching” when you're done.":'Okay, I stopped looking.'); poke(on?'looking':'wink',1200); }
 const CLIP_RE=/\bclipboard\b|\b(i|i've|i have|i just) (just )?copied\b|\bwhat i copied\b|\bthis (error|text) i copied\b/i;
 
 /* ================= sudo password: a card right next to him (no separate window) ================= */
@@ -1468,12 +1483,16 @@ async function send(text,opts={}){
     info.memory_count=r.items.length; capShow(); setYou(text); say(r.added?"Got it — I'll remember that.":'I already had that one!'); poke('wink',1300); return; }
   if((mm=text.match(MEM_DEL))){ const r=await (await post('/api/memory',{op:'del',match:mm[1].replace(/[.!]+$/,'')})).json();
     info.memory_count=r.items.length; capShow(); setYou(text); say(r.removed?'Okay, forgotten.':"I couldn't find that in my notes — opening them so you can pick."); if(!r.removed) openPanel('memory'); return; }
+  if(LIVE_ON.test(text)){ setLive(true); capShow(); setYou(text); say("Okay, I'm watching. Say “stop watching” when you're done."); poke('looking',1400); sfx('ok'); return; }
+  if(LIVE_OFF.test(text)){ const was=liveOn(); setLive(false); capShow(); setYou(text); say(was?'Okay, I stopped looking.':"I wasn't looking."); poke('wink',1000); return; }
   if(MEM_SHOW.test(text)){ capShow(); setYou(text); const n=info.memory_count||0; say(n?`I have ${n} note${n>1?'s':''} — here they are.`:"Nothing yet! Say “remember …” and I'll keep it."); openPanel('memory'); return; }
   if(!atts.length && text && !opts.claude){
     try{ const q=await (await post('/api/quick',{text})).json();
       if(q.handled){ capShow(); setYou(text); say(q.say); poke(q.mood||'happy',1300); if(q.sfx) sfx(q.sfx); if(q.state){ info=q.state; showInfo(); } return; } }catch(e){} }
   if(busy){ tick("one sec — I'm still on the last thing"); return; }
-  if(!atts.length && SCREEN_RE.test(text)) await shoot('screen');
+  if(!atts.length && SCREEN_RE.test(text)) await shoot(WHOLE_RE.test(text)?'screen':'window');
+  if(liveOn() && !atts.some(a=>['window','screen','region'].includes(a.kind))){ const j=await shoot('window',true); if(j) j.live=true; }
+  if(liveOn()) setLive(true);                // still talking to him: the 10 minutes start over
   if(!atts.some(a=>a.kind.startsWith('clip')) && CLIP_RE.test(text)) await shoot('clipboard');
   if(NICE.test(text)) poke(/cute|love/i.test(text)?'shy':'love',1800);
   shush(); capShow(); setYou(text||'(look at this)'); himSet('');
@@ -1799,7 +1818,8 @@ async function slash(cmd){
   if(c==='hover') return toggleHover();
   if(c==='history') return openPanel('history');
   if(c==='memory'||c==='notes') return openPanel('memory');
-  if(c==='look'||c==='shot') return shoot('screen');
+  if(c==='look'||c==='shot') return shoot('window');
+  if(c==='live') return toggleLive();
   if(c==='clip'||c==='clipboard') return shoot('clipboard');
   if(c==='remember') return send('remember '+arg);
   if(c==='forget') return send('forget '+arg);
@@ -1835,7 +1855,8 @@ async function comeBack(){ if(!info.hover) return; await toggleHover(false); awa
 window.voidCmd=async c=>{ hiddenNow=false;
   if(c==='home'){ return comeBack(); }
   if(c==='listen'){ await comeBack(); if(rec) stopRec(false); else startRec('auto'); }
-  else if(c==='look'){ await comeBack(); shoot('screen').then(j=>{ if(j) startRec('auto'); }); }
+  else if(c==='look'){ await comeBack(); shoot('window').then(j=>{ if(j) startRec('auto'); }); }
+  else if(c==='live'){ await comeBack(); toggleLive(); }
   else if(c==='hover') toggleHover(); else if(c==='hover-on') toggleHover(true); else if(c==='hover-off') toggleHover(false); };
 
 // click-through: tell the window which bits are solid (the ball + whatever is open); the rest passes clicks to your desktop
