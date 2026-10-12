@@ -1,14 +1,44 @@
-<p align="center"><img src="assets/void.png" width="260" alt="Void"></p>
+<p align="center"><img src="assets/demo/talk.webp" width="330" alt="Void introducing himself, captions appearing word by word"></p>
 
 <h1 align="center">Void</h1>
 
-<p align="center">A voice-first desktop companion for <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> on Linux.</p>
+<p align="center"><b>A little orb that lives on your desktop, listens, and drives <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> for you.</b><br>
+He talks back in a natural local voice, and his eyes show what he's thinking.</p>
 
-A little glossy black orb with big eyes that floats on top of everything, like a shell overlay rather than an app window. Talk to him and he drives **Claude Code** in whatever
-folder you point him at. His eyes show what he's doing, and he talks back in a local voice.
+<p align="center">
+  <img src="https://img.shields.io/badge/Linux-Wayland%20%26%20X11-3d9b74?style=flat-square" alt="Linux: Wayland and X11">
+  <img src="https://img.shields.io/badge/runs-100%25%20local%20voice-3d9b74?style=flat-square" alt="Local voice">
+  <img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license">
+</p>
 
-Everything runs on your machine: the server records the mic itself (PipeWire / Pulse / ALSA), speech-to-text is
-faster-whisper, the voice is Kokoro (or piper / espeak-ng as fallbacks), and the server only listens on 127.0.0.1 behind a per-launch token.
+Say **"hey Void, fix the failing tests"** and he gets to work in your project. He floats on top of everything like a
+widget, not an app window, holds up a tiny terminal so you can watch what he's doing, then tells you how it went.
+
+## Meet him
+
+<table>
+<tr>
+<td align="center" width="50%"><img src="assets/demo/work.webp" width="300" alt="Void working: reading, editing and testing code on his little terminal"><br>
+<b>He does the work</b><br><sub>Reads, edits and runs commands on a little terminal he holds like a sheet of paper. A sweat drop while the tests run, then the good news.</sub></td>
+<td align="center" width="50%"><img src="assets/demo/listen.webp" width="300" alt="Void listening, his ring moving with your voice"><br>
+<b>He listens</b><br><sub>Say "hey Void", click him, or just keep talking right after he answers. His ring moves with your voice.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="assets/demo/moods.webp" width="300" alt="Void cycling through his moods"><br>
+<b>He reacts</b><br><sub>Happy, love-struck, starry-eyed, surprised, ^&nbsp;^, winking, curious, shy, sad, scared, grumpy, sleepy… His face follows what he's saying, word by word.</sub></td>
+<td align="center"><img src="assets/demo/skins.webp" width="300" alt="Void trying on skins and colours"><br>
+<b>Dress him up</b><br><sub>Cat ears, bunny, bear, antenna, horns, halo, crown, sprout, party hat, headphones, a bow, and any colours you like (two different eyes too).</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="assets/demo/pet.webp" width="300" alt="Void being petted: happy closed eyes and hearts"><br>
+<b>Pet him</b><br><sub>Rub the mouse back and forth over him and he purrs. Click him too much and he dodges.</sub></td>
+<td align="center"><img src="assets/void.png" width="230" alt="Void"><br>
+<b>He's all yours</b><br><sub>Everything runs on your computer: your mic, the speech recognition and his voice never leave it. He only talks to Claude Code.</sub></td>
+</tr>
+</table>
+
+Under the hood: the server records the mic itself (PipeWire / Pulse / ALSA), speech-to-text is faster-whisper, the voice
+is Kokoro (or piper / espeak-ng as fallbacks), and the server only listens on 127.0.0.1 behind a per-launch token.
 
 ## Install
 
