@@ -5,4 +5,4 @@ __pycache__/
 *.part
 build/
 dist/
-installer/void.ico
+installer/art/

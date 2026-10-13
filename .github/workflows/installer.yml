@@ -18,10 +18,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - name: Icon
+      - name: Wizard pictures and icon
         run: |
           python -m pip install --quiet pillow
-          python -c "from PIL import Image; Image.open('app/static/icon.png').save('installer/void.ico', sizes=[(256,256),(64,64),(48,48),(32,32),(16,16)])"
+          python installer/make_art.py
       - name: Build VoidSetup.exe
         shell: pwsh
         run: |
@@ -30,13 +30,29 @@ jobs:
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
           & $iscc "/DAppVersion=$version" installer\void.iss
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Install with VoidSetup.exe (silent)
+      - name: Install as a normal (non-admin) user, then update over it
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-out | Out-Null
+          $out = "C:\voidtest"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          icacls $out /grant "Everyone:(OI)(CI)F" | Out-Null
+          Copy-Item dist\VoidSetup.exe, .github\ci\user-install.ps1 $out
+          $pw = "Vt1!" + [guid]::NewGuid().ToString("N").Substring(0, 16)
+          net user voidtest $pw /add | Out-Null
+          $cred = [pscredential]::new("voidtest", (ConvertTo-SecureString $pw -AsPlainText -Force))
+          Start-Process powershell.exe -Credential $cred -LoadUserProfile -Wait -WorkingDirectory $out `
+            -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "$out\user-install.ps1", "-Setup", "$out\VoidSetup.exe", "-Out", $out
+          Copy-Item "$out\*.txt", "$out\*.log" ci-out -ErrorAction SilentlyContinue
+          $r = Get-Content "$out\user-results.txt" -ErrorAction SilentlyContinue
+          $r
+          if (-not ($r -contains "DONE") -or ($r -match "^FAIL")) { exit 1 }
+      - name: Install with VoidSetup.exe (silent, admin)
         shell: pwsh
         env:
           VOID_CI: "1"
         run: |
-          New-Item -ItemType Directory -Force ci-out | Out-Null
-          $p = Start-Process dist\VoidSetup.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG=$pwd\ci-out\setup.log" -Wait -PassThru
+          $p = Start-Process dist\VoidSetup.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", '/TASKS=""', "/LOG=$pwd\ci-out\setup.log" -Wait -PassThru
           "setup exit code: $($p.ExitCode)"
           if ($p.ExitCode) { exit 1 }
       - name: Smoke test

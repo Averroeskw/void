@@ -21,6 +21,9 @@ if (-not (Test-Path (Join-Path $env:WINDIR "System32\vcruntime140_1.dll"))) {
 }
 
 # ---------------------------------------------------------------- uv (Python environment tool)
+# uv's own installer puts it here, and a window opened before that doesn't have it on PATH yet: use it, don't reinstall
+$uvHome = Join-Path $env:USERPROFILE ".local\bin"
+if ((Test-Path (Join-Path $uvHome "uv.exe")) -and -not (($env:Path -split ";") -contains $uvHome)) { $env:Path += ";$uvHome" }
 $script:PYUV = $null
 # (named RunUv, not UV: PowerShell names ignore case, so a function "UV" calling uv would call itself)
 function RunUv {
@@ -43,9 +46,27 @@ if (-not (Have uv)) {
 }
 
 # ---------------------------------------------------------------- Python 3.12 + the libraries
-Say "Python env (3.12)..."
+Say "Setting up Python 3.12..."
+# Void keeps his own Python in $ROOT\python. The venv must point at the exact version's folder: uv's "3.12" folder is
+# a junction, and Windows can refuse to follow junctions a normal user made ("untrusted mount point").
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $ROOT "python"
+$venv = Join-Path $ROOT "venv"
+if (Test-Path $VPY) {
+  $home_ = (Get-Content (Join-Path $venv "pyvenv.cfg") -ErrorAction SilentlyContinue | Where-Object { $_ -match '^home\s*=' }) -replace '^home\s*=\s*', ''
+  & $VPY -c "import sys" 2>$null
+  if ($LASTEXITCODE -ne 0 -or $home_ -notlike "$($env:UV_PYTHON_INSTALL_DIR)\cpython-3.12.*") {
+    Say "Rebuilding the Python environment (the old one used a shared or broken Python)..."
+    & $VPY (Join-Path $ROOT "app\launch_win.py") stop 2>$null | Out-Null
+    Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue
+  }
+}
 if (-not (Test-Path $VPY)) {
-  RunUv venv --python 3.12 (Join-Path $ROOT "venv")
+  RunUv python install 3.12
+  $py = Get-ChildItem $env:UV_PYTHON_INSTALL_DIR -Directory -ErrorAction SilentlyContinue |
+        Where-Object { -not $_.LinkType -and $_.Name -match '^cpython-3\.12\.\d+-' } |
+        ForEach-Object { $_.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1' } |
+        Sort-Object { [int]($_ -split '\.')[2] } | Select-Object -Last 1
+  if ($py) { RunUv venv --python $py $venv } else { $global:LASTEXITCODE = 1 }
   if ($LASTEXITCODE -ne 0) {                       # uv couldn't fetch one: use python.org's own installer
     $ver = "3.12.10"; $exe = Join-Path $env:TEMP "python-$ver-amd64.exe"
     Say "Downloading Python $ver from python.org..."
@@ -56,12 +77,13 @@ if (-not (Test-Path $VPY)) {
   if (-not (Test-Path $VPY)) { Warn "couldn't set up Python 3.12"; exit 1 }
 }
 # the window (Qt + Chromium), mic/speakers, screenshots, volume control, speech recognition, voices
+Say "Installing his window, hearing and voice libraries..."
 RunUv pip install --python $VPY -U PySide6 sounddevice pillow pycaw comtypes faster-whisper
 if ($LASTEXITCODE -ne 0) { Warn "some Python libraries failed to install - see above"; exit 1 }
 RunUv pip install --python $VPY -U piper-tts
 if ($LASTEXITCODE -ne 0) { Warn "piper-tts failed to install - Void will use Kokoro only" }
 
-Say "Copying app to $ROOT"
+Say "Copying Void's files..."
 if (Test-Path (Join-Path $ROOT "app\launch_win.py")) { & $VPY (Join-Path $ROOT "app\launch_win.py") stop | Out-Null }
 Remove-Item -Recurse -Force (Join-Path $ROOT "app") -ErrorAction SilentlyContinue
 Copy-Item -Recurse (Join-Path $SRC "app") (Join-Path $ROOT "app")
@@ -72,7 +94,7 @@ $APP = Join-Path $ROOT "app"
 # Kokoro: his main voice. GitHub first; if that's blocked, kokoro_fetch.py builds the same files from Hugging Face.
 RunUv pip install --python $VPY -U kokoro-onnx
 if ($LASTEXITCODE -eq 0) {
-  Say "Kokoro voice..."
+  Say "Downloading his voice (Kokoro)..."
   & $VPY (Join-Path $APP "kokoro_fetch.py") (Join-Path $ROOT "voices\kokoro")
   if ($LASTEXITCODE -ne 0) { Warn "Kokoro download failed - Void will use piper until it can fetch it" }
 } else { Warn "kokoro-onnx failed to install - Void will use piper instead" }
@@ -88,13 +110,25 @@ if (-not (Test-Path $vf)) {
   } catch { Remove-Item "$vf*" -ErrorAction SilentlyContinue; Warn "voice download failed" }
 }
 
-if (Have nvidia-smi) {
-  Say "NVIDIA GPU found - adding CUDA libraries for fast, accurate speech recognition (~1 GB)..."
-  RunUv pip install --python $VPY -U nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"
-  if ($LASTEXITCODE -ne 0) { Warn "couldn't install CUDA libs - speech recognition will run on the CPU" }
+# ---------------------------------------------------------------- NVIDIA: CUDA libraries for fast speech recognition
+# The CUDA libraries come as Python packages into the venv; only the graphics driver itself must be on the PC.
+$nvidia = @(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "NVIDIA" })
+if ($nvidia -or (Have nvidia-smi)) {
+  $driver = $null
+  if (Have nvidia-smi) { try { $driver = [version](((& nvidia-smi --query-gpu=driver_version --format=csv,noheader) | Select-Object -First 1).Trim()) } catch {} }
+  if (-not $driver) {
+    Warn "NVIDIA graphics card found, but its driver isn't working - install it from https://www.nvidia.com/drivers (speech recognition uses the CPU until then)"
+  } elseif ($driver -lt [version]"528.33") {
+    Warn "Your NVIDIA driver ($driver) is too old for CUDA 12 - update it from https://www.nvidia.com/drivers (speech recognition uses the CPU until then)"
+  } else {
+    Say "NVIDIA $($nvidia[0].Name) found - adding CUDA libraries for fast speech recognition (~1 GB the first time)..."
+    RunUv pip install --python $VPY -U nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"
+    $cublas = Get-ChildItem (Join-Path $ROOT "venv\Lib\site-packages\nvidia") -Recurse -Filter "cublas64_12.dll" -ErrorAction SilentlyContinue
+    if ($LASTEXITCODE -ne 0 -or -not $cublas) { Warn "couldn't install the CUDA libraries - speech recognition will run on the CPU" }
+  }
 }
 if (-not $env:VOID_CI) {
-  Say "Fetching the speech-recognition model..."
+  Say "Downloading the speech-recognition model..."
   & $VPY (Join-Path $APP "server.py") --warm
   if ($LASTEXITCODE -ne 0) { Warn "couldn't pre-load the speech model; it will download on first use" }
 }
