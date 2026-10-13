@@ -1,5 +1,5 @@
-# Runs as a plain (non-admin) Windows user, like most people: installs Void with VoidSetup.exe twice (a fresh install,
-# then an update over it) and records PASS/FAIL lines in $Out\user-results.txt for the workflow to check.
+# Runs as a plain (non-admin) Windows user, like most people: installs Void with VoidSetup.exe three times (a fresh
+# install, an update over it, and a repair of a broken install) and records PASS/FAIL lines in $Out\user-results.txt.
 param([string]$Setup, [string]$Out)
 # Start-Process -Credential hands over the admin's environment: point it at this user's own folders, as a login would
 $env:USERNAME = [Environment]::UserName
@@ -16,8 +16,19 @@ function Check($name, $ok, $detail = "") { Add-Content $results ("{0}  {1} {2}" 
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrators")
 Check "running as a normal user" (-not $admin) "($env:USERNAME)"
 
-foreach ($round in 1, 2) {
-  $tasks = if ($round -eq 1) { "claudecode" } else { "" }       # round 1 also installs Claude Code; round 2 finds it
+foreach ($round in 1, 2, 3) {
+  $tasks = if ($round -eq 1) { "claudecode" } else { "" }       # round 1 also installs Claude Code; later rounds find it
+  if ($round -eq 3) {
+    # break it the way a real PC did: Void still running from the venv (files locked), its Python's files zero-filled
+    # (a half-written download), and the venv's python.exe gone
+    $sleeper = Start-Process "$root\venv\Scripts\python.exe" -ArgumentList "-c", "`"import time; time.sleep(900)`"" -PassThru -WindowStyle Hidden
+    Start-Sleep 2
+    $base = Get-ChildItem "$root\python" -Directory | Where-Object { -not $_.LinkType -and $_.Name -match '^cpython-3\.12\.\d+-' } | Select-Object -First 1
+    $enc = Join-Path $base.FullName "Lib\encodings\__init__.py"
+    [IO.File]::WriteAllBytes($enc, [byte[]]::new((Get-Item $enc).Length))
+    & "$($base.FullName)\python.exe" -I -c "pass" 2>$null
+    Check "round 3: Python really broken before setup" ($LASTEXITCODE -ne 0)
+  }
   $p = Start-Process $Setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=`"$tasks`"", "/LOG=`"$Out\user-setup-$round.log`"" -Wait -PassThru
   Check "round ${round}: setup finished" ($p.ExitCode -eq 0) "(exit $($p.ExitCode))"
   & "$root\venv\Scripts\python.exe" -c "import PySide6, sounddevice, faster_whisper, kokoro_onnx" 2>$null
@@ -27,5 +38,6 @@ foreach ($round in 1, 2) {
   Check "round ${round}: void command" (Test-Path "$root\bin\void.cmd")
   Copy-Item "$root\install.log" "$Out\user-install-$round.log" -ErrorAction SilentlyContinue
   if ($round -eq 1) { Check "Claude Code installed" (Test-Path "$env:USERPROFILE\.local\bin\claude.exe") }
+  if ($round -eq 3) { Check "round 3: setup stopped the old Void" ($sleeper.HasExited) }
 }
 Add-Content $results "DONE"

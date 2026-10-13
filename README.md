@@ -1,7 +1,9 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/banner-dark.svg">
-  <img src="assets/brand/banner-light.svg" width="100%" alt="Void — your voice-first desktop companion for Claude Code. Say “hey Void” and he does the work.">
-</picture>
+<p align="center"><img src="app/static/icon.png" width="180" alt="Void"></p>
+
+<h1 align="center">Void</h1>
+
+<p align="center"><b>Your voice-first desktop companion for Claude Code.</b><br>
+Say “hey Void” and he does the work.</p>
 
 <p align="center">
   <a href="#install"><b>Install</b></a> &nbsp;·&nbsp;

@@ -49,32 +49,41 @@ if (-not (Have uv)) {
 Say "Setting up Python 3.12..."
 # Void keeps his own Python in $ROOT\python. The venv must point at the exact version's folder: uv's "3.12" folder is
 # a junction, and Windows can refuse to follow junctions a normal user made ("untrusted mount point").
+# Every Python is checked by actually starting it: a half-written install can look fine on disk and still crash.
 $env:UV_PYTHON_INSTALL_DIR = Join-Path $ROOT "python"
 $venv = Join-Path $ROOT "venv"
-if (Test-Path $VPY) {
-  $home_ = (Get-Content (Join-Path $venv "pyvenv.cfg") -ErrorAction SilentlyContinue | Where-Object { $_ -match '^home\s*=' }) -replace '^home\s*=\s*', ''
-  & $VPY -c "import sys" 2>$null
-  if ($LASTEXITCODE -ne 0 -or $home_ -notlike "$($env:UV_PYTHON_INSTALL_DIR)\cpython-3.12.*") {
-    Say "Rebuilding the Python environment (the old one used a shared or broken Python)..."
-    & $VPY (Join-Path $ROOT "app\launch_win.py") stop 2>$null | Out-Null
-    Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue
-  }
+function PyWorks($exe) {
+  if (-not (Test-Path $exe)) { return $false }
+  & $exe -I -c "import encodings, venv" 2>$null | Out-Null
+  $LASTEXITCODE -eq 0
 }
-if (-not (Test-Path $VPY)) {
-  RunUv python install 3.12
-  $py = Get-ChildItem $env:UV_PYTHON_INSTALL_DIR -Directory -ErrorAction SilentlyContinue |
-        Where-Object { -not $_.LinkType -and $_.Name -match '^cpython-3\.12\.\d+-' } |
-        ForEach-Object { $_.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1' } |
-        Sort-Object { [int]($_ -split '\.')[2] } | Select-Object -Last 1
-  if ($py) { RunUv venv --python $py $venv } else { $global:LASTEXITCODE = 1 }
-  if ($LASTEXITCODE -ne 0) {                       # uv couldn't fetch one: use python.org's own installer
-    $ver = "3.12.10"; $exe = Join-Path $env:TEMP "python-$ver-amd64.exe"
-    Say "Downloading Python $ver from python.org..."
-    Invoke-WebRequest "https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe" -OutFile $exe -UseBasicParsing
-    Start-Process $exe -ArgumentList "/quiet InstallAllUsers=0 PrependPath=0 Include_test=0" -Wait
-    RunUv venv --python (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe") (Join-Path $ROOT "venv")
+function ExactPython {   # newest real (not junction) 3.12.x folder in $ROOT\python
+  Get-ChildItem $env:UV_PYTHON_INSTALL_DIR -Directory -ErrorAction SilentlyContinue |
+    Where-Object { -not $_.LinkType -and $_.Name -match '^cpython-3\.12\.\d+-' } |
+    Sort-Object { [int](($_.Name -replace '^cpython-3\.12\.(\d+)-.*', '$1')) } | Select-Object -Last 1
+}
+# keep the venv only if it starts and points at Void's own exact-version Python
+$home_ = (Get-Content (Join-Path $venv "pyvenv.cfg") -ErrorAction SilentlyContinue | Where-Object { $_ -match '^home\s*=' }) -replace '^home\s*=\s*', ''
+if ((Test-Path $venv) -and -not ((PyWorks $VPY) -and $home_ -like "$($env:UV_PYTHON_INSTALL_DIR)\cpython-3.12.*")) {
+  Say "Rebuilding the Python environment (the old one was broken or used a shared Python)..."
+  # anything still running from Void's folder keeps venv files locked, so the folder can't be removed
+  Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$ROOT\*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+  Start-Sleep -Milliseconds 500
+  Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue
+}
+if (-not (PyWorks $VPY)) {
+  RunUv python install 3.12 --no-bin
+  $py = ExactPython
+  if ($py -and -not (PyWorks (Join-Path $py.FullName "python.exe"))) {
+    Say "Repairing Void's Python (some of its files were damaged)..."
+    RunUv python install ($py.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1') --reinstall --no-bin
+    $py = ExactPython
   }
-  if (-not (Test-Path $VPY)) { Warn "couldn't set up Python 3.12"; exit 1 }
+  if (-not $py -or -not (PyWorks (Join-Path $py.FullName "python.exe"))) {
+    Warn "couldn't download Python 3.12 - check your internet connection and run setup again"; exit 1
+  }
+  RunUv venv --clear --force --python ($py.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1') $venv
+  if (-not (PyWorks $VPY)) { Warn "couldn't set up Void's Python environment in $venv"; exit 1 }
 }
 # the window (Qt + Chromium), mic/speakers, screenshots, volume control, speech recognition, voices
 Say "Installing his window, hearing and voice libraries..."
