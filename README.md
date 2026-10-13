@@ -55,6 +55,9 @@ widget, not an app window, holds up a tiny terminal so you can watch what he's d
 **[Download VoidSetup.exe](https://github.com/PLAYER99-void/void/releases/latest/download/VoidSetup.exe)** and run it.
 That's it: it sets up everything and puts Void in your Start menu.
 
+> If Windows says **"Windows protected your PC"**, click **More info → Run anyway**. The installer isn't code-signed
+> yet; it's built from this repo by [GitHub Actions](https://github.com/PLAYER99-void/void/actions/workflows/installer.yml).
+
 - Windows 10 or 11, 64-bit. About 1 GB of disk for Python, his voice and the speech model (plus ~1 GB of NVIDIA
   libraries if you have an NVIDIA graphics card, for faster speech recognition).
 - No admin needed. The one exception: if your PC is missing the Microsoft Visual C++ runtime, setup installs it and
