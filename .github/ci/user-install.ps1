@@ -1,6 +1,13 @@
 # Runs as a plain (non-admin) Windows user, like most people: installs Void with VoidSetup.exe twice (a fresh install,
 # then an update over it) and records PASS/FAIL lines in $Out\user-results.txt for the workflow to check.
 param([string]$Setup, [string]$Out)
+# Start-Process -Credential hands over the admin's environment: point it at this user's own folders, as a login would
+$env:USERNAME = [Environment]::UserName
+$env:USERPROFILE = [Environment]::GetFolderPath("UserProfile")
+$env:APPDATA = [Environment]::GetFolderPath("ApplicationData")
+$env:LOCALAPPDATA = [Environment]::GetFolderPath("LocalApplicationData")
+$env:TEMP = $env:TMP = Join-Path $env:LOCALAPPDATA "Temp"
+New-Item -ItemType Directory -Force $env:TEMP | Out-Null
 $env:VOID_CI = "1"
 $root = Join-Path $env:LOCALAPPDATA "void"
 $results = Join-Path $Out "user-results.txt"
