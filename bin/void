@@ -27,7 +27,7 @@ stop(){ pkill -f "$APP/server.py" >/dev/null 2>&1 || true; }
 # the old browser-window fallback (a normal app window) — always clean it up so it can't linger looking like Void
 killbrowser(){ pkill -f -- "--user-data-dir=$ROOT/browser" >/dev/null 2>&1 || true; }
 quitwin(){ pkill -f "$APP/window.py" >/dev/null 2>&1 || true; killbrowser
-  command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && hyprctl keyword cursor:invisible false >/dev/null 2>&1 || true; }
+  command -v hyprctl >/dev/null 2>&1 && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && { [ "$(hyprctl keyword cursor:invisible false 2>&1)" = ok ] || hyprctl eval 'hl.config({ cursor = { invisible = false } })' >/dev/null 2>&1; } || true; }
 
 case "${1:-}" in
   stop)    stop; quitwin; echo "Void stopped"; exit 0 ;;

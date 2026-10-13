@@ -658,7 +658,10 @@ class VoidWindow:
         if not self.hypr.ok():
             return
         try:
-            r = self.hypr.req(f"keyword cursor:invisible {'true' if hide else 'false'}").strip()
+            v = "true" if hide else "false"
+            r = self.hypr.req(f"keyword cursor:invisible {v}").strip()
+            if r != "ok":                                  # Hyprland 0.56+ (Lua config): options are set through eval
+                r = self.hypr.req(f"eval hl.config({{ cursor = {{ invisible = {v} }} }})").strip()
             if r != "ok":
                 log(f"hyprland: couldn't {'hide' if hide else 'show'} the real cursor ({r!r}) — your Hyprland may be too old")
         except Exception as e:  # noqa: BLE001

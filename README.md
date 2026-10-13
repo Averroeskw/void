@@ -122,9 +122,6 @@ keeps up while the mouse is over older (X11) apps.
 - **Look, don't touch**: reads and explains, changes nothing.
 - **Root mode**: like "just do it", plus `sudo` works. When he needs root, a small password card appears right next to
   him (no separate window) — type it and press Enter. Your password goes straight to sudo and is never stored.
-- **Ultra root** (on top of root mode): type your password once and he fills it in by himself after that. It's kept in
-  memory only — never written to disk — and forgotten when Void restarts or you turn Ultra root off. If sudo rejects it,
-  he forgets it and asks you again.
 
 ### Memory and history
 - Say **"remember …"** ("remember my main project is in ~/code/app") and he knows it in every future chat.

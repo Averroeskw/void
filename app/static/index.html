@@ -445,7 +445,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <div id="projList"></div>
         <div class="bar" style="margin-top:7px"><input type="text" id="projName" placeholder="name" style="flex:1 1 80px;min-width:0"><input type="text" id="projPath" placeholder="~/code/app" style="flex:2 1 120px;min-width:0"><button class="btn pri sm" id="projAdd">add</button></div></div>
       <div class="row"><label class="tg red"><input type="checkbox" id="rootSw"><span class="sw"></span><span class="l">Root mode<small>Runs <b>anything</b>, incl. <code>sudo</code> — a password card appears next to him when he needs root.</small></span></label>
-        <label class="tg red" style="margin-top:9px"><input type="checkbox" id="ultraSw"><span class="sw"></span><span class="l">Ultra root<small>Type your password once and he fills it in by himself after that. Kept in memory only — never saved, forgotten when Void restarts or you turn this off.</small></span></label></div>
+        </div>
     </div>
     <!-- ================= MORE ================= -->
     <div class="tab" data-tab="more">
@@ -1267,6 +1267,7 @@ function onEvent(ev){
   if(ev.t==='follow'){ follow=!!ev.on; hearRaw=0; if(follow) wake(); return; }
   if(ev.t==='hear'){ hearRaw=ev.v; return; }
   if(ev.t==='wake'){ if(rec||transcribing) return;
+    if(ev.follow&&hiddenNow) return;          // you sent him away: talking afterwards isn't for him (only "hey Void" is)
     if(hiddenNow) native('show');
     if(info.hover){ comeBack().then(()=>onEvent(ev)); return; }
     if(ev.follow){ if(busy) return; wake(); send(ev.text,{follow:true}); return; }   // talked right after he answered: no "hey Void" needed
@@ -1421,7 +1422,7 @@ let pwReq=null; const pwEl=$('#pwbox'), pwIn=$('#pwIn');
 function askPass(ev){
   pwReq=ev; if(hiddenNow) native('show'); if(info.hover) comeBack();
   $('#pwQ').textContent=ev.retry?'That didn\'t work — try again':'He needs root for this';
-  $('#pwHint').textContent=ev.ultra?'Ultra root: I\'ll remember it until Void restarts (memory only, never saved)':'typed straight to sudo — never saved';
+  $('#pwHint').textContent='typed straight to sudo — never saved';
   pwIn.value=''; pwEl.classList.add('on'); document.body.classList.add('pw'); if(ev.retry){ pwEl.classList.remove('bad'); void pwEl.offsetWidth; pwEl.classList.add('bad'); }
   native('kbd:grab'); setTimeout(()=>pwIn.focus(),60); poke(ev.retry?'sad':'pleading',1600); sfx('remind');
 }
@@ -1640,7 +1641,9 @@ function menu(on){ if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.cla
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
   ({talk:()=>startRec('auto'), new:()=>slash('/new'), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
-function dismiss(){ menu(false); hideAsk(); closePanels(); if(!native('hide')) poke('sleepy',1200); }
+function dismiss(){ menu(false); hideAsk(); closePanels(); endListening(); if(!native('hide')) poke('sleepy',1200); }
+// Esc / hiding him: he stops listening — a recording in progress is dropped and the "just keep talking" window closes
+function endListening(){ if(rec&&rec.mode!=='approve') stopRec(true); post('/api/follow',{act:'cancel'}).catch(()=>{}); follow=false; hearRaw=0; }
 
 /* ================= hover mode ================= */
 function setHoverClass(on){ document.body.classList.toggle('hover',on); sendRegion(true); }
@@ -1738,7 +1741,7 @@ function renderSettings(){
   const cur=(info.model||'default');
   $('#modelChips').innerHTML=MODELS.map(([id,l])=>`<button data-m="${id}" class="${cur===id?'on':''}">${l}</button>`).join('');
   $('#voiceChips').innerHTML=(info.voices||[]).map(v=>`<button data-v="${v.id}" class="${info.voice===v.id?'on':''}">${v.label}${v.downloading?'<i>⇣</i>':''}</button>`).join('');
-  const sw={rootSw:info.root,ultraSw:info.ultra_root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
+  const sw={rootSw:info.root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
     clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random};
   for(const k in sw){ const e=document.getElementById(k); if(e) e.checked=!!sw[k]; }
   const ps=restPu();
@@ -1788,7 +1791,6 @@ setEl.addEventListener('click',e=>{
 });
 setEl.addEventListener('change',e=>{
   const id=e.target.id, on=e.target.checked;
-  if(id==='ultraSw') setSetting({ultra_root:on}).then(()=>{ tick(on?'ultra root ON — I\'ll fill in your sudo password after the first time':'ultra root off — password forgotten',on); poke(on?'scared':'happy',900); });
   if(id==='rootSw') setSetting(on?{root:true}:{root:false,trust:'ask'}).then(()=>{ tick(on?'root mode ON — he can run anything (I\'ll ask for your sudo password)':'root mode off',on); poke(on?'scared':'happy',900); });
   if(id==='speakSw' && on===muted) toggleMute();
   if(id==='autoSw') setSetting({autostart:on}).then(()=>tick(on?'I’ll start when you log in':'won’t start at login'));
@@ -1849,7 +1851,7 @@ function showInfo(){ syncEye(); document.body.classList.toggle('faceyou',info.co
 async function refresh(){ try{ info=await (await fetch('/api/state')).json(); showInfo(); }catch(e){} }
 function toggleMute(){ muted=!muted; try{localStorage.setItem('void.muted',muted?'1':'0');}catch(e){} if(muted) shush(); tick(muted?'voice off':'voice on'); if(setEl.classList.contains('on')) renderSettings(); }
 
-window.voidHidden=()=>{ hiddenNow=true; if(rec&&rec.mode!=='approve') stopRec(true); menu(false); hideAsk(); };
+window.voidHidden=()=>{ hiddenNow=true; endListening(); menu(false); hideAsk(); };
 window.voidShown=()=>{ hiddenNow=false; entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
   if(info.listen_on_show&&!info.hover) setTimeout(()=>startRec('auto'),450); else setTimeout(()=>poke('wink',900),350); }); };
 async function comeBack(){ if(!info.hover) return; await toggleHover(false); await sleep(700); }

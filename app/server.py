@@ -99,9 +99,6 @@ DEFAULTS = {
     "voice": "girl",
     # root mode: Claude may run anything, incl. sudo (you get a password box each time it needs root)
     "root_mode": False,
-    # ultra root: on top of root mode, Void types your sudo password for him — you give it once per session (kept in
-    # memory only, never written to disk; forgotten when Void restarts or you turn this off)
-    "ultra_root": False,
     "cpu_split": True,       # face (window) and voice/brain (server) on separate CPU cores (4+ cores only)
     # pupil colour: "#rrggbb", or "random" for a new one every time he pops up
     "eye_color": "#3d9b74",
@@ -450,28 +447,20 @@ APPROVALS = Approvals()
 
 
 class AskPass:
-    """sudo's password, asked for in a small card right next to Void (askpass.py → here → the page). In Ultra root mode
-    the password you type is remembered in memory for this session and handed to sudo automatically after that."""
+    """sudo's password, asked for in a small card right next to Void (askpass.py → here → the page). Every time — it's
+    never remembered."""
     lock = threading.Lock()
     pending = {}
-    remembered = None
     last_given = 0.0
 
     @classmethod
     def ask(cls, prompt):
         now = time.monotonic()
         with cls.lock:
-            if CFG.get("ultra_root") and cls.remembered is not None:
-                if now - cls.last_given < 4:          # sudo asked again straight away: that password didn't work
-                    cls.remembered = None
-                else:
-                    cls.last_given = now
-                    return {"pw": cls.remembered, "auto": True}
             aid = secrets.token_hex(4)
             ev = threading.Event()
             cls.pending[aid] = {"ev": ev, "pw": None}
-        BUS.pub(t="askpass", id=aid, prompt=prompt[:120], ultra=bool(CFG.get("ultra_root")),
-                retry=now - cls.last_given < 4)
+        BUS.pub(t="askpass", id=aid, prompt=prompt[:120], retry=now - cls.last_given < 4)
         ev.wait(300)
         with cls.lock:
             it = cls.pending.pop(aid, {})
@@ -487,15 +476,13 @@ class AskPass:
             it["pw"] = pw
             if pw is not None:
                 cls.last_given = time.monotonic()
-                if CFG.get("ultra_root"):
-                    cls.remembered = pw
             it["ev"].set()
             return True
 
     @classmethod
     def forget(cls):
+        """Root mode turned off: give up on any password card that's still waiting."""
         with cls.lock:
-            cls.remembered = None
             for it in cls.pending.values():
                 it["ev"].set()
 
@@ -2060,7 +2047,7 @@ def state_info():
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")),
-        "ultra_root": bool(CFG.get("root_mode") and CFG.get("ultra_root")), "pw_remembered": AskPass.remembered is not None,
+
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),
         "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "live_minutes": int(CFG.get("live_minutes") or 10), "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
         "click_through": bool(CFG.get("click_through")),
@@ -2195,13 +2182,7 @@ class Handler(BaseHTTPRequestHandler):
                         fetch_voice(VOICES[b["voice"]]["piper"])
                 if "root" in b:
                     upd["root_mode"] = bool(b["root"])
-                    if not b["root"]:
-                        upd["ultra_root"] = False
-                if "ultra_root" in b:
-                    upd["ultra_root"] = bool(b["ultra_root"])
-                    if b["ultra_root"]:
-                        upd["root_mode"] = True
-                if upd.get("ultra_root") is False or upd.get("root_mode") is False:
+                if upd.get("root_mode") is False:
                     AskPass.forget()
                 for key in ("eye_color", "eye_white"):
                     if key in b:
@@ -2217,7 +2198,7 @@ class Handler(BaseHTTPRequestHandler):
                     upd["pupil_style"] = b["pupil_style"]
                 if b.get("trust") in ("ask", "trust", "readonly"):
                     upd["trust"] = b["trust"]
-                    upd["root_mode"] = upd["ultra_root"] = False
+                    upd["root_mode"] = False
                     AskPass.forget()
                 if "follow_up" in b:
                     upd["follow_up"] = max(0, min(60, int(b.get("follow_up") or 0)))

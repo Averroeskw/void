@@ -2,7 +2,7 @@
 """SUDO_ASKPASS helper for Void's root mode.
 
 sudo runs this (via `sudo -A`) when Claude needs root. No window: it asks the Void server, which shows a small password
-card right next to Void (or, in Ultra root mode, answers by itself with the password you gave it earlier this session).
+card right next to Void. The password is never remembered.
 Prints the password to stdout for sudo. Nothing is written to disk. Cancel = sudo fails.
 """
 import json
