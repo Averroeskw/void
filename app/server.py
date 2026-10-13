@@ -162,7 +162,7 @@ def load_config():
     cfg = dict(DEFAULTS)
     if CONF_PATH.exists():
         try:
-            user = json.loads(CONF_PATH.read_text())
+            user = json.loads(CONF_PATH.read_text(encoding="utf-8-sig"))   # (-sig: Notepad may add a BOM)
             if user.get("whisper_model") == "base.en":     # the old default → let it pick (GPU gets a better model)
                 user["whisper_model"] = "auto"
             cfg.update(user)
@@ -1068,15 +1068,19 @@ class Wake:
 
     @classmethod
     def loop(cls):
+        last = None
         while cls.wanted():
             if not cls.should_run():
                 time.sleep(0.2)
                 continue
             try:
                 cls.session()
+                last = None
             except Exception as e:  # noqa: BLE001
-                print(f"[void] wake word: {e}", file=sys.stderr)
-                time.sleep(5)
+                if str(e) != last:                   # (no mic plugged in: say so once, then check now and then)
+                    print(f"[void] wake word: {e}", file=sys.stderr)
+                time.sleep(5 if str(e) != last else 30)
+                last = str(e)
 
     @classmethod
     def session(cls):
@@ -1879,7 +1883,7 @@ def clamp01(x):
 def save_config(**kw):
     """Persist a few settings into config.json without clobbering the user's other edits."""
     try:
-        cur = json.loads(CONF_PATH.read_text()) if CONF_PATH.exists() else {}
+        cur = json.loads(CONF_PATH.read_text(encoding="utf-8-sig")) if CONF_PATH.exists() else {}
     except Exception:  # noqa: BLE001
         cur = {}
     cur.update(kw)

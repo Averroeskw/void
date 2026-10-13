@@ -33,7 +33,7 @@ if not PYW.exists():
 
 def port():
     try:
-        return int(json.loads((winsys.config_dir() / "config.json").read_text()).get("port", 47777))
+        return int(json.loads((winsys.config_dir() / "config.json").read_text(encoding="utf-8-sig")).get("port", 47777))
     except (OSError, ValueError):
         return 47777
 
