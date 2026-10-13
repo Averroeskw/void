@@ -41,6 +41,7 @@ jobs:
           $pw = "Vt1!" + [guid]::NewGuid().ToString("N").Substring(0, 9)   # net user stops to ask about passwords over 14 characters
           net user voidtest $pw /add
           if ($LASTEXITCODE) { exit 1 }
+          net localgroup "Performance Log Users" voidtest /add | Out-Null   # lets it run as a scheduled task; still not an admin
           # a scheduled task gives the test user a real logon with its own desktop (Start-Process -Credential doesn't)
           $action = New-ScheduledTaskAction -Execute powershell.exe -WorkingDirectory $out `
             -Argument "-NoProfile -ExecutionPolicy Bypass -File $out\user-install.ps1 -Setup $out\VoidSetup.exe -Out $out"
@@ -50,7 +51,8 @@ jobs:
           for ($i = 0; $i -lt 240; $i++) {
             Start-Sleep 10
             if ((Get-Content "$out\user-results.txt" -ErrorAction SilentlyContinue) -contains "DONE") { break }
-            if ($i -gt 2 -and (Get-ScheduledTask VoidUserInstall).State -ne "Running") { "task stopped: $((Get-ScheduledTaskInfo VoidUserInstall).LastTaskResult)"; break }
+            $last = (Get-ScheduledTaskInfo VoidUserInstall).LastTaskResult   # 267009 = running, 267011 = not started yet
+            if ($i -gt 6 -and $last -ne 267009 -and (Get-ScheduledTask VoidUserInstall).State -ne "Running") { "task stopped: $last"; break }
           }
           Copy-Item "$out\*.txt", "$out\*.log" ci-out -ErrorAction SilentlyContinue
           $r = Get-Content "$out\user-results.txt" -ErrorAction SilentlyContinue
