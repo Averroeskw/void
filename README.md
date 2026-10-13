@@ -7,6 +7,7 @@ He talks back in a natural local voice, and his eyes show what he's thinking.</p
 
 <p align="center">
   <img src="https://img.shields.io/badge/Linux-Wayland%20%26%20X11-3d9b74?style=flat-square" alt="Linux: Wayland and X11">
+  <img src="https://img.shields.io/badge/Windows-10%20%26%2011-3d9b74?style=flat-square" alt="Windows 10 and 11">
   <img src="https://img.shields.io/badge/runs-100%25%20local%20voice-3d9b74?style=flat-square" alt="Local voice">
   <img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license">
 </p>
@@ -54,6 +55,23 @@ distros it tells you which packages to install yourself.
 
 You also need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and logged in (run `claude` once in
 a terminal). To update: `git pull && ./install.sh`.
+
+### Windows 10 / 11
+
+Download the folder (green **Code** button → **Download ZIP**, then unzip it — or `git clone`), open it, and in
+PowerShell run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+It needs no admin rights: Python, his voice and the speech models go in `%LOCALAPPDATA%\void`. Then open a new
+terminal and run `void`, or start **Void** from the Start menu. Pin a hotkey to him by right-clicking the Void
+shortcut → Properties → Shortcut key. You also need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) for
+Windows, signed in.
+
+On Windows he's an always-on-top see-through window (no taskbar button), drawn with Chromium through Qt. Everything
+works the same as on Linux except Root mode (Windows has no `sudo`) and "what's playing" for music.
 
 ### Gentoo (or any distro, system-wide)
 

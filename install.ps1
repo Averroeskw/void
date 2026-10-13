@@ -16,7 +16,11 @@ New-Item -ItemType Directory -Force -Path $ROOT, $BIN, (Join-Path $ROOT "voices"
 
 # ---------------------------------------------------------------- uv (Python environment tool)
 $script:PYUV = $null
-function UV { if (Have uv) { & uv @args } elseif ($script:PYUV) { & $script:PYUV -m uv @args } else { $global:LASTEXITCODE = 1 } }
+# (named RunUv, not UV: PowerShell names ignore case, so a function "UV" calling uv would call itself)
+function RunUv {
+  $exe = Get-Command uv -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($exe) { & $exe.Source @args } elseif ($script:PYUV) { & $script:PYUV -m uv @args } else { $global:LASTEXITCODE = 1 }
+}
 if (-not (Have uv)) {
   Say "Installing uv (Python environment tool)..."
   foreach ($p in @("py", "python")) {
@@ -35,20 +39,20 @@ if (-not (Have uv)) {
 # ---------------------------------------------------------------- Python 3.12 + the libraries
 Say "Python env (3.12)..."
 if (-not (Test-Path $VPY)) {
-  UV venv --python 3.12 (Join-Path $ROOT "venv")
+  RunUv venv --python 3.12 (Join-Path $ROOT "venv")
   if ($LASTEXITCODE -ne 0) {                       # uv couldn't fetch one: use python.org's own installer
     $ver = "3.12.10"; $exe = Join-Path $env:TEMP "python-$ver-amd64.exe"
     Say "Downloading Python $ver from python.org..."
     Invoke-WebRequest "https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe" -OutFile $exe -UseBasicParsing
     Start-Process $exe -ArgumentList "/quiet InstallAllUsers=0 PrependPath=0 Include_test=0" -Wait
-    UV venv --python (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe") (Join-Path $ROOT "venv")
+    RunUv venv --python (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe") (Join-Path $ROOT "venv")
   }
   if (-not (Test-Path $VPY)) { Warn "couldn't set up Python 3.12"; exit 1 }
 }
 # the window (Qt + Chromium), mic/speakers, screenshots, volume control, speech recognition, voices
-UV pip install --python $VPY -U PySide6 sounddevice pillow pycaw comtypes faster-whisper
+RunUv pip install --python $VPY -U PySide6 sounddevice pillow pycaw comtypes faster-whisper
 if ($LASTEXITCODE -ne 0) { Warn "some Python libraries failed to install - see above"; exit 1 }
-UV pip install --python $VPY -U piper-tts
+RunUv pip install --python $VPY -U piper-tts
 if ($LASTEXITCODE -ne 0) { Warn "piper-tts failed to install - Void will use Kokoro only" }
 
 Say "Copying app to $ROOT"
@@ -60,7 +64,7 @@ $APP = Join-Path $ROOT "app"
 
 # ---------------------------------------------------------------- voices
 # Kokoro: his main voice. GitHub first; if that's blocked, kokoro_fetch.py builds the same files from Hugging Face.
-UV pip install --python $VPY -U kokoro-onnx
+RunUv pip install --python $VPY -U kokoro-onnx
 if ($LASTEXITCODE -eq 0) {
   Say "Kokoro voice..."
   & $VPY (Join-Path $APP "kokoro_fetch.py") (Join-Path $ROOT "voices\kokoro")
@@ -80,7 +84,7 @@ if (-not (Test-Path $vf)) {
 
 if (Have nvidia-smi) {
   Say "NVIDIA GPU found - adding CUDA libraries for fast, accurate speech recognition (~1 GB)..."
-  UV pip install --python $VPY -U nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"
+  RunUv pip install --python $VPY -U nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"
   if ($LASTEXITCODE -ne 0) { Warn "couldn't install CUDA libs - speech recognition will run on the CPU" }
 }
 if (-not $env:VOID_CI) {
