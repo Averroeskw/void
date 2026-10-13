@@ -6,10 +6,15 @@
 He talks back in a natural local voice, and his eyes show what he's thinking.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Linux-Wayland%20%26%20X11-3d9b74?style=flat-square" alt="Linux: Wayland and X11">
-  <img src="https://img.shields.io/badge/Windows-10%20%26%2011-3d9b74?style=flat-square" alt="Windows 10 and 11">
+  <a href="https://github.com/PLAYER99-void/void/releases/latest/download/VoidSetup.exe"><img src="https://img.shields.io/badge/Download%20for%20Windows-VoidSetup.exe-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download VoidSetup.exe for Windows"></a>
+  <a href="#linux"><img src="https://img.shields.io/badge/Install%20on%20Linux-install.sh-3d9b74?style=for-the-badge&logo=linux&logoColor=white" alt="Install on Linux"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/github/v/release/PLAYER99-void/void?style=flat-square&color=3d9b74" alt="Latest release"></a>
+  <a href="https://github.com/PLAYER99-void/void/actions/workflows/installer.yml"><img src="https://img.shields.io/github/actions/workflow/status/PLAYER99-void/void/installer.yml?style=flat-square&label=windows%20installer" alt="Windows installer tests"></a>
   <img src="https://img.shields.io/badge/runs-100%25%20local%20voice-3d9b74?style=flat-square" alt="Local voice">
-  <img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license"></a>
 </p>
 
 Say **"hey Void, fix the failing tests"** and he gets to work in your project. He floats on top of everything like a
@@ -38,10 +43,41 @@ widget, not an app window, holds up a tiny terminal so you can watch what he's d
 </tr>
 </table>
 
-Under the hood: the server records the mic itself (PipeWire / Pulse / ALSA), speech-to-text is faster-whisper, the voice
-is Kokoro (or piper / espeak-ng as fallbacks), and the server only listens on 127.0.0.1 behind a per-launch token.
+## Get started in 3 steps
 
-## Install
+1. **Install [Claude Code](https://docs.anthropic.com/en/docs/claude-code)** and sign in (run `claude` once in a terminal).
+   Void is the voice and face; Claude Code does the work.
+2. **Install Void** for your system, below.
+3. **Say "hey Void"** (or click him) and ask for something.
+
+### Windows
+
+**[Download VoidSetup.exe](https://github.com/PLAYER99-void/void/releases/latest/download/VoidSetup.exe)** and run it.
+That's it: it sets up everything and puts Void in your Start menu.
+
+- Windows 10 or 11, 64-bit. About 1 GB of disk for Python, his voice and the speech model (plus ~1 GB of NVIDIA
+  libraries if you have an NVIDIA graphics card, for faster speech recognition).
+- No admin needed. The one exception: if your PC is missing the Microsoft Visual C++ runtime, setup installs it and
+  Windows asks for permission once.
+- Uninstall any time from **Settings → Apps → Void**.
+- Tip: right-click the Void shortcut → Properties → Shortcut key, to pop him up with a hotkey.
+
+<details>
+<summary>Install from the source instead (PowerShell)</summary>
+
+Download the folder (green **Code** button → **Download ZIP**, then unzip it — or `git clone`), open it, and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+Everything goes in `%LOCALAPPDATA%\void`. Then open a new terminal and run `void`, or start **Void** from the Start menu.
+</details>
+
+On Windows he's an always-on-top see-through window (no taskbar button). Everything works the same as on Linux except
+Root mode (Windows has no `sudo`) and "what's playing" for music.
+
+### Linux
 
 ```bash
 git clone https://github.com/PLAYER99-void/void.git
@@ -49,35 +85,12 @@ cd void && ./install.sh
 void
 ```
 
-The installer handles **Arch**, **Debian / Ubuntu** and **Fedora** (and their relatives; Gentoo users see below) — it installs the system packages
-it needs with pacman, apt or dnf, then puts everything else in your home folder (`~/.local/share/void`). On other
-distros it tells you which packages to install yourself.
+The installer handles **Arch**, **Debian / Ubuntu** and **Fedora** (and their relatives): it installs the system
+packages it needs with pacman, apt or dnf, then puts everything else in your home folder (`~/.local/share/void`). On
+other distros it tells you which packages to install yourself. To update: `git pull && ./install.sh`.
 
-You also need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and logged in (run `claude` once in
-a terminal). To update: `git pull && ./install.sh`.
-
-### Windows 10 / 11
-
-The easy way: download **VoidSetup.exe** from the [latest release](https://github.com/PLAYER99-void/void/releases/latest)
-and run it. It installs the Microsoft Visual C++ runtime if your PC is missing it (Windows asks for admin once, just
-for that), then sets up Void, and adds an uninstaller to Settings → Apps.
-
-Or by hand: download the folder (green **Code** button → **Download ZIP**, then unzip it — or `git clone`), open it,
-and in PowerShell run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install.ps1
-```
-
-It needs no admin rights: Python, his voice and the speech models go in `%LOCALAPPDATA%\void`. Then open a new
-terminal and run `void`, or start **Void** from the Start menu. Pin a hotkey to him by right-clicking the Void
-shortcut → Properties → Shortcut key. You also need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) for
-Windows, signed in.
-
-On Windows he's an always-on-top see-through window (no taskbar button), drawn with Chromium through Qt. Everything
-works the same as on Linux except Root mode (Windows has no `sudo`) and "what's playing" for music.
-
-### Gentoo (or any distro, system-wide)
+<details>
+<summary>Gentoo (or any distro, system-wide)</summary>
 
 Install the dependencies with `emerge` — WebKitGTK and gtk-layer-shell need the `introspection` USE flag:
 
@@ -98,6 +111,7 @@ void
 
 Nothing is compiled (Void is Python); `ninja install` puts the app in `/usr/share/void`, `void` in `/usr/bin`, plus a
 menu entry and icon. `./configure --prefix=/usr/local` works too. To uninstall: `sudo ninja -C build uninstall`.
+</details>
 
 **Bind a hotkey** to `void listen` (pop up and start listening). Also handy: `void look` (screenshot, then listen) and
 `void` (show / hide).
@@ -108,7 +122,8 @@ menu entry and icon. `./configure --prefix=/usr/local` works too. To uninstall: 
 | sway / i3 | `bindsym $mod+a exec void listen` in your config |
 | GNOME / KDE / XFCE / Cinnamon | Settings → Keyboard → Shortcuts → add a custom shortcut that runs `void listen` |
 
-## Works on
+<details>
+<summary>Which Linux desktops he works on</summary>
 
 | desktop | what he is |
 |---|---|
@@ -118,11 +133,13 @@ menu entry and icon. `./configure --prefix=/usr/local` works too. To uninstall: 
 
 He starts in the bottom-right corner; drag him anywhere and he remembers the spot. To be see-through on a bare X11
 window manager (i3, bspwm, Openbox) you need a compositor running, e.g. `picom`.
+</details>
 
 ## Using him
 
 | | |
 |---|---|
+| say **"hey Void"** | wakes him up (on by default; Settings → Voice). "Hey Void, run the tests" works in one go |
 | **left-click** him | talk; he stops listening when you stop talking |
 | **right-click** him | his sparks swirl out into the menu: talk · new chat · folder · history · show my screen · hover · settings · hide |
 | hold **Space** | push-to-talk |
@@ -130,11 +147,28 @@ window manager (i3, bspwm, Openbox) you need a compositor running, e.g. `picom`.
 | just **type** | a box pops up under him; **Enter** sends. 📷 attaches a screenshot (right-click it for your clipboard) |
 | **drag** him | park him anywhere; he remembers the spot (outside hover mode) |
 | **Esc** | close menus → cancel listening → stop Claude → shush → hide |
-| say **"hey Void"** | wakes him up (on by default; Settings → Voice). "Hey Void, run the tests" works in one go |
 
 Settings → Look → "Click through around him" lets clicks on the see-through space go to the window behind (off by default).
 
-### Showing him things
+### Things he does instantly (no waiting for Claude)
+| say | |
+|---|---|
+| "volume up" · "set volume to 40" · "mute" | sound |
+| "pause" · "next song" · "what's playing" | music (Linux, via playerctl) |
+| "brightness down" | screen brightness |
+| "timer 10 minutes" · "remind me in 20 minutes to stretch" · "remind me at 5 to call mom" | he pings you, out loud and with a notification |
+| "how long is left" · "cancel my timers" | |
+| "what time is it" · "what's the date" | |
+| "open firefox" | any installed app |
+| "lock my screen" | |
+| "switch to my blog" | jumps to a project folder. Teach him with "remember my blog is in ~/code/blog", or add it in Settings → Brain |
+
+Everything else goes to Claude. **Settings → Brain → Model → Auto** sends quick chit-chat to the fast model and real work to
+the full one.
+
+<details>
+<summary><b>Showing him things</b>: screenshots, live view, clipboard</summary>
+
 - Say "look at my screen", "what's this error on my screen?" or "explain what I copied", and he grabs a screenshot or your
   clipboard and sends it along. You can also use 📷 in the typing box, "show my screen" in the menu, or `void look`.
   He takes just the window you're using (say "my whole screen" for everything) and shrinks it, so a look costs about a
@@ -147,8 +181,37 @@ Settings → Look → "Click through around him" lets clicks on the see-through 
   layout?", he can take a quick look at your window on his own (`void see`) — you'll see him glance with his looking
   face. He only looks during a task that needs it, never in the background, and he can only look: no clicking or typing.
 - Screenshots go to `~/.cache/void/shots` (only the last 30 are kept).
+</details>
 
-### Hover mode
+<details>
+<summary><b>Asking before he acts</b>: ask first, just do it, look don't touch, root mode</summary>
+
+Settings → Brain:
+
+- **Ask me first** (default): he edits files on his own, but before running a command or going online he shows a card,
+  asks out loud, and waits. Say "yes", "no" or "always" (no more asking for that command this chat), or click / press
+  Y / N.
+- **Just do it**: runs anything without asking.
+- **Look, don't touch**: reads and explains, changes nothing.
+- **Root mode** (Linux): like "just do it", plus `sudo` works. When he needs root, a small password card appears right
+  next to him (no separate window) — type it and press Enter. Your password goes straight to sudo and is never stored.
+</details>
+
+<details>
+<summary><b>Memory and history</b></summary>
+
+- Say **"remember …"** ("remember my main project is in ~/code/app") and he knows it in every future chat.
+  Say "forget …" to drop a note, or "what do you remember?" to see them. You can also edit notes in the 🧠 panel.
+- A new chat also gets a short summary of your last few conversations, so he has some context.
+- **History** (menu, or **Ctrl+H**) keeps every exchange. Click one to read the full answer, copy it, ask it again, or
+  **continue that chat**.
+- If he's hidden when a long task finishes, you get a desktop notification. You can also have him pop back up
+  (Settings → More).
+</details>
+
+<details>
+<summary><b>Hover mode</b>: he becomes your mouse cursor</summary>
+
 Turn it on in the menu, in Settings → Look, or with `void hover`. **He becomes your mouse cursor**: a small, plain dot
 that covers the real pointer, with no sparks or glow so he isn't distracting. His eyes look the way you move. Clicks go
 straight through him. On Hyprland the normal pointer is hidden underneath.
@@ -157,35 +220,41 @@ straight through him. On Hyprland the normal pointer is hidden underneath.
 grows back to full size, ready to listen. `void stop` always brings the normal cursor back. Works on Hyprland and X11 desktops.
 Other Wayland desktops don't tell apps where the mouse is, so it isn't available on sway or KDE, and on GNOME he only
 keeps up while the mouse is over older (X11) apps.
+</details>
 
-### Asking before he acts (Settings → Brain)
-- **Ask me first** (default): he edits files on his own, but before running a command or going online he shows a card,
-  asks out loud, and waits. Say "yes", "no" or "always" (no more asking for that command this chat), or click / press
-  Y / N.
-- **Just do it**: runs anything without asking.
-- **Look, don't touch**: reads and explains, changes nothing.
-- **Root mode**: like "just do it", plus `sudo` works. When he needs root, a small password card appears right next to
-  him (no separate window) — type it and press Enter. Your password goes straight to sudo and is never stored.
+<details>
+<summary><b>While he works</b>: the status pill, his little terminal, interrupting, long answers</summary>
 
-### Memory and history
-- Say **"remember …"** ("remember my main project is in ~/code/app") and he knows it in every future chat.
-  Say "forget …" to drop a note, or "what do you remember?" to see them. You can also edit notes in the 🧠 panel.
-- A new chat also gets a short summary of your last few conversations, so he has some context.
-- **History** (menu, or **Ctrl+H**) keeps every exchange. Click one to read the full answer, copy it, ask it again, or
-  **continue that chat**.
+**The status pill.** A bright spark circles him and a pill up top says what he's doing and for how long ("running npm
+test · 0:12") for as long as Claude is busy. When he answers, the words appear as he says them.
 
-### When a long task finishes
-If he's hidden when an answer lands, you get a desktop notification. You can also have him pop back up
-(Settings → More).
+**The terminal.** While he works he holds a small terminal like a piece of paper, just under his eyes, turned to face
+him, so you see it from the back (the text reads mirrored and the top leans toward you). It shows what he's really
+doing: the lines he's changing (red `-` out, green `+` in), the command he runs and its output, the file he's reading,
+search hits and his plan. While he reads, his eyes rest on it and it stays still. Every several seconds he looks away
+(left, right, up, or at you) and takes the paper with him. The title says what it is ("editing server.py", "Run the
+tests") with a ✓ or ✕ when it's done. In Root mode it wears a red ROOT sticker (on the side you see, so it reads the
+right way round), and commands get a red border and a `#` prompt. It goes away when he starts answering. It only swings
+out to a side that has room, so it never runs off the screen when he's parked in a corner, and it never covers his
+eyes. Settings → Look → Terminal turns it off, or switches it to **Faces you (readable)** so you can read along with
+what he's typing.
 
-### His face
+**Interrupting him.** Say **"stop"** (or "wait", "shh", "be quiet") while he's talking and he stops. Say **"hey Void,
+…"** mid-sentence to cut in with something new. Settings → Voice → "Interrupt him by voice".
+
+**Long answers.** When an answer is long or has code, a **↗ full answer** button appears under him. It opens the whole
+thing with proper formatting and a copy button on every code block.
+</details>
+
+<details>
+<summary><b>His face, personality and looks</b></summary>
+
 - **Pupils:** slits, circles, dots, big circles, hearts and spinning stars. They follow his mood and what Claude is doing.
 - **Moods while working:** reading (eyes sweep along lines), editing (concentrated squint), running a command (eyes on the
   terminal, a sweat drop), searching the web (darting around), asking permission (puppy eyes).
 - **Other moods:** happy, beaming "^ ^", excited (stars), love (hearts, when you say thanks), shy, wink,
   curious, confused, surprised, scared (trembling pupils), sad (droopy eyes and a tear when something fails), bored,
   annoyed, sleepy.
-- **Colours:** pupils and eye whites can be any colour, or random each time he appears.
 - **Motion:** he doesn't bob or bounce; all the life is in his eyes.
 - **Talking:** he talks like a person, in time with his words: mostly looking at you with small eye movements, glancing
   off to the side while he finds the words, a little nod at the end of a sentence, a head tilt on a question.
@@ -194,73 +263,33 @@ If he's hidden when an answer lands, you get a desktop notification. You can als
   his face changes right on that word: a proud "^ ^" when something's fixed, puppy eyes when he's sorry, one brow up when
   he's unsure, looking up and away while he thinks, a giggle when he laughs. The tags are never shown or spoken. (Replies
   without tags, like his quick answers, fall back to reading the words.)
+- **Personality:** he doesn't chatter: no greetings, no comments about your computer, no pop-ups you didn't ask for. He
+  gets sleepier late at night. Rub the mouse back and forth over him and he purrs ("^ ^" and little hearts). Click him
+  too many times and he dodges.
+- **Hanging out:** every few seconds of quiet he does a little routine: looks around, rolls (the whole ball, or just his
+  eyes), yawns, chases one of his sparks with his eyes, hums and sways, peeks, stretches, whistles, gets a bit dizzy,
+  shakes it off, or blinks a few times. Move the mouse over him and he stops to look at you.
+- **Sound effects:** soft little blips when he wakes up, opens his menu, finishes a task or reminds you. Settings →
+  Voice → Sound effects.
 
-### Things he does instantly (no waiting for Claude)
-| say | |
-|---|---|
-| "volume up" · "set volume to 40" · "mute" | sound (PipeWire / Pulse) |
-| "pause" · "next song" · "what's playing" | music, via playerctl |
-| "brightness down" | screen brightness, via brightnessctl |
-| "timer 10 minutes" · "remind me in 20 minutes to stretch" · "remind me at 5 to call mom" | he pings you, out loud and with a notification |
-| "how long is left" · "cancel my timers" | |
-| "what time is it" · "what's the date" | |
-| "open firefox" | any installed app |
-| "lock my screen" | |
-| "switch to my blog" | jumps to a project folder. Teach him with "remember my blog is in ~/code/blog", or add it in Settings → Brain |
-
-Everything else goes to Claude. **Settings → Brain → Model → Auto** sends quick chit-chat to the fast model and real work to
-the full one.
-
-### When he's working
-A bright spark circles him and a pill up top says what he's doing and for how long ("running npm test · 0:12") for as long
-as Claude is busy. When he answers, the words appear as he says them.
-
-### The terminal
-While he works he holds a small terminal like a piece of paper, just under his eyes, turned to face him, so you see it
-from the back (the text reads mirrored and the top leans toward you). It shows what he's really doing: the lines he's
-changing (red `-` out, green `+` in), the command he runs and its output, the file he's reading, search hits and his plan.
-While he reads, his eyes rest on it and it stays still. Every several seconds he looks away (left, right, up, or at you)
-and takes the paper with him. The title says what it is ("editing server.py", "Run the tests") with a ✓ or ✕ when it's
-done. In Root mode it wears a red ROOT sticker (on the side you see, so it reads the right way round), and commands get a red border and a `#` prompt. It goes away when he starts answering. It only swings out to a side that has room, so it never runs off the screen
-when he's parked in a corner, and it never covers his eyes. Settings → Look → Terminal turns it off, or switches it to
-**Faces you (readable)** so you can read along with what he's typing.
-
-### Interrupting him
-Say **"stop"** (or "wait", "shh", "be quiet") while he's talking and he stops. Say **"hey Void, …"** mid-sentence to cut in
-with something new. Settings → Voice → "Interrupt him by voice".
-
-### Long answers
-When an answer is long or has code, a **↗ full answer** button appears under him. It opens the whole thing with proper
-formatting and a copy button on every code block.
-
-### His personality
-He doesn't chatter: no greetings, no comments about your computer, no pop-ups you didn't ask for. He gets sleepier late
-at night. Rub the mouse back and forth over him and he purrs ("^ ^" and little hearts). Click him too many times and he
-dodges.
-
-### Skins and colours
-Settings → Look:
+**Skins and colours** (Settings → Look):
 - **Colours:** tap any part of him in the preview (body, either pupil, either eye white, or his skin) and pick a colour with
   the colour square, the hue slider, a hex code, the swatches or your recent colours. Turn off **Matching eyes** to give him
   two different eyes. **🎲 all** rolls a whole new look; **Surprise me** does it every time he appears.
 - **Skins:** cat ears, bunny ears, bear ears, antenna, devil horns, halo, crown, sprout, party hat, headphones or a bow.
   Ears twitch and droop or perk up with his mood, and the antenna and sprout wobble when he moves.
 - **Typing:** `/skin cat`, `/body #c9a8f0`, `/eyes pink`, `/whites mint`.
+</details>
 
-### Sound effects
-Soft little blips when he wakes up, opens his menu, finishes a task or reminds you. Settings → Voice → Sound effects.
+<details>
+<summary><b>Starting at login</b></summary>
 
-### Starting up
-Void starts when you log in (Settings → More → "Start when I log in"). That's `~/.config/autostart/void.desktop`, which
-GNOME, KDE, XFCE, Cinnamon and MATE pick up; on Hyprland it also adds a marked `exec-once` line to `hyprland.conf`.
-Turning the setting off removes both. On sway / i3 / other bare window managers, add `exec void show` to your config. He's listening
-for "hey Void" straight away. Turn on Settings → Voice → "Listen as soon as he pops up" if you want `void` to start
-listening immediately too.
-
-### When he's just hanging out
-Every few seconds of quiet he does a little routine: looks around, rolls (the whole ball, or just his eyes), yawns, chases
-one of his sparks with his eyes, hums and sways, peeks, stretches, whistles, gets a bit dizzy, shakes it off, or blinks a
-few times. Move the mouse over him and he stops to look at you.
+Void starts when you log in (Settings → More → "Start when I log in"). On Windows that's a shortcut in your Startup
+folder. On Linux it's `~/.config/autostart/void.desktop`, which GNOME, KDE, XFCE, Cinnamon and MATE pick up; on
+Hyprland it also adds a marked `exec-once` line to `hyprland.conf`. Turning the setting off removes them. On sway / i3 /
+other bare window managers, add `exec void show` to your config. He's listening for "hey Void" straight away. Turn on
+Settings → Voice → "Listen as soon as he pops up" if you want `void` to start listening immediately too.
+</details>
 
 ## Commands
 
@@ -269,13 +298,52 @@ few times. Move the mouse over him and he stops to look at you.
 In the typing box: `/new` `/cd <dir>` `/history` `/memory` `/remember …` `/forget …` `/look` `/clip` `/hover`
 `/model <opus|sonnet|haiku>` `/voice` `/eyes <colour|random>` `/whites <colour|random>` `/pupils <slit|circle|dot>` `/mute` `/stop`
 
-## Config: `~/.config/void/config.json`
+## Troubleshooting
 
-Almost everything is in Settings. A few extras:
+**Start with `void doctor`.** It lists your mics, records 3 seconds with a level meter, and says which voice and
+Claude Code it found. Logs: `void log`.
+
+- **He can't hear you:** check the `void doctor` level meter. Pick the right mic in Settings → Voice. On Windows, also
+  check that the mic's plug is in the mic jack and its level isn't turned down (Sound settings → Recording).
+- **Windows: "DLL load failed" or "faster-whisper not installed" in `void log`:** the Microsoft Visual C++ runtime is
+  missing. Install it from [aka.ms/vs/17/release/vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe)
+  (VoidSetup.exe does this for you), then `void restart`.
+- **"I can't find Claude Code":** install it and run `claude` once to sign in.
+- **Speech stutters:** run `void stress`. He says a few sentences four times — on a quiet computer, with every CPU core
+  flat out, with Void itself busy, and with both — and it tells you if the voice ever ran dry and how close it came.
+  If the test says your voice is too slow for the computer, pick a lighter one.
+- **"not allowed: Bash":** you're on "Look, don't touch". Switch it in Settings → Brain.
+
+<details>
+<summary>Linux-specific problems</summary>
+
+- **He doesn't stay on top / looks like a normal window:** run `void doctor` — the first lines say whether he's an
+  overlay here and why not. Check `gtk-layer-shell` is installed (Debian/Ubuntu: `gir1.2-gtklayershell-0.1`). If he
+  can't be an overlay he uses XWayland instead, so XWayland needs to be available too.
+- **He flashes and disappears:** WebKit is crashing on your GPU driver (common on NVIDIA + Wayland). The launcher retries
+  with safer render modes and remembers the one that works. Pick one yourself with `void render nocomp` (steadiest on
+  NVIDIA), or reset with `void render default`.
+- **Black box around him:** nothing is doing transparency. On a bare X11 window manager start a compositor (`picom`).
+- **Screenshots fail:** install `grim slurp` (Hyprland, sway and other wlroots desktops), `spectacle` (KDE),
+  `gnome-screenshot` (GNOME) or `maim` (X11). For the clipboard, install `wl-clipboard` or `xclip`.
+- **Other ways to run him:** `VOID_NO_LAYER=1 void` skips the overlay and uses a normal always-on-top window.
+  `VOID_BROWSER=1 void` opens him in a plain browser app window instead (handy if WebKitGTK misbehaves).
+- His voice is played by the server straight to PipeWire/Pulse (not the window), with almost a second of sound kept
+  buffered. `"voice_out": "page"` in the config plays it in the window instead, like older versions. His face and his
+  voice run on separate CPU cores on computers with 4+ cores; `"cpu_split": false` turns that off.
+</details>
+
+## Config
+
+Almost everything is in Settings. The file is `~/.config/void/config.json` on Linux and `%APPDATA%\void\config.json`
+on Windows.
+
+<details>
+<summary>All the config keys</summary>
 
 | key | default | |
 |---|---|---|
-| `trust` | `ask` | `ask`, `trust` or `readonly` (see above) |
+| `trust` | `ask` | `ask`, `trust` or `readonly` (see "Asking before he acts") |
 | `wake_word` | `true` | "hey Void" |
 | `autostart` | `true` | start when you log in |
 | `listen_on_show` | `false` | start listening as soon as he pops up |
@@ -294,36 +362,16 @@ Almost everything is in Settings. A few extras:
 | `mic_device` | `""` | input to record from (Settings → Voice lists them) |
 | `extra_args` | `[]` | extra CLI flags for `claude` |
 
-Memory lives in `~/.local/share/void/memory.json` and history in `~/.local/share/void/history.jsonl`. Both are plain files
-you can read or delete.
+Memory (`memory.json`) and history (`history.jsonl`) live in `~/.local/share/void` on Linux and `%LOCALAPPDATA%\void`
+on Windows. Both are plain files you can read or delete.
+</details>
 
-## Other ways to run him
+## How it works
 
-`VOID_NO_LAYER=1 void` skips the overlay and uses a normal always-on-top window. `VOID_BROWSER=1 void` opens him in a
-plain browser app window instead (handy if WebKitGTK misbehaves).
-
-## Troubleshooting
-- **He doesn't stay on top / looks like a normal window:** run `void doctor` — the first lines say whether he's an
-  overlay here and why not. Check `gtk-layer-shell` is installed (Debian/Ubuntu: `gir1.2-gtklayershell-0.1`). If he
-  can't be an overlay he uses XWayland instead, so XWayland needs to be available too.
-- **His face and his voice run on separate CPU cores** (on computers with 4+ cores): the window gets the first half,
-  the voice/brain the second half, so drawing him can never starve his voice. `"cpu_split": false` turns that off.
-- **Speech stutters:** run `void stress`. He says a few sentences four times — on a quiet computer, with every CPU core
-  flat out, with Void itself busy, and with both — and it tells you if the voice ever ran dry and how close it came.
-  His voice is played by the server straight to PipeWire/Pulse (not the window), the next sentences are made while the
-  current one plays, and almost a second of sound is kept buffered, so a busy moment can't cause a gap. If the test says
-  your voice is too slow for the computer, pick a lighter one. (`"voice_out": "page"` in the config plays it in the
-  window instead, like older versions.)
-- **He can't hear you:** run `void doctor`. It lists your inputs, records 3 seconds and shows a level meter. Pick the right
-  mic in Settings → Voice.
-- **He flashes and disappears:** WebKit is crashing on your GPU driver (common on NVIDIA + Wayland). The launcher retries
-  with safer render modes and remembers the one that works. Pick one yourself with `void render nocomp` (steadiest on
-  NVIDIA), or reset with `void render default`.
-- **Black box around him:** nothing is doing transparency. On a bare X11 window manager start a compositor (`picom`).
-- **"not allowed: Bash":** you're on "Look, don't touch". Switch it in Settings → Brain.
-- **Screenshots fail:** install `grim slurp` (Hyprland, sway and other wlroots desktops), `spectacle` (KDE),
-  `gnome-screenshot` (GNOME) or `maim` (X11). For the clipboard, install `wl-clipboard` or `xclip`.
-- Logs: `void log`.
+The server records the mic itself (PipeWire / Pulse / ALSA on Linux, the Windows audio system on Windows), speech-to-text
+is [faster-whisper](https://github.com/SYSTRAN/faster-whisper), the voice is [Kokoro](https://github.com/thewh1teagle/kokoro-onnx)
+(or piper / espeak-ng as fallbacks), and every request goes to Claude Code on your machine. The server only listens on
+`127.0.0.1` behind a per-launch token, so nothing else on your network can talk to him.
 
 ## License
 
