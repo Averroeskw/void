@@ -39,8 +39,9 @@ jobs:
           icacls $out /grant "Everyone:(OI)(CI)F" | Out-Null
           Copy-Item dist\VoidSetup.exe, .github\ci\user-install.ps1 $out
           $pw = "Vt1!" + [guid]::NewGuid().ToString("N").Substring(0, 16)
-          net user voidtest $pw /add | Out-Null
-          $cred = [pscredential]::new("voidtest", (ConvertTo-SecureString $pw -AsPlainText -Force))
+          net user voidtest $pw /add
+          if ($LASTEXITCODE) { exit 1 }
+          $cred = [pscredential]::new("$env:COMPUTERNAME\voidtest",(ConvertTo-SecureString $pw -AsPlainText -Force))
           Start-Process powershell.exe -Credential $cred -LoadUserProfile -Wait -WorkingDirectory $out `
             -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "$out\user-install.ps1", "-Setup", "$out\VoidSetup.exe", "-Out", $out
           Copy-Item "$out\*.txt", "$out\*.log" ci-out -ErrorAction SilentlyContinue
