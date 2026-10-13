@@ -2137,7 +2137,7 @@ def stop_proc():
 def state_info():
     return {
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
-        "tts": tts_engine(), "mic": bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
+        "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
 
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),

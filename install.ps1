@@ -14,6 +14,12 @@ function Warn($m) { Write-Host "! $m" -ForegroundColor Yellow }
 function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 New-Item -ItemType Directory -Force -Path $ROOT, $BIN, (Join-Path $ROOT "voices") | Out-Null
 
+# speech recognition (ctranslate2) and the voices (onnxruntime) need the Visual C++ runtime; VoidSetup.exe installs it
+if (-not (Test-Path (Join-Path $env:WINDIR "System32\vcruntime140_1.dll"))) {
+  Warn "The Microsoft Visual C++ runtime is missing - Void can't hear or speak without it. Install it (needs admin):"
+  Write-Host "    https://aka.ms/vs/17/release/vc_redist.x64.exe"
+}
+
 # ---------------------------------------------------------------- uv (Python environment tool)
 $script:PYUV = $null
 # (named RunUv, not UV: PowerShell names ignore case, so a function "UV" calling uv would call itself)

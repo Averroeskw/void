@@ -58,8 +58,12 @@ a terminal). To update: `git pull && ./install.sh`.
 
 ### Windows 10 / 11
 
-Download the folder (green **Code** button → **Download ZIP**, then unzip it — or `git clone`), open it, and in
-PowerShell run:
+The easy way: download **VoidSetup.exe** from the [latest release](https://github.com/PLAYER99-void/void/releases/latest)
+and run it. It installs the Microsoft Visual C++ runtime if your PC is missing it (Windows asks for admin once, just
+for that), then sets up Void, and adds an uninstaller to Settings → Apps.
+
+Or by hand: download the folder (green **Code** button → **Download ZIP**, then unzip it — or `git clone`), open it,
+and in PowerShell run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1

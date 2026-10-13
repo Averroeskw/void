@@ -4,3 +4,5 @@ __pycache__/
 *.bak
 *.part
 build/
+dist/
+installer/void.ico
