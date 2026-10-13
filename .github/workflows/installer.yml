@@ -38,7 +38,7 @@ jobs:
           New-Item -ItemType Directory -Force $out | Out-Null
           icacls $out /grant "Everyone:(OI)(CI)F" | Out-Null
           Copy-Item dist\VoidSetup.exe, .github\ci\user-install.ps1 $out
-          $pw = "Vt1!" + [guid]::NewGuid().ToString("N").Substring(0, 16)
+          $pw = "Vt1!" + [guid]::NewGuid().ToString("N").Substring(0, 9)   # net user stops to ask about passwords over 14 characters
           net user voidtest $pw /add
           if ($LASTEXITCODE) { exit 1 }
           $cred = [pscredential]::new("$env:COMPUTERNAME\voidtest",(ConvertTo-SecureString $pw -AsPlainText -Force))
