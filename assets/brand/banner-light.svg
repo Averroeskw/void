@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" width="1200" height="380" role="img" aria-label="Void, a voice-first desktop companion for Claude Code">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fbf9"/>
+      <stop offset="1" stop-color="#e8f2ed"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#3d9b74" stop-opacity=".35"/>
+      <stop offset=".55" stop-color="#3d9b74" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#3d9b74" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb" cx=".38" cy=".3" r=".75">
+      <stop offset="0" stop-color="#2c3331"/>
+      <stop offset=".45" stop-color="#0d0f0e"/>
+      <stop offset="1" stop-color="#030404"/>
+    </radialGradient>
+    <radialGradient id="shadow">
+      <stop offset="0" stop-color="#000" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="380" rx="28" fill="url(#bg)"/>
+  <rect x=".5" y=".5" width="1199" height="379" rx="27.5" fill="none" stroke="#3d9b74" stroke-opacity=".25"/>
+
+  <!-- the orb -->
+  <circle cx="290" cy="180" r="190" fill="url(#glow)"/>
+  <ellipse cx="290" cy="335" rx="95" ry="12" fill="url(#shadow)"/>
+  <g fill="#3d9b74">
+    <rect x="148" y="98" width="14" height="4" rx="2" opacity=".55" transform="rotate(-30 155 100)"><animate attributeName="opacity" values=".55;.1;.55" dur="4s" repeatCount="indefinite"/></rect>
+    <rect x="430" y="120" width="12" height="4" rx="2" opacity=".4" transform="rotate(25 436 122)"><animate attributeName="opacity" values=".1;.5;.1" dur="5s" repeatCount="indefinite"/></rect>
+    <rect x="128" y="230" width="10" height="4" rx="2" opacity=".35"><animate attributeName="opacity" values=".35;.05;.35" dur="6s" repeatCount="indefinite"/></rect>
+    <rect x="445" y="250" width="14" height="4" rx="2" opacity=".5" transform="rotate(-15 452 252)"><animate attributeName="opacity" values=".5;.15;.5" dur="4.5s" repeatCount="indefinite"/></rect>
+    <rect x="370" y="52" width="10" height="4" rx="2" opacity=".3" transform="rotate(40 375 54)"/>
+  </g>
+  <circle cx="290" cy="180" r="118" fill="url(#orb)" stroke="#2a3a34" stroke-width="2"/>
+  <ellipse cx="248" cy="118" rx="30" ry="12" fill="#fff" opacity=".07" transform="rotate(-30 248 118)"/>
+  <g fill="#f3ddd0">
+    <ellipse cx="250" cy="170" rx="34" ry="48"><animate attributeName="ry" values="48;48;4;48;48" keyTimes="0;.92;.95;.98;1" dur="6s" repeatCount="indefinite"/></ellipse>
+    <ellipse cx="330" cy="170" rx="34" ry="48"><animate attributeName="ry" values="48;48;4;48;48" keyTimes="0;.92;.95;.98;1" dur="6s" repeatCount="indefinite"/></ellipse>
+  </g>
+  <g fill="#2f8f6a">
+    <ellipse cx="266" cy="168" rx="6.5" ry="17"><animate attributeName="ry" values="17;17;1;17;17" keyTimes="0;.92;.95;.98;1" dur="6s" repeatCount="indefinite"/></ellipse>
+    <ellipse cx="346" cy="168" rx="6.5" ry="17"><animate attributeName="ry" values="17;17;1;17;17" keyTimes="0;.92;.95;.98;1" dur="6s" repeatCount="indefinite"/></ellipse>
+  </g>
+
+  <!-- words -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+    <text x="496" y="168" font-size="104" font-weight="700" letter-spacing="-3" fill="#0f1a16">Void</text>
+    <text x="500" y="216" font-size="26" fill="#4b6359">Your voice-first desktop companion for Claude Code.</text>
+    <text x="500" y="256" font-size="22" fill="#2f7d5c">Say “hey Void” and he does the work.</text>
+    <g font-size="16" font-weight="600" text-anchor="middle" fill="#1f4f3c">
+      <rect x="500" y="290" width="150" height="34" rx="17" fill="#3d9b74" fill-opacity=".14" stroke="#3d9b74" stroke-opacity=".5"/>
+      <text x="575" y="312">Windows 10 / 11</text>
+      <rect x="662" y="290" width="86" height="34" rx="17" fill="#3d9b74" fill-opacity=".14" stroke="#3d9b74" stroke-opacity=".5"/>
+      <text x="705" y="312">Linux</text>
+      <rect x="760" y="290" width="172" height="34" rx="17" fill="#3d9b74" fill-opacity=".14" stroke="#3d9b74" stroke-opacity=".5"/>
+      <text x="846" y="312">100% local voice</text>
+      <rect x="944" y="290" width="70" height="34" rx="17" fill="#3d9b74" fill-opacity=".14" stroke="#3d9b74" stroke-opacity=".5"/>
+      <text x="979" y="312">MIT</text>
+    </g>
+  </g>
+</svg>
