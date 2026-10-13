@@ -33,9 +33,19 @@ from urllib.parse import urlparse
 APP_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP_DIR))
 import quick  # noqa: E402
+WIN = os.name == "nt"                        # Windows: OS bits go through winsys.py instead of Linux command-line tools
+if WIN:
+    import winsys  # noqa: E402
+    winsys.dpi_aware()
+    for _s in (sys.stdout, sys.stderr):               # logs go to a file: write UTF-8, not the old Windows code page
+        if _s is not None and hasattr(_s, "reconfigure"):
+            _s.reconfigure(encoding="utf-8", errors="replace")
 STATIC = APP_DIR / "static"
-DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "void"
-CONF_PATH = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "void" / "config.json"
+if WIN:
+    DATA_DIR, CONF_PATH = winsys.data_dir(), winsys.config_dir() / "config.json"
+else:
+    DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "void"
+    CONF_PATH = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "void" / "config.json"
 STATE_PATH = DATA_DIR / "state.json"
 TOKEN = secrets.token_urlsafe(24)
 
@@ -308,6 +318,15 @@ HYPR_MARK = "# added by Void (Settings → More → Start when I log in)"
 def sync_autostart():
     """Add/remove Void from login startup to match the `autostart` setting."""
     on = bool(CFG.get("autostart"))
+    if WIN:                                   # a shortcut in the Startup folder that runs the launcher quietly
+        link = winsys.startup_link()
+        if on:
+            pyw = Path(sys.executable).with_name("pythonw.exe")
+            winsys.shortcut(link, str(pyw if pyw.exists() else sys.executable), f'"{APP_DIR / "launch_win.py"}" show',
+                            icon=str(STATIC / "icon.ico"))
+        else:
+            link.unlink(missing_ok=True)
+        return
     launcher = shutil.which("void") or str(Path.home() / ".local/bin/void")     # ~/.local/bin, or /usr/bin after ninja install
     try:
         if on:
@@ -395,7 +414,7 @@ def approval_say(tool, inp):
     return f"Can I use {tool}?"
 
 
-SEE_RE = re.compile(r"(?:\S*/)?void see(?: window| screen)?")
+SEE_RE = re.compile(r"(?:\S*[/\\])?void(?:\.cmd)? see(?: window| screen)?")
 
 
 class Approvals:
@@ -500,7 +519,7 @@ def approval_text(tool, inp):
 
 
 # ---------------------------------------------------------------- screenshots, clipboard, notifications
-SHOTS = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "void" / "shots"
+SHOTS = (winsys.cache_dir() if WIN else Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "void") / "shots"
 
 
 def _run(cmd, **kw):
@@ -558,6 +577,17 @@ def capture(kind):
     for old in sorted(SHOTS.glob("void-*.*"))[:-30]:        # keep the folder small
         old.unlink(missing_ok=True)
     out = SHOTS / f"void-{time.strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}.png"
+    if WIN:
+        if kind == "clipboard":
+            what, val = winsys.clipboard(out)
+            if what == "image":
+                return {"kind": "clipimg", "path": str(_shrink(Path(val))), "label": "copied image"}
+            if not val.strip():
+                raise RuntimeError("the clipboard is empty")
+            return {"kind": "clip", "text": val[:12000], "label": "copied text"}
+        got = winsys.screenshot(kind, out)
+        return {"kind": got, "path": str(_shrink(out)),
+                "label": {"screen": "screenshot", "window": "your window", "region": "screen area"}[got]}
     wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
     geo = _active_window() if kind == "window" else None
     if kind == "window" and not geo and not (wayland and (shutil.which("spectacle") or shutil.which("gnome-screenshot"))):
@@ -651,6 +681,8 @@ def attach_prompt(atts):
 
 
 def notify(title, body):
+    if WIN:
+        return winsys.notify(title, body)
     if shutil.which("notify-send"):
         subprocess.Popen(["notify-send", "-a", "Void", "-i", str(STATIC / "icon.png"), title, body[:300]],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -669,6 +701,9 @@ _whisper_lock = threading.Lock()
 def _preload_cuda_libs():
     """faster-whisper needs cuBLAS + cuDNN for the GPU. The installer puts them in the venv (pip nvidia-* wheels);
     load them by full path so ctranslate2 finds them without LD_LIBRARY_PATH."""
+    if WIN:
+        winsys.add_cuda_dirs()
+        return 1
     import ctypes
     import glob
     import site
@@ -687,7 +722,7 @@ def _preload_cuda_libs():
 
 
 def _gpu_ok():
-    if CFG["whisper_device"] == "cpu" or not os.path.exists("/proc/driver/nvidia/version"):
+    if CFG["whisper_device"] == "cpu" or not (winsys.gpu_ok() if WIN else os.path.exists("/proc/driver/nvidia/version")):
         return False
     try:
         import ctranslate2
@@ -794,8 +829,38 @@ def mic_cmds():
     return cmds
 
 
+class LinuxMic:
+    """A recorder program's output: read(timeout) → bytes (b"" = nothing yet; EOFError if it stopped), close(). On
+    Windows, winsys.Mic has the same shape."""
+
+    def __init__(self, proc, name):
+        self.proc, self.name, self.fd = proc, name, proc.stdout.fileno()
+
+    def read(self, timeout):
+        r, _, _ = select.select([self.fd], [], [], timeout)
+        if not r:
+            return b""
+        chunk = os.read(self.fd, 65536)
+        if not chunk:
+            raise EOFError
+        return chunk
+
+    def close(self):
+        kill(self.proc)
+
+    def err(self):
+        return (self.proc.stderr.read() or b"").decode(errors="replace").strip()
+
+
 def open_mic():
-    """Start the first recorder that actually produces audio. Returns (proc, name, first_bytes)."""
+    """Start the first recorder that actually produces audio. Returns (mic, name, first_bytes)."""
+    if WIN:
+        mic = winsys.Mic(RATE, CFG.get("mic_device"))
+        first = mic.read(2.5)
+        if not first:
+            mic.close()
+            raise RuntimeError("couldn't open the mic — no sound came in (Settings → Privacy → Microphone?)")
+        return mic, mic.name, first
     errs = []
     for c in mic_cmds():
         try:
@@ -806,7 +871,7 @@ def open_mic():
         r, _, _ = select.select([p.stdout], [], [], 2.5)
         first = os.read(p.stdout.fileno(), 65536) if r else b""
         if first:
-            return p, c[0], first
+            return LinuxMic(p, c[0]), c[0], first
         kill(p)
         err = (p.stderr.read() or b"").decode(errors="replace").strip().splitlines()
         errs.append(f"{c[0]}: {err[-1] if err else 'no audio came out'}")
@@ -815,7 +880,15 @@ def open_mic():
     raise RuntimeError("couldn't open the mic — " + "; ".join(errs))
 
 
+def spawn_kw():
+    """Start a child in its own group, so stopping it also stops whatever it started."""
+    return {"creationflags": 0x00000200 | winsys.NO_WINDOW} if WIN else {"start_new_session": True}
+
+
 def kill(p):
+    if p and p.poll() is None and WIN:
+        p.kill()
+        return
     if p and p.poll() is None:
         try:
             os.killpg(p.pid, signal.SIGTERM)
@@ -842,13 +915,12 @@ class Listen:
         self.stop_ev.set()
 
     def run(self, emit):
-        proc, name, buf = open_mic()
+        mic, name, buf = open_mic()
         emit(t="open", rec=name)
         pcm = bytearray()
         t0 = time.monotonic()
         floor, spoke, voiced, last_voice, peak, clipped = None, False, 0, t0, 0.0, 0
         reason = "stop"
-        fd = proc.stdout.fileno()
         try:
             while True:
                 while len(buf) >= FRAME:
@@ -889,17 +961,14 @@ class Listen:
                         self.stop_ev.set()
                 if self.stop_ev.is_set():
                     break
-                r, _, _ = select.select([fd], [], [], 0.1)
-                if r:
-                    chunk = os.read(fd, 8192)
-                    if not chunk:
-                        if len(pcm) < FRAME * 10:
-                            err = (proc.stderr.read() or b"").decode(errors="replace").strip()
-                            raise RuntimeError(f"{name} stopped unexpectedly {err[-200:]}".strip())
-                        break
-                    buf += chunk
+                try:
+                    buf += mic.read(0.1)
+                except EOFError:
+                    if len(pcm) < FRAME * 10:
+                        raise RuntimeError(f"{name} stopped unexpectedly {mic.err()[-200:]}".strip())
+                    break
         finally:
-            kill(proc)
+            mic.close()
         if peak < 0.0005:
             emit(t="error", text="the mic is completely silent — is the right input selected/unmuted? "
                                  "(`void doctor` lists inputs; set mic_device in the config)")
@@ -921,6 +990,8 @@ def reset_whisper():
 
 
 def list_mics():
+    if WIN:
+        return winsys.list_mics()
     if not shutil.which("pactl"):
         return []
     out = subprocess.run(["pactl", "-f", "json", "list", "sources"], capture_output=True, text=True).stdout
@@ -1009,19 +1080,16 @@ class Wake:
 
     @classmethod
     def session(cls):
-        proc, _name, buf = open_mic()
-        fd = proc.stdout.fileno()
+        mic, _name, buf = open_mic()
         floor, voiced, seg, in_speech, last_voice, started = None, 0, bytearray(), False, 0.0, 0.0
         pre, n = bytearray(), 0
         cls.cut = None
         try:
             while cls.should_run():
-                r, _, _ = select.select([fd], [], [], 0.2)
-                if r:
-                    chunk = os.read(fd, 8192)
-                    if not chunk:
-                        return
-                    buf += chunk
+                try:
+                    buf += mic.read(0.2)
+                except EOFError:
+                    return
                 while len(buf) >= FRAME:
                     fr, buf = buf[:FRAME], buf[FRAME:]
                     s = memoryview(fr).cast("h")
@@ -1060,7 +1128,7 @@ class Wake:
             if cls.follow_on:
                 cls.follow_on = False
                 BUS.pub(t="follow", on=False)
-            kill(proc)
+            mic.close()
 
     @classmethod
     def check(cls, pcm, started):
@@ -1089,7 +1157,12 @@ class Wake:
 
 def doctor():
     print("Void doctor\n")
-    if shutil.which("pactl"):
+    if WIN:
+        print("inputs (any part of a name works as mic_device):")
+        for m in winsys.list_mics():
+            print("  " + m["label"])
+        print()
+    elif shutil.which("pactl"):
         out = subprocess.run(["pactl", "list", "short", "sources"], capture_output=True, text=True).stdout
         dflt = subprocess.run(["pactl", "get-default-source"], capture_output=True, text=True).stdout.strip()
         print("inputs (use the 2nd column as mic_device):")
@@ -1097,21 +1170,23 @@ def doctor():
             if ".monitor" not in ln:
                 print("  " + ln + ("   <- default" if dflt and dflt in ln else ""))
         print()
-    print("recorders tried in order:", ", ".join(c[0] for c in mic_cmds()) or "NONE")
+    print("recorders tried in order:", "sounddevice" if WIN else (", ".join(c[0] for c in mic_cmds()) or "NONE"))
     print("recording 3 seconds — say something…", flush=True)
     try:
-        proc, name, buf = open_mic()
+        mic, name, buf = open_mic()
         t0, data = time.monotonic(), bytearray(buf)
         while time.monotonic() - t0 < 3:
-            r, _, _ = select.select([proc.stdout], [], [], 0.2)
-            if r:
-                data += os.read(proc.stdout.fileno(), 8192)
-        kill(proc)
+            try:
+                data += mic.read(0.2)
+            except EOFError:
+                break
+        mic.close()
         s = memoryview(bytes(data[: len(data) // 2 * 2])).cast("h")
         peak = max((abs(x) for x in s), default=0) / 32768
         bar = "#" * int(min(1, peak * 3) * 30)
         print(f"  {name}: {len(data) / 32000:.1f}s captured, loudest {peak:.3f}  [{bar:<30}]")
-        print("  -> CLIPPING: input is too loud — try: wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.65" if peak > 0.98 else
+        print(("  -> CLIPPING: input is too loud — turn the mic down to ~65% in Sound settings" if WIN else
+               "  -> CLIPPING: input is too loud — try: wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.65") if peak > 0.98 else
               "  -> looks good" if peak > 0.02 else "  -> very quiet: wrong input, muted, or gain too low")
         if peak > 0.02:
             try:
@@ -1127,7 +1202,7 @@ def doctor():
 
 # ---------------------------------------------------------------- text to speech
 def piper_bin():
-    local = Path(sys.executable).parent / "piper"
+    local = Path(sys.executable).parent / ("piper.exe" if WIN else "piper")
     if local.exists():
         return str(local)
     return shutil.which("piper") or shutil.which("piper-tts")
@@ -1470,6 +1545,14 @@ def audio_player_cmd(rate):
     return None
 
 
+def make_player(rate):
+    """Something that takes raw 16-bit mono on .stdin: paplay/aplay on Linux, sounddevice on Windows."""
+    if WIN:
+        return winsys.Player(rate)
+    return subprocess.Popen(audio_player_cmd(rate), stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL)
+
+
 class Speaker:
     """Plays his voice straight to PipeWire/Pulse, not through the window (the window's drawing can starve audio).
 
@@ -1501,7 +1584,7 @@ class Speaker:
 
     @classmethod
     def available(cls):
-        return CFG.get("voice_out", "auto") != "page" and audio_player_cmd(22050) is not None
+        return CFG.get("voice_out", "auto") != "page" and (winsys.can_play() if WIN else audio_player_cmd(22050) is not None)
 
     @classmethod
     def _start(cls):
@@ -1589,8 +1672,7 @@ class Speaker:
                 cls.proc.kill()
             except OSError:
                 pass
-        cls.proc = subprocess.Popen(audio_player_cmd(rate), stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL)
+        cls.proc = make_player(rate)
         cls.prate, cls.written, cls.t0 = rate, 0, time.monotonic()
         return cls.proc
 
@@ -1694,8 +1776,9 @@ def stress_voice(silent=False):
         print("no voice engine installed — nothing to test"); return 1
     if silent:
         globals()["audio_player_cmd"] = lambda rate: [sys.executable, "-c", "import sys\nwhile sys.stdin.buffer.read(65536): pass"]
+        globals()["make_player"] = lambda rate: subprocess.Popen(audio_player_cmd(rate), stdin=subprocess.PIPE)
     else:
-        cmd = audio_player_cmd(22050)
+        cmd = True if WIN and winsys.can_play() else audio_player_cmd(22050)
         if not cmd:
             print("no audio player (paplay / aplay) — install libpulse or alsa-utils"); return 1
         print(f"player: {cmd[0]}   (you'll hear him say the same few sentences three times)")
@@ -1811,7 +1894,7 @@ def claude_bin():
     found = shutil.which(b)
     if found:
         return found
-    for c in (Path.home() / ".local/bin/claude", Path.home() / ".claude/local/claude",
+    for c in (Path.home() / ".local/bin/claude", Path.home() / ".local/bin/claude.exe", Path.home() / ".claude/local/claude",
               Path("/usr/bin/claude"), Path("/usr/local/bin/claude")):
         if c.exists():
             return str(c)
@@ -1883,7 +1966,7 @@ def result_text(c):
 
 
 def trust():
-    return "root" if CFG.get("root_mode") else (CFG.get("trust") if CFG.get("trust") in ("ask", "trust", "readonly") else "ask")
+    return "root" if CFG.get("root_mode") and not WIN else (CFG.get("trust") if CFG.get("trust") in ("ask", "trust", "readonly") else "ask")
 
 
 HOOKS_PATH = DATA_DIR / "hooks.json"
@@ -1891,7 +1974,8 @@ HOOKS_PATH = DATA_DIR / "hooks.json"
 
 def hooks_file():
     """Claude Code settings that route commands / web requests through approve.py (→ a yes/no card under Void)."""
-    cmd = f"{shlex.quote(sys.executable)} {shlex.quote(str(APP_DIR / 'approve.py'))}"
+    cmd = (f'"{sys.executable}" "{APP_DIR / "approve.py"}"' if WIN else
+           f"{shlex.quote(sys.executable)} {shlex.quote(str(APP_DIR / 'approve.py'))}")
     data = {"hooks": {"PreToolUse": [{"matcher": "Bash|WebFetch|WebSearch|NotebookEdit|mcp__.*",
                                       "hooks": [{"type": "command", "command": cmd, "timeout": 900}]}]}}
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1942,13 +2026,13 @@ def run_claude(prompt, emit, partial):
                              f"log in, or set claude_bin in {CONF_PATH}.")
         return "done"
     env = dict(os.environ)
-    env["PATH"] = f"{Path.home()}/.local/bin:" + env.get("PATH", "")
-    if CFG.get("root_mode"):
+    env["PATH"] = str(Path.home() / ".local" / "bin") + os.pathsep + env.get("PATH", "")
+    if CFG.get("root_mode") and not WIN:
         env["SUDO_ASKPASS"] = str(APP_DIR / "askpass.py")
     env["VOID_PORT"], env["VOID_TOKEN"] = str(CFG["port"]), TOKEN
     proc = subprocess.Popen(build_cmd(binary, partial), cwd=ST.cwd, env=env, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1,
-                            start_new_session=True)
+                            encoding="utf-8", errors="replace", **spawn_kw())
     ST.proc = proc
     err = []
     t_err = threading.Thread(target=lambda: err.extend(proc.stderr), daemon=True)
@@ -2036,6 +2120,10 @@ def stop_proc():
     p = ST.proc
     if p and p.poll() is None:
         ST.stopped = True
+        if WIN:                               # no process groups: take down Claude and everything it started
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True,
+                           creationflags=winsys.NO_WINDOW)
+            return
         try:
             os.killpg(p.pid, signal.SIGTERM)
         except ProcessLookupError:
@@ -2046,7 +2134,7 @@ def state_info():
     return {
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
-        "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")),
+        "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
 
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),
         "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "live_minutes": int(CFG.get("live_minutes") or 10), "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
@@ -2056,7 +2144,7 @@ def state_info():
         "projects": quick.projects(),
         "quick_actions": CFG.get("quick_actions") or [], "memory_count": len(mem_load()),
         "mic_device": CFG.get("mic_device") or "", "whisper_model": CFG.get("whisper_model") or "auto",
-        "can_shoot": any(shutil.which(t) for t in ("grim", "spectacle", "gnome-screenshot", "maim", "scrot", "import")),
+        "can_shoot": WIN or any(shutil.which(t) for t in ("grim", "spectacle", "gnome-screenshot", "maim", "scrot", "import")),
         "eye_color": CFG.get("eye_color") or "#3d9b74", "eye_white": CFG.get("eye_white") or "#f3dccf",
         "pupil_style": CFG.get("pupil_style") or "slit",
         "voice": CFG.get("voice") or "girl", "voice_pitch": voice_preset().get("pitch", 1.0),
@@ -2181,7 +2269,7 @@ class Handler(BaseHTTPRequestHandler):
                     if VOICES[b["voice"]].get("piper"):
                         fetch_voice(VOICES[b["voice"]]["piper"])
                 if "root" in b:
-                    upd["root_mode"] = bool(b["root"])
+                    upd["root_mode"] = bool(b["root"]) and not WIN
                 if upd.get("root_mode") is False:
                     AskPass.forget()
                 for key in ("eye_color", "eye_white"):
