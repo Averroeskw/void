@@ -29,7 +29,8 @@ try {
   $r = Invoke-WebRequest -UseBasicParsing -Method Post -Uri http://127.0.0.1:47777/api/ask -Headers @{"X-Void-Token" = $tok} -ContentType "application/json" -Body '{"prompt":"hello"}'
   $body = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
   Check "a request through Claude" ($body -match "Hi from Windows") ""
-  Check "unicode survives" ($body -match [regex]::Escape("ünïcödé")) ""
+  $said = ($body -split "`n" | Where-Object { $_ -like "data: *" } | ForEach-Object { try { ($_.Substring(6) | ConvertFrom-Json).text } catch {} }) -join " "
+  Check "unicode survives" ($said -match [regex]::Escape("ünïcödé ✓")) ""
   Check "tool shows on his terminal" ($body -match '"t": "tool"') ""
 } catch { Check "a request through Claude" $false "$_" }
 
