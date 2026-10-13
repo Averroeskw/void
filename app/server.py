@@ -308,7 +308,7 @@ HYPR_MARK = "# added by Void (Settings → More → Start when I log in)"
 def sync_autostart():
     """Add/remove Void from login startup to match the `autostart` setting."""
     on = bool(CFG.get("autostart"))
-    launcher = Path.home() / ".local/bin/void"
+    launcher = shutil.which("void") or str(Path.home() / ".local/bin/void")     # ~/.local/bin, or /usr/bin after ninja install
     try:
         if on:
             AUTOSTART_DESKTOP.parent.mkdir(parents=True, exist_ok=True)

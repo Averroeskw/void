@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Void
+Comment=Voice shell for Claude Code
+Exec=void
+Icon=void
+Type=Application
+Categories=Utility;Development;
+StartupWMClass=Void

@@ -14,11 +14,23 @@
 #   void stop       stop the background server (and the window)
 #   void restart    restart the server (after editing config)
 #   void log        follow the server log
+#   void setup      first run after a system-wide install (ninja install): your voice + speech models
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/void"
-PY="$ROOT/venv/bin/python"; APP="$ROOT/app"; LOG="$ROOT/server.log"
-[ -x "$PY" ] || { echo "Void isn't installed — run install.sh" >&2; exit 1; }
+# the app lives in your home folder (./install.sh) or next to this launcher (system-wide: /usr/bin → /usr/share/void)
+SHARE="$(cd "$(dirname "$(readlink -f "$0")")/../share/void" 2>/dev/null && pwd || true)"
+if [ -d "$ROOT/app" ] || [ -z "$SHARE" ] || [ ! -d "$SHARE/app" ]; then APP="$ROOT/app"; else APP="$SHARE/app"; fi
+PY="$ROOT/venv/bin/python"; LOG="$ROOT/server.log"
+if [ "${1:-}" = setup ]; then
+  [ -x "${SHARE:-}/install.sh" ] && exec "$SHARE/install.sh" --user
+  echo "void setup is for system-wide installs — run ./install.sh from the folder you downloaded instead" >&2; exit 1
+fi
+if [ ! -x "$PY" ]; then
+  if [ "$APP" = "${SHARE:-}/app" ]; then echo "First time? Run:  void setup   (downloads your voice + speech models)" >&2
+  else echo "Void isn't installed — run install.sh" >&2; fi
+  exit 1
+fi
 PORT="$("$PY" "$APP/server.py" --print-port)"
 URL="http://127.0.0.1:$PORT/"
 up(){ curl -fs -o /dev/null "${URL}api/state"; }

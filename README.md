@@ -48,12 +48,34 @@ cd void && ./install.sh
 void
 ```
 
-The installer handles **Arch**, **Debian / Ubuntu** and **Fedora** (and their relatives) — it installs the system packages
+The installer handles **Arch**, **Debian / Ubuntu** and **Fedora** (and their relatives; Gentoo users see below) — it installs the system packages
 it needs with pacman, apt or dnf, then puts everything else in your home folder (`~/.local/share/void`). On other
 distros it tells you which packages to install yourself.
 
 You also need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and logged in (run `claude` once in
 a terminal). To update: `git pull && ./install.sh`.
+
+### Gentoo (or any distro, system-wide)
+
+Install the dependencies with `emerge` — WebKitGTK and gtk-layer-shell need the `introspection` USE flag:
+
+```bash
+sudo emerge --ask --noreplace dev-build/meson dev-build/ninja dev-python/pygobject net-libs/webkit-gtk:4.1 \
+  gui-libs/gtk-layer-shell media-libs/gst-plugins-base media-libs/gst-plugins-good app-accessibility/espeak-ng \
+  dev-python/uv gui-apps/grim gui-apps/slurp gui-apps/wl-clipboard x11-libs/libnotify media-sound/playerctl
+```
+
+You also need the PulseAudio/PipeWire command-line tools (`parecord`, `paplay`). Then build and install, and once per
+user download the voice and speech models:
+
+```bash
+./configure && ninja -C build && sudo ninja -C build install
+void setup
+void
+```
+
+Nothing is compiled (Void is Python); `ninja install` puts the app in `/usr/share/void`, `void` in `/usr/bin`, plus a
+menu entry and icon. `./configure --prefix=/usr/local` works too. To uninstall: `sudo ninja -C build uninstall`.
 
 **Bind a hotkey** to `void listen` (pop up and start listening). Also handy: `void look` (screenshot, then listen) and
 `void` (show / hide).

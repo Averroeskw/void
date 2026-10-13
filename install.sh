@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Void installer — Arch, Debian/Ubuntu and Fedora (and their relatives). Everything goes in your home folder;
 # only the system packages below need sudo.
+#   ./install.sh          everything (system packages, the app, your voice + speech models)
+#   ./install.sh --user   just your part (voice + speech models) — what `void setup` runs after a system-wide
+#                         `sudo ninja -C build install` (Gentoo & co.)
 set -euo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+USER_ONLY=0; [ "${1:-}" = --user ] && USER_ONLY=1
 ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/void"
 BIN="$HOME/.local/bin"
 VOICE="${VOID_VOICE:-en_US-amy-medium}"   # any piper voice name, e.g. en_US-ryan-medium, en_GB-alba-medium
@@ -15,7 +19,9 @@ export PATH="$BIN:$PATH"
 #   PyGObject + WebKit2GTK 4.1 + GStreamer plugins: the see-through window and its sound effects
 #   gtk-layer-shell: the overlay on Wayland · grim/slurp/wl-clipboard (Wayland) + maim/xclip (X11): screenshots & clipboard
 #   libnotify: "done!" notifications · playerctl / brightnessctl: "pause the music", "dim the screen"
-if command -v pacman >/dev/null 2>&1; then
+if [ $USER_ONLY = 1 ]; then
+  PM=none; pkgs=()            # system-wide install: the system packages are yours to manage (see the README)
+elif command -v pacman >/dev/null 2>&1; then
   PM=pacman
   pkgs=(uv espeak-ng curl libpulse alsa-utils python-gobject python-cairo webkit2gtk-4.1 gst-plugins-base gst-plugins-good
         grim slurp wl-clipboard maim xclip libnotify gtk-layer-shell playerctl brightnessctl)
@@ -36,6 +42,10 @@ elif command -v dnf >/dev/null 2>&1; then
         playerctl brightnessctl)
   have(){ rpm -q "$1" >/dev/null 2>&1; }
   get(){ sudo dnf install -y "$@"; }
+elif command -v emerge >/dev/null 2>&1; then
+  PM=none
+  warn "Gentoo: install the dependencies with emerge first (list in the README, \"Gentoo\" section), then either run"
+  warn "  ./install.sh again, or do the system-wide install: ./configure && ninja -C build && sudo ninja -C build install"
 else
   warn "No pacman, apt or dnf here. Install these yourself (names vary by distro), then run ./install.sh again:"
   warn "  uv, espeak-ng, PyGObject, WebKit2GTK 4.1 (GObject introspection), gtk-layer-shell, GStreamer base+good plugins,"
@@ -73,9 +83,14 @@ if ! command -v uv >/dev/null 2>&1; then
   fi
 fi
 
-say "Copying app to $ROOT"
 mkdir -p "$ROOT/voices" "$BIN" "$HOME/.local/share/applications"
-rm -rf "$ROOT/app"; cp -r "$SRC/app" "$ROOT/app"
+if [ $USER_ONLY = 1 ]; then
+  APPD="$SRC/app"             # the system-wide copy (e.g. /usr/share/void/app)
+else
+  say "Copying app to $ROOT"
+  rm -rf "$ROOT/app"; cp -r "$SRC/app" "$ROOT/app"
+  APPD="$ROOT/app"
+fi
 rm -f "$ROOT/window.mode"     # re-pick the window render mode with the new defaults
 
 say "Python env (3.12 via uv — the speech libraries don't all support the newest Python yet)…"
@@ -95,7 +110,7 @@ uv pip install --python "$ROOT/venv/bin/python" -U piper-tts \
 KDIR="$ROOT/voices/kokoro"
 if uv pip install --python "$ROOT/venv/bin/python" -U kokoro-onnx; then
   say "Kokoro voice…"
-  "$ROOT/venv/bin/python" "$ROOT/app/kokoro_fetch.py" "$KDIR" \
+  "$ROOT/venv/bin/python" "$APPD/kokoro_fetch.py" "$KDIR" \
     || { rm -f "$KDIR"/*.part; warn "Kokoro download failed — Void will use piper until it can fetch it"; }
 else
   warn "kokoro-onnx failed to install — Void will use piper instead"
@@ -120,13 +135,13 @@ if [ -e /proc/driver/nvidia/version ]; then
 fi
 
 say "Fetching the speech-recognition model…"
-"$ROOT/venv/bin/python" "$ROOT/app/server.py" --warm \
+"$ROOT/venv/bin/python" "$APPD/server.py" --warm \
   || warn "couldn't pre-load the speech model; it will download on first use"
 
-install -m755 "$SRC/bin/void" "$BIN/void"
-"$ROOT/venv/bin/python" "$ROOT/app/server.py" --sync-autostart >/dev/null 2>&1 \
+[ $USER_ONLY = 1 ] || install -m755 "$SRC/bin/void" "$BIN/void"
+"$ROOT/venv/bin/python" "$APPD/server.py" --sync-autostart >/dev/null 2>&1 \
   && say "Void will start when you log in (turn off: Settings → More)" || true
-cat > "$HOME/.local/share/applications/void.desktop" <<DESK
+[ $USER_ONLY = 1 ] || cat > "$HOME/.local/share/applications/void.desktop" <<DESK
 [Desktop Entry]
 Name=Void
 Comment=Voice shell for Claude Code
@@ -138,8 +153,8 @@ StartupWMClass=Void
 DESK
 
 # restart a running server/window so they pick up the new files
-pkill -f "$ROOT/app/server.py" >/dev/null 2>&1 || true
-pkill -f "$ROOT/app/window.py" >/dev/null 2>&1 || true
+pkill -f "$APPD/server.py" >/dev/null 2>&1 || true
+pkill -f "$APPD/window.py" >/dev/null 2>&1 || true
 pkill -f -- "--user-data-dir=$ROOT/browser" >/dev/null 2>&1 || true    # an old browser-window fallback, if one is open
 
 echo
@@ -147,7 +162,7 @@ if ! command -v claude >/dev/null 2>&1 && [ ! -x "$BIN/claude" ]; then
   warn "Claude Code CLI not found. Install it, then run 'claude' once to sign in:"
   echo "    curl -fsSL https://claude.ai/install.sh | bash"
 fi
-case ":$PATH:" in *":$BIN:"*) ;; *) warn "$BIN isn't on your PATH — add it to your shell rc";; esac
+[ $USER_ONLY = 1 ] || case ":$PATH:" in *":$BIN:"*) ;; *) warn "$BIN isn't on your PATH — add it to your shell rc";; esac
 say "Done! Run:  void        (again to hide him · 'void doctor' if the mic acts up)"
 echo "   Tip: bind a key to 'void listen' in your desktop's keyboard shortcuts, e.g."
 echo "     Hyprland: bind = SUPER, A, exec, void listen      sway / i3: bindsym \$mod+a exec void listen"
