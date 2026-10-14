@@ -54,9 +54,16 @@ body.e-top #stage{transform:translateY(-136px) scale(.46)}
 body.e-bottom #stage{transform:translateY(272px) scale(.46)}
 body.e-left #stage{transform:translate(-136px,68px) scale(.46)}
 body.e-right #stage{transform:translate(136px,68px) scale(.46)}
-/* talking with him (he's listening or answering): the whole notch wears his halo */
-body.bar.convo #barPill{box-shadow:0 0 0 1.5px var(--glow),0 0 24px 4px var(--glow);animation:convo 1.8s ease-in-out infinite}
-@keyframes convo{50%{box-shadow:0 0 0 1.5px var(--glow),0 0 34px 8px var(--glow)}}
+/* talking with him: the whole notch wears his halo, bright and unmistakable.
+   .hearing = he's listening to you: a thick ring that swells with your voice (--lv, 0–1, from the mic level)
+   .speaking = he's answering: a strong steady pulse */
+body.bar #barPill{--lv:0}
+body.bar.hearing #barPill{transition:box-shadow .08s linear;
+  box-shadow:0 0 0 calc(2.5px + var(--lv) * 3px) var(--glow),0 0 calc(26px + var(--lv) * 40px) calc(7px + var(--lv) * 14px) var(--glow),
+             0 0 calc(60px + var(--lv) * 50px) calc(10px + var(--lv) * 10px) var(--glow)}
+body.bar.speaking:not(.hearing) #barPill{animation:speakGlow 1.1s ease-in-out infinite}
+@keyframes speakGlow{0%,100%{box-shadow:0 0 0 2px var(--glow),0 0 26px 6px var(--glow)}
+  50%{box-shadow:0 0 0 3px var(--glow),0 0 46px 14px var(--glow),0 0 80px 14px var(--glow)}}
 /* the round flashes and shock rings ("hey Void", happy, error…) become a flash of the notch itself */
 body.bar #barPill.pulse{animation:notchPulse .9s var(--ease)}
 @keyframes notchPulse{0%{box-shadow:0 0 0 2px var(--pulse,var(--glow)),0 0 6px 2px var(--pulse,var(--glow))}
@@ -1756,9 +1763,14 @@ async function toggleBar(force){
 $('#barPill').addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=[e.clientX,e.clientY]; dragged=false; });
 $('#barPill').addEventListener('click',e=>{ if(!dragged) E.body.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
 $('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
-let convoOn=false;
-function convoCheck(){ const on=!!(rec||playing||follow); if(on!==convoOn){ convoOn=on; document.body.classList.toggle('convo',on); } }
-setInterval(convoCheck,120);
+// the notch's halo: hearing you (with your voice level) vs him speaking
+function convoCheck(){
+  if(!document.body.classList.contains('bar')) return;
+  const hearing=!!(rec||follow), b=document.body;
+  b.classList.toggle('hearing',hearing); b.classList.toggle('speaking',!!playing);
+  if(hearing) $('#barPill').style.setProperty('--lv',Math.min(1,Math.max(micRaw||0,hearRaw||0)).toFixed(2));
+}
+setInterval(convoCheck,50);
 window.voidHoverUnsupported=()=>{ tick('hover mode needs Hyprland or X11 on this desktop',true); setSetting({hover:false}); setHoverClass(false); };
 window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
   if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };
