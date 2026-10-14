@@ -97,6 +97,9 @@ DEFAULTS = {
     "stt_hint": "Hey Void, Claude, Claude Code, Void, git, commit, README, Python, JavaScript, npm, pacman, sudo, Arch Linux, "
                 "Hyprland, folder, directory, file, terminal, config, server, function, bug, refactor.",
     "whisper_device": "auto",
+    # keep the mic at a level he hears well: turn the Windows mic level up when your voice comes in quiet, down when it
+    # clips, and boost it himself past 100%
+    "mic_auto": True,
     "language": "en",
     "stt_prewarm": True,
 
@@ -812,6 +815,46 @@ RATE = 16000
 FRAME = RATE * 2 * 40 // 1000               # 40 ms of s16le mono = 1280 bytes
 
 
+class MicAuto:
+    """Keeps your voice at a level he hears well. After you speak: if it came in quiet, turn the mic's Windows level up;
+    if it clipped, turn it down. Once Windows is at 100% and you're still quiet, `soft` boosts what the speech detector
+    sees (transcribe_pcm already evens out what Whisper gets)."""
+    soft = 1.0
+    last = 0.0
+    TARGET, QUIET, LOUD = 0.45, 0.18, 0.9         # loudest moments of your speech (0–1)
+
+    @classmethod
+    def learn(cls, pcm: bytes):
+        if not CFG.get("mic_auto", True) or time.monotonic() - cls.last < 2 or len(pcm) < RATE * 2 * 0.3:
+            return
+        import numpy as np
+        a = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+        a = np.abs(a - a.mean())
+        pk = float(np.percentile(a, 99.9))        # loudest bits of your voice; a single click doesn't count
+        clipped = float((a > 0.97).mean())
+        if pk < 0.003:                            # dead or muted input: nothing to learn (Listen says so)
+            return
+        cls.last = time.monotonic()
+        hint = CFG.get("mic_device") or ""
+        hw = winsys.mic_level(hint) if WIN else None
+        if clipped > 0.002 or pk > cls.LOUD:
+            if hw is not None and hw > 0.15:
+                winsys.set_mic_level(hw * 0.8, hint)
+                print(f"[void] mic: your voice clipped — Windows mic level {hw:.0%} → {hw * 0.8:.0%}", file=sys.stderr)
+            cls.soft = 1.0
+        elif pk * cls.soft < cls.QUIET:
+            want = min(2.0, cls.TARGET / pk)      # how much louder it should be, at most double per step
+            if hw is not None and hw < 0.99:
+                new = min(1.0, hw * want)
+                winsys.set_mic_level(new, hint)
+                print(f"[void] mic: your voice came in quiet — Windows mic level {hw:.0%} → {new:.0%}", file=sys.stderr)
+            else:
+                cls.soft = min(8.0, cls.TARGET / pk)
+                print(f"[void] mic: still quiet at full level — boosting it {cls.soft:.1f}×", file=sys.stderr)
+        elif cls.soft > 1.0 and pk * cls.soft > 0.7:
+            cls.soft = max(1.0, 0.5 / pk)
+
+
 def mic_cmds():
     dev = (CFG.get("mic_device") or "").strip()
     cmds = []
@@ -928,7 +971,7 @@ class Listen:
                     pcm += fr
                     n = len(fr) // 2
                     s = memoryview(fr).cast("h")
-                    rms = (sum(x * x for x in s) / n) ** 0.5 / 32768.0
+                    rms = (sum(x * x for x in s) / n) ** 0.5 / 32768.0 * MicAuto.soft
                     peak = max(peak, rms)
                     clipped += sum(1 for x in s if x > 32500 or x < -32500)
                     now = time.monotonic()
@@ -973,6 +1016,8 @@ class Listen:
             emit(t="error", text="the mic is completely silent — is the right input selected/unmuted? "
                                  "(`void doctor` lists inputs; set mic_device in the config)")
             return
+        if spoke or (floor is not None and peak > max(0.001, floor * 2.5)):   # you said something, maybe too quietly
+            MicAuto.learn(bytes(pcm))
         if self.cancel:
             emit(t="cancel", why=reason)
             return
@@ -1097,7 +1142,7 @@ class Wake:
                 while len(buf) >= FRAME:
                     fr, buf = buf[:FRAME], buf[FRAME:]
                     s = memoryview(fr).cast("h")
-                    rms = (sum(x * x for x in s) / (len(fr) // 2)) ** 0.5 / 32768.0
+                    rms = (sum(x * x for x in s) / (len(fr) // 2)) ** 0.5 / 32768.0 * MicAuto.soft
                     floor = rms if floor is None else (floor * 0.9 + rms * 0.1 if rms < floor else floor * 0.999 + rms * 0.001)
                     thr = max(0.015, floor * 3.2)
                     voiced = min(4, voiced + 1) if rms > thr else max(0, voiced - 1)
@@ -1138,6 +1183,8 @@ class Wake:
     def check(cls, pcm, started):
         # started after he finished talking, inside the follow-up window → it's a request, no "hey Void" needed
         follow = not cls.speaking() and cls.follow_from <= started < cls.follow_until
+        if not cls.speaking():                   # (while he talks the mic also hears him: don't tune to his voice)
+            MicAuto.learn(pcm)
         try:
             text = transcribe_pcm(pcm) if follow else transcribe_pcm(pcm, beam=1, hint="Hey Void.")
         except Exception as e:  # noqa: BLE001
@@ -1200,6 +1247,10 @@ def doctor():
                 print("  speech-to-text failed:", e)
     except Exception as e:  # noqa: BLE001
         print("  MIC FAILED:", e)
+    if WIN:
+        lv = winsys.mic_level(CFG.get("mic_device") or "")
+        print(f"  Windows mic level: {'?' if lv is None else f'{lv:.0%}'}"
+              + ("  (Void adjusts it as you talk: mic_auto)" if CFG.get("mic_auto", True) else ""))
     print("\nvoice:", tts_engine() or "none (install espeak-ng / piper)")
     print("claude:", claude_bin() or "NOT FOUND")
 

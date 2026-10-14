@@ -263,6 +263,42 @@ def volume_get():
         return None, False
 
 
+def _mic_endpoint(hint=""):
+    """The Windows volume control of the mic Void records from: the one whose name matches mic_device (sounddevice
+    cuts names to 31 characters, so it may be just the start), else the default recording device."""
+    import comtypes
+    comtypes.CoInitialize()
+    from comtypes import CLSCTX_ALL
+    from pycaw.constants import CLSID_MMDeviceEnumerator
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, IMMDeviceEnumerator
+    en = comtypes.CoCreateInstance(CLSID_MMDeviceEnumerator, IMMDeviceEnumerator, comtypes.CLSCTX_INPROC_SERVER)
+    dev, hint = None, (hint or "").strip().lower()
+    if hint and not hint.isdigit():
+        for d in AudioUtilities.GetAllDevices():
+            if (d.id or "").startswith("{0.0.1.") and str(d.state).endswith("Active") and hint in (d.FriendlyName or "").lower():
+                dev = en.GetDevice(d.id)                       # {0.0.1.…} = a recording device
+                break
+    dev = dev or en.GetDefaultAudioEndpoint(1, 0)              # eCapture, eConsole
+    iface = dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    return ctypes.cast(iface, ctypes.POINTER(IAudioEndpointVolume))
+
+
+def mic_level(hint=""):
+    """→ the mic's Windows level, 0.0–1.0, or None."""
+    try:
+        return float(_mic_endpoint(hint).GetMasterVolumeLevelScalar())
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def set_mic_level(level, hint=""):
+    try:
+        _mic_endpoint(hint).SetMasterVolumeLevelScalar(max(0.0, min(1.0, level)), None)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _key(vk, times=1):
     u = ctypes.windll.user32
     for _ in range(times):

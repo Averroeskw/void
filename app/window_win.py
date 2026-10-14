@@ -43,6 +43,7 @@ POS_FILE, PORT_FILE = DATA / "pos.json", DATA / "window.port"
 # the page talks to us through window.webkit.messageHandlers.voidui.postMessage (WebKit's API on Linux); on Windows
 # that becomes a QWebChannel call. Messages sent before the channel is up are queued.
 SHIM = """
+window.voidQt = true;   // Chromium through Qt, not WebKitGTK: the page skips its WebKit-only workarounds
 (function(){ var q = [], b = null;
   window.webkit = {messageHandlers: {voidui: {postMessage: function(m){ m = String(m); if (b) b.post(m); else q.push(m); }}}};
   (function go(){
@@ -129,8 +130,10 @@ class VoidWindow(QWidget):
         self.remote.cmd.connect(self._remote_cmd)
         threading.Thread(target=self._serve, daemon=True).start()
         QTimer.singleShot(1500, self._tell_page)
-        self.poll = QTimer(self, interval=33, timeout=self._poll_mouse)    # click-through + hover, ~30×/s
+        self.poll = QTimer(self, interval=33, timeout=self._poll_mouse)    # click-through ~30×/s; hover ~120×/s
+        self.poll.setTimerType(Qt.PreciseTimer)
         self.poll.start()
+        self.look_t = 0.0
 
     # ---- position (remembered across runs)
     def _screen_rect(self):
@@ -293,6 +296,7 @@ class VoidWindow(QWidget):
             self.want_code = False
             self.set_wide(False)
         self.hover = on
+        self.poll.setInterval(8 if on else 33)                            # as a cursor he has to keep up with the mouse
         if on:
             self.home, self.hpos, self.vel, self.last = (self.x(), self.y()), None, [0.0, 0.0], None
             self._set_through(True)
@@ -308,13 +312,13 @@ class VoidWindow(QWidget):
             self.vel = [self.vel[0] * 0.8 + (c.x() - self.last[0]) / dt * 0.2,
                         self.vel[1] * 0.8 + (c.y() - self.last[1]) / dt * 0.2]
         self.last = (c.x(), c.y(), now)
-        x, y = c.x() - BALL[0], c.y() - BALL[1]
-        if self.hpos is None:
-            self.hpos = [x, y]
-        self.hpos = [self.hpos[0] + (x - self.hpos[0]) * 0.7, self.hpos[1] + (y - self.hpos[1]) * 0.7]
-        self.move(int(self.hpos[0]), int(self.hpos[1]))
-        self._js("window.voidLook&&voidLook(%.3f,%.3f)" % (max(-1, min(1, self.vel[0] / 900)),
-                                                           max(-1, min(1, self.vel[1] / 900))))
+        self.hpos = [c.x() - BALL[0], c.y() - BALL[1]]                   # right on the pointer: he *is* the cursor
+        if (self.x(), self.y()) != (self.hpos[0], self.hpos[1]):
+            self.move(self.hpos[0], self.hpos[1])
+        if now - self.look_t >= 0.033:                                    # his eyes only need ~30 updates a second
+            self.look_t = now
+            self._js("window.voidLook&&voidLook(%.3f,%.3f)" % (max(-1, min(1, self.vel[0] / 900)),
+                                                               max(-1, min(1, self.vel[1] / 900))))
 
     def _glide_home(self):
         if not self.home:

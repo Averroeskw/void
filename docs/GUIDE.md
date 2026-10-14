@@ -211,6 +211,7 @@ Windows.
 | `whisper_model` | `auto` | `small.en` on an NVIDIA GPU, `base.en` on CPU; or `tiny.en` / `medium.en` |
 | `stt_hint` | coding words | words he should expect (add your project names) |
 | `mic_device` | `""` | input to record from (Settings → Voice lists them) |
+| `mic_auto` | `true` | keep your voice at a good level: after you speak he turns the Windows mic level up if you came in quiet, down if you clipped, and boosts it himself past 100% (Windows) |
 | `extra_args` | `[]` | extra CLI flags for `claude` |
 
 ---

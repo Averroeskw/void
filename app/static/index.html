@@ -1076,8 +1076,9 @@ function frame(ts){
   E.zz.setAttribute('transform',`translate(0,${(-((t*6)%14)).toFixed(1)})`);
   for(let i=parts.length-1;i>=0;i--) if(!parts[i](ts,dt)) parts.splice(i,1);
   capTick(ts);
-  if(NATIVE){ const a=(frameN++&1)?'rgba(0,0,0,.004)':'rgba(0,0,0,.006)';   // forces WebKit to repaint the whole window every frame —
+  if(NATIVE&&!window.voidQt){ const a=(frameN++&1)?'rgba(0,0,0,.004)':'rgba(0,0,0,.006)';   // forces WebKit to repaint the whole window every frame —
     paintEl.style.background=a; document.documentElement.style.background=a; }  // both the page and the root, so the widened edge is covered too
+    // (not on Windows: Chromium repaints fine, and there the near-black fill shows as a dim box around him)
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
