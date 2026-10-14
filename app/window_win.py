@@ -253,13 +253,14 @@ class VoidWindow(QWidget):
         self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
 
     def _drag_done(self):
-        """After you drop the blob: right up against a screen edge? He merges into it as the bar."""
-        cx, cy = self.x() + self.wide_shift + BALL[0], self.y() + BALL[1]
-        scr = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
+        """After you drop the blob: pushed into a screen edge? He merges into it as the bar. Judged by the mouse, not
+        his ball: Windows won't let a window go above the top of the screen, so the ball can never reach the top."""
+        c = QCursor.pos()
+        scr = QGuiApplication.screenAt(c) or QGuiApplication.primaryScreen()
         g = scr.availableGeometry()
-        dist = {"top": cy - g.top(), "bottom": g.bottom() - cy, "left": cx - g.left(), "right": g.right() - cx}
+        dist = {"top": c.y() - g.top(), "bottom": g.bottom() - c.y(), "left": c.x() - g.left(), "right": g.right() - c.x()}
         edge = min(dist, key=dist.get)
-        if dist[edge] < 120:                                             # his ball (r≈84 px) touching the edge
+        if dist[edge] < 40:                                              # dropped right at the edge
             self.set_bar(edge)
 
     def _watch_drag(self):
@@ -476,6 +477,8 @@ class VoidWindow(QWidget):
     def set_hover(self, on):
         if self.hover == on:
             return
+        if on and self.bar:                                              # out of the notch first (it mustn't fly around)
+            self.set_bar(None)
         if on and self.cur_w > W:
             self.want_code = False
             self.set_wide(False)

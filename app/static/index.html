@@ -57,6 +57,13 @@ body.e-right #stage{transform:translate(136px,68px) scale(.46)}
 /* talking with him (he's listening or answering): the whole notch wears his halo */
 body.bar.convo #barPill{box-shadow:0 0 0 1.5px var(--glow),0 0 24px 4px var(--glow);animation:convo 1.8s ease-in-out infinite}
 @keyframes convo{50%{box-shadow:0 0 0 1.5px var(--glow),0 0 34px 8px var(--glow)}}
+/* the round flashes and shock rings ("hey Void", happy, error…) become a flash of the notch itself */
+body.bar #barPill.pulse{animation:notchPulse .9s var(--ease)}
+@keyframes notchPulse{0%{box-shadow:0 0 0 2px var(--pulse,var(--glow)),0 0 6px 2px var(--pulse,var(--glow))}
+  35%{box-shadow:0 0 0 2px var(--pulse,var(--glow)),0 0 40px 12px var(--pulse,var(--glow))}100%{box-shadow:0 0 14px -6px var(--glow)}}
+body.bar #fxBack,body.bar #flash{display:none}
+/* in the notch he doesn't show text: no captions, no status line (his face and the notch's glow say it) */
+body.bar #cap,body.bar #chip{display:none}
 body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,body.bar #shadow,
 body.bar #body>circle,body.bar #body>ellipse,body.bar #accBack,body.bar #accFront,body.bar #liveTag{display:none}
 #guy{width:330px;height:330px;overflow:visible;pointer-events:none}
@@ -869,13 +876,13 @@ function rms(an){ if(!an) return 0; const b=new Float32Array(an.fftSize); an.get
 const parts=[];
 const mk=(tag,at,par)=>{ const e=document.createElementNS(NS,tag); for(const k in at) e.setAttribute(k,at[k]); (par||E.fx).appendChild(e); return e; };
 const eOut=p=>1-Math.pow(1-p,3), eExpo=p=>p>=1?1:1-Math.pow(2,-9*p);
-function burstLines(color,n=9,r0=92){ const g=mk('g',{}), off=Math.random()*Math.PI, L=[], t0=performance.now();
+function burstLines(color,n=9,r0=92){ if(document.body.classList.contains('bar')) return notchPulse(color); const g=mk('g',{}), off=Math.random()*Math.PI, L=[], t0=performance.now();
   for(let i=0;i<n;i++){ const a=off+i/n*Math.PI*2; L.push([mk('line',{stroke:color,'stroke-linecap':'round'},g),Math.cos(a),Math.sin(a)]); }
   parts.push(now=>{ const p=(now-t0)/720; if(p>=1){ g.remove(); return false; }
     const h=r0+6+eExpo(p)*46, tl=r0+eExpo(Math.max(0,p-.2)/.8)*50, w=(3.6*(1-p)+.3).toFixed(2);
     for(const [l,c,s] of L){ l.setAttribute('x1',(c*tl).toFixed(1)); l.setAttribute('y1',(s*tl).toFixed(1)); l.setAttribute('x2',(c*h).toFixed(1)); l.setAttribute('y2',(s*h).toFixed(1)); l.setAttribute('stroke-width',w); }
     return true; }); }
-function shock(color,big){ const c=mk('circle',{fill:'none',stroke:color},E.fxBack), t0=performance.now(), R1=big?160:140;
+function shock(color,big){ if(document.body.classList.contains('bar')) return notchPulse(color); const c=mk('circle',{fill:'none',stroke:color},E.fxBack), t0=performance.now(), R1=big?160:140;
   parts.push(now=>{ const p=(now-t0)/950; if(p>=1){ c.remove(); return false; } const e=eExpo(p);
     c.setAttribute('r',(80+e*(R1-80)).toFixed(1)); c.setAttribute('stroke-width',(5*(1-e)+.3).toFixed(2)); c.setAttribute('opacity',(.9*(1-p)).toFixed(2)); return true; }); }
 function confetti(n=18){ const cols=[EC.acc,'#ffffff',EC.sclera,EC.hot,EC.eye], cy=-20;
@@ -900,7 +907,8 @@ function tear(side){ const g=mk('path',{d:'M0-6C3-1 4.5 2 4.5 4.2A4.5 4.5 0 0 1-
     g.setAttribute('transform',`translate(${(x+Math.sin(p*5)*1.5).toFixed(1)},${(30+p*p*48).toFixed(1)}) scale(${(.5+Math.min(1,p*4)*.5).toFixed(2)})`);
     g.setAttribute('opacity',(p<.15?p/.15:p>.75?(1-p)/.25:1).toFixed(2)); return true; }); }
 const flashEl=$('#flash');
-function flash(col){ flashEl.style.setProperty('--flash',col); flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+function notchPulse(col){ const p=$('#barPill'); if(col) p.style.setProperty('--pulse',col); p.classList.remove('pulse'); void p.offsetWidth; p.classList.add('pulse'); }
+function flash(col){ if(document.body.classList.contains('bar')) return notchPulse(col); flashEl.style.setProperty('--flash',col); flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
 
 function onMood(m){
   document.body.classList.forEach(c=>{ if(c.startsWith('m-')) document.body.classList.remove(c); }); document.body.classList.add('m-'+m);
@@ -1700,7 +1708,18 @@ menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*
   MENU_XY[i]=[Math.cos(ang)*r/1.1, Math.sin(ang)*r/1.1];                 // same spot in the face's SVG units (330px = 300 units)
   return `<button class="mb" data-a="${a}" style="--x:${(Math.cos(ang)*r).toFixed(0)}px;--y:${(Math.sin(ang)*r).toFixed(0)}px;--d:${(.26+i*.025).toFixed(3)}s" title="${l}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[a]}</svg><span${a==='cd'?' id="cwdLbl"':''}>${l}</span></button>`; }).join('');
 let menuOn=false;
-function menu(on){ if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
+// in the notch his sparks fan out from it, away from the screen edge (an arc around his eyes), instead of over the ball
+const NOTCH_MENU={top:[170,26,15,165], bottom:[170,434,-165,-15], left:[34,230,-75,75], right:[306,230,105,255]};   // eye centre x,y + arc from/to (deg)
+function layoutMenu(){
+  const edge=EDGES.find(e=>document.body.classList.contains('e-'+e)), bs=$$('#menu .mb');
+  bs.forEach(b=>{ if(!b.dataset.ox){ b.dataset.ox=b.style.getPropertyValue('--x'); b.dataset.oy=b.style.getPropertyValue('--y'); } });
+  if(!edge){ menuEl.style.left=''; menuEl.style.top=''; bs.forEach(b=>{ b.style.setProperty('--x',b.dataset.ox); b.style.setProperty('--y',b.dataset.oy); }); return; }
+  const [cx,cy,a0,a1]=NOTCH_MENU[edge], r=edge==='top'||edge==='bottom'?118:132;
+  menuEl.style.left=cx+'px'; menuEl.style.top=cy+'px';
+  bs.forEach((b,i)=>{ const a=(a0+i*(a1-a0)/(bs.length-1))*Math.PI/180;
+    b.style.setProperty('--x',(Math.cos(a)*r).toFixed(0)+'px'); b.style.setProperty('--y',(Math.sin(a)*r).toFixed(0)+'px'); });
+}
+function menu(on){ if(on) layoutMenu(); if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
   ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
@@ -1713,6 +1732,7 @@ function setHoverClass(on){ document.body.classList.toggle('hover',on); sendRegi
 async function toggleHover(force){
   const on=typeof force==='boolean'?force:!info.hover;
   if(!NATIVE){ tick('hover mode works in the Void window (not the browser fallback)',true); return; }
+  if(on&&document.body.classList.contains('bar')) native('bar:off');      // out of the notch first, then he's your cursor
   await setSetting({hover:on}); native(on?'hover:on':'hover:off'); setHoverClass(on);
   poke(on?'curious':'wink',1200);
 }
