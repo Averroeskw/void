@@ -138,6 +138,8 @@ just his eyes showing. Everything else works the same.
   "hey Void" flash matches the notch.
 - **His words and commands** drop out of the notch itself: it grows to fit the caption, or his terminal while he works
   (always readable, in the same style as his words), then tucks back in. No status pill.
+- **Click the notch** to open his menu around it; click again to close it. (In the notch, talk with "hey Void",
+  Space, or 🎙 in the menu.)
 - **His menu** fans out around the notch. Settings and History open as usual, and you can drag them by the header; he
   goes back to his edge when you close them.
 - **Clicks go through** everything except a small area around his eyes, so you can still click and drag things under

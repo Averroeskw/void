@@ -102,7 +102,7 @@ void
 | **2** | Say **"hey Void"** | His ring lights up and moves with your voice. (Or just **click** him.) |
 | **3** | Ask for something | He works in the current folder. Say "switch to my project" or right-click → *folder* to change it. |
 | **4** | **Right-click** him | His menu: talk, folder, history, show my screen, hover mode, top bar, settings. |
-| **5** | **Push him into a screen edge** | He merges into it as a notch, with just his eyes. Drag him out again to get the orb back. |
+| **5** | **Push him into a screen edge** | He merges into it as a notch, with just his eyes. Click the notch for his menu (click again to close it). Drag him out to get the orb back. |
 
 > [!TIP]
 > Say **"stop"** to interrupt him, hold **Space** for push-to-talk, or just start **typing** for a text box. Press

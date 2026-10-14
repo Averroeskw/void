@@ -1796,7 +1796,9 @@ async function toggleBar(force){
 }
 // the whole notch is him: click to talk, right-click for the menu, drag it away to pull him out as the blob
 $('#barPill').addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=[e.clientX,e.clientY]; dragged=false; });
-$('#barPill').addEventListener('click',e=>{ if(!dragged) E.body.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
+// in the notch a left click is the menu: the 1st opens it, the 2nd closes it (talk: "hey Void", Space, or 🎙 in the menu)
+$('#barPill').addEventListener('click',e=>{ if(dragged){ dragged=false; return; } downAt=null;
+  const was=menuOn; hideAsk(); closePanels(); G.jelly.kick(.4); menu(!was); });
 $('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
 // the notch grows to hold what's showing in it (the terminal while he works, else his words): one black shape
 function dropSync(){
@@ -2179,7 +2181,7 @@ E.body.addEventListener('click',()=>{ if(dragged){ dragged=false; return; } down
 E.body.addEventListener('contextmenu',e=>{ e.preventDefault(); hideAsk(); closePanels(); G.jelly.kick(.4); menu(!menuOn); });
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('mouseup',()=>{ if(dragNative){ dragNative=false; native('dragend'); } downAt=null; });
-addEventListener('mousedown',e=>{ if(!e.target.closest('#body,#menu,#ask,.pn,#appr,#atts,#pwbox')){ menu(false); closePanels(); if(!input.value) hideAsk(); } });
+addEventListener('mousedown',e=>{ if(!e.target.closest('#body,#barPill,#menu,#ask,.pn,#appr,#atts,#pwbox')){ menu(false); closePanels(); if(!input.value) hideAsk(); } });
 
 addEventListener('keydown',e=>{ wake();
   const askOn=ask.classList.contains('on'), k=e.key.toLowerCase(), typing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)&&document.activeElement!==input;
