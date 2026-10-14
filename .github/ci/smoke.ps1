@@ -36,6 +36,12 @@ try {
   Check "tool shows on his terminal" ($body -match '"t": "tool"') ""
 } catch { Check "a request through Claude" $false "$_" }
 
+# security: the window ignores commands that don't carry its secret (any program can reach a local port)
+$wport = (Get-Content "$ROOT\window.port").Split(" ")[0]
+$tcp = New-Object Net.Sockets.TcpClient("127.0.0.1", [int]$wport); $st2 = $tcp.GetStream(); $msg = [Text.Encoding]::ASCII.GetBytes("quit"); $st2.Write($msg, 0, $msg.Length); $tcp.Close()
+Start-Sleep 2
+Check "window ignores a command without its secret" ([bool](Get-CimInstance Win32_Process -Filter "Name like 'python%'" | Where-Object { $_.CommandLine -like "*window_win.py*" })) ""
+
 # security: the page and /api/state give nothing away; the token Claude's commands get can't take over
 $rt = Get-Content "$ROOT\runtime.json" | ConvertFrom-Json
 $page = (Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47777/).Content

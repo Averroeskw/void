@@ -1469,7 +1469,8 @@ function nextApproval(){
   if(!pendingAppr) return;
   const a=pendingAppr;
   if(hiddenNow) native('show');
-  const what=a.tool==='Bash'?'Can I run this?':a.tool==='WebFetch'?'Can I open this page?':a.tool==='WebSearch'?'Can I search the web?':`Can I use ${a.tool}?`;
+  const what=a.tool==='Bash'?'Can I run this?':a.tool==='WebFetch'?'Can I open this page?':a.tool==='WebSearch'?'Can I search the web?':
+    /^(Edit|Write|MultiEdit|NotebookEdit)$/.test(a.tool)?'Can I change this file?':`Can I use ${a.tool}?`;
   $('#apQ').textContent=what; $('#apCmd').textContent=a.detail;
   { const al=apEl.querySelector('[data-ans="always"]'); if(al) al.hidden=a.always===false; }   // not for chained commands
   const spoken=a.say||what;   // the server says what it does in plain words (the card shows the real command)

@@ -428,7 +428,56 @@ def approval_say(tool, inp):
         return f"Can I open a page on {host}?" if host else "Can I open this page?"
     if tool == "WebSearch":
         return "Can I search the web?"
+    if tool in EDIT_TOOLS:
+        p = edit_path(inp)
+        return f"Can I change {p.name}?" if p else "Can I change this file?"
     return f"Can I use {tool}?"
+
+
+# ---------------------------------------------------------------- file edits ("Ask me first")
+# Claude edits files in the project on its own, but these places run things later, change how Void or Claude behave,
+# or hold keys: a change there gets the approval card, like a command. So does any edit outside the project folder.
+EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
+
+
+def edit_path(inp):
+    p = (inp or {}).get("file_path") or (inp or {}).get("notebook_path") if isinstance(inp, dict) else None
+    if not p:
+        return None
+    try:
+        return (Path(ST.cwd) / os.path.expanduser(str(p))).resolve()     # (resolve: a symlink can't hide where it points)
+    except (OSError, ValueError):
+        return None
+
+
+def sensitive_paths():
+    h = Path.home()
+    dirs = [CONF_PATH.parent, DATA_DIR, APP_DIR, h / ".claude", h / ".ssh", h / ".gnupg", h / ".aws", h / ".kube",
+            h / ".local" / "bin", h / ".config" / "autostart", h / ".config" / "systemd", h / ".config" / "hypr",
+            h / ".config" / "sway", h / ".config" / "i3", h / ".config" / "fish", h / ".config" / "git"]
+    files = [h / n for n in (".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".profile", ".zshrc", ".zprofile",
+                             ".zshenv", ".zlogin", ".xprofile", ".xinitrc", ".xsession", ".gitconfig", ".npmrc", ".pypirc",
+                             ".netrc", ".claude.json")]
+    if WIN:
+        appdata = Path(os.environ.get("APPDATA") or h / "AppData" / "Roaming")
+        docs = h / "Documents"
+        dirs += [appdata / "Microsoft" / "Windows" / "Start Menu", docs / "WindowsPowerShell", docs / "PowerShell"]
+    return [d.resolve() for d in dirs], [f.resolve() for f in files]
+
+
+def edit_needs_card(path):
+    """True for edits outside the project, in Void's / Claude's own files, startup places, shell profiles, keys, or a
+    git repo's hooks and config."""
+    if path is None:
+        return True
+    norm = (lambda x: str(x).lower()) if WIN else str
+    dirs, files = sensitive_paths()
+    if any(norm(path) == norm(f) for f in files) or ".git" in path.parts:
+        return True
+    if any(norm(path) == norm(d) or norm(path).startswith(norm(d) + os.sep) for d in dirs):
+        return True
+    cwd = Path(ST.cwd).resolve()
+    return not (norm(path) == norm(cwd) or norm(path).startswith(norm(cwd).rstrip(os.sep) + os.sep))
 
 
 def is_void_see(cmd):
@@ -479,7 +528,16 @@ class Approvals:
     def ask(self, tool, inp, timeout=600):
         # the raw, complete command (summarize_input() shortens it and folds newlines away)
         cmd = str(inp.get("command") or "").strip() if tool == "Bash" and isinstance(inp, dict) else ""
-        key = "Bash:" + cmd if tool == "Bash" else tool          # the whole command, never just its first word
+        # what "always" covers: the whole command (never just its first word), the one file, the one website
+        if tool == "Bash":
+            key = "Bash:" + cmd
+        elif tool in EDIT_TOOLS:
+            key = "Edit:" + str(edit_path(inp))
+        elif tool == "WebFetch":
+            key = "WebFetch:" + (re.sub(r"^https?://", "", str((inp or {}).get("url") or "")).split("/")[0].split("@")[-1].lower()
+                                 if isinstance(inp, dict) else "")
+        else:
+            key = tool
         can_always = not (tool == "Bash" and CHAINED_RE.search(cmd))
         if key in self.always:
             return {"ok": True, "why": "the user said yes to this exact command for this chat"}
@@ -575,6 +633,8 @@ def approval_text(tool, inp):
         return inp.get("url") or "a web page"
     if tool == "WebSearch":
         return "search: " + (inp.get("query") or "")
+    if tool in EDIT_TOOLS:
+        return "change: " + str(edit_path(inp) or inp.get("file_path") or "a file")
     return summarize_input(inp) or tool
 
 
@@ -2090,7 +2150,7 @@ def hooks_file():
     """Claude Code settings that route commands / web requests through approve.py (→ a yes/no card under Void)."""
     cmd = (f'"{sys.executable}" "{APP_DIR / "approve.py"}"' if WIN else
            f"{shlex.quote(sys.executable)} {shlex.quote(str(APP_DIR / 'approve.py'))}")
-    data = {"hooks": {"PreToolUse": [{"matcher": "Bash|WebFetch|WebSearch|NotebookEdit|mcp__.*",
+    data = {"hooks": {"PreToolUse": [{"matcher": "Bash|WebFetch|WebSearch|Edit|Write|MultiEdit|NotebookEdit|mcp__.*",
                                       "hooks": [{"type": "command", "command": cmd, "timeout": 900}]}]}}
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     HOOKS_PATH.write_text(json.dumps(data, indent=1))
@@ -2706,6 +2766,8 @@ class Handler(BaseHTTPRequestHandler):
                 cmd = str((b.get("input") or {}).get("command") or "").strip()
                 if b.get("tool") == "Bash" and is_void_see(cmd):          # only looking at the screen: no card
                     return self._json({"ok": True, "why": "just looking at the screen"})
+                if b.get("tool") in EDIT_TOOLS and not edit_needs_card(edit_path(b.get("input"))):
+                    return self._json({"ok": True})                       # an ordinary edit in the project: no card
                 return self._json(APPROVALS.ask(str(b.get("tool") or "?"), b.get("input") or {}))
             if p == "/api/askpass":                   # askpass.py (sudo -A) is waiting for the password
                 if WIN or not CFG.get("root_mode"):   # the password card only exists in root mode

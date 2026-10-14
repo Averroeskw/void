@@ -147,7 +147,9 @@ In the typing box: `/new` `/cd <dir>` `/history` `/memory` `/remember …` `/for
 
 Settings → Brain:
 
-- **Ask me first** (default): he edits files on his own, but before running a command or going online he shows a card,
+- **Ask me first** (default): he edits files in your project on his own, but before running a command, going online,
+  or changing a file outside the project or in a sensitive place (shell and PowerShell profiles, startup / autostart
+  folders, Void's and Claude's own files and settings, `~/.ssh`, `~/.local/bin`, git hooks and config) he shows a card,
   asks out loud, and waits. Say "yes", "no" or "always", or click / press Y / N. "Always" means no more asking for
   that *exact* command until you start a new chat, continue an old one or switch folders. It isn't offered for
   commands that run other commands (`&&`, `;`, `|`, `$(…)`…): those are asked about every time.

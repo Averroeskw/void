@@ -81,9 +81,9 @@ def log(msg):
 def send(cmd):
     """Pass a command to the running window. False if there isn't one."""
     try:
-        port = int(PORT_FILE.read_text())
-        with socket.create_connection(("127.0.0.1", port), timeout=1) as s:
-            s.sendall(cmd.encode())
+        port, secret = PORT_FILE.read_text().split()[:2]                 # "port secret" (see VoidWindow._serve)
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=1) as s:
+            s.sendall(f"{secret} {cmd}".encode())
         return True
     except (OSError, ValueError):
         return False
@@ -381,19 +381,24 @@ class VoidWindow(QWidget):
             user32.DispatchMessageW(ctypes.byref(msg))
 
     def _serve(self):
+        """Commands from `void listen` & co. A local port any program (any user) could reach, so each command must
+        start with this run's secret, which sits next to the port number in a file only you can read."""
+        import hmac
+        import secrets
+        secret = secrets.token_urlsafe(18)
         srv = socket.socket()
         srv.bind(("127.0.0.1", 0))
         srv.listen(4)
         DATA.mkdir(parents=True, exist_ok=True)
-        PORT_FILE.write_text(str(srv.getsockname()[1]))
+        PORT_FILE.write_text(f"{srv.getsockname()[1]} {secret}")
         while True:
             c, _ = srv.accept()
             try:
-                cmd = c.recv(64).decode(errors="replace").strip()
+                got, _, cmd = c.recv(128).decode(errors="replace").strip().partition(" ")
             finally:
                 c.close()
-            if cmd:
-                self.remote.cmd.emit(cmd)
+            if cmd and hmac.compare_digest(got, secret):
+                self.remote.cmd.emit(cmd.strip())
 
     # ---- widening for panels / his terminal
     def set_wide(self, on, kind="panel"):
