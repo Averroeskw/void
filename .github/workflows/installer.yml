@@ -26,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { (Get-Content app\VERSION -TotalCount 1).Trim() }
-          Set-Content -Encoding ascii -NoNewline app\VERSION $version          # what Void reports and compares for updates
+          [IO.File]::WriteAllText("$pwd\app\VERSION", $version)            # what Void reports and compares for updates
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
           & $iscc "/DAppVersion=$version" installer\void.iss
@@ -88,7 +88,7 @@ jobs:
           for ($i = 0; $i -lt 30 -and (Up); $i++) { Start-Sleep 1 }
           "server down before the test: $(-not (Up))"
           $built = (Get-Content "$root\app\VERSION" -TotalCount 1).Trim()
-          Set-Content -Encoding ascii -NoNewline "$root\app\VERSION" "0.0.1"                 # pretend it's old
+          [IO.File]::WriteAllText("$root\app\VERSION", "0.0.1")                              # pretend it's old
           "VERSION file now: $(Get-Content "$root\app\VERSION")  (built: $built)"
           & "$root\bin\void.cmd" show
           for ($i = 0; $i -lt 60 -and -not (Up); $i++) { Start-Sleep 1 }
