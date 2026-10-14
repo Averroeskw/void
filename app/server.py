@@ -2289,11 +2289,26 @@ class Updates:
                     raise RuntimeError("this release has no VoidSetup.exe")
                 exe = Path(tempfile.gettempdir()) / "VoidSetup-update.exe"
                 urllib.request.urlretrieve(cls.info["setup"], exe)
-                # through `cmd /c start`: setup isn't our child, so it survives when it stops Void (and this server)
-                subprocess.Popen(["cmd", "/c", "start", "", str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
-                                  "/UPDATER"], creationflags=winsys.NO_WINDOW, close_fds=True)
+                # A hidden helper runs setup, waits for it, then starts Void again. A short-lived PowerShell starts the
+                # helper and exits, so the helper isn't in our process tree and survives setup stopping Void (and this
+                # server). The helper's script goes in base64 (-EncodedCommand): no quoting to get wrong.
+                import base64
+
+                def q(s):                                              # a PowerShell '...' string
+                    return "'" + str(s).replace("'", "''") + "'"
+                pyw = Path(sys.executable).with_name("pythonw.exe")
+                pyw = pyw if pyw.exists() else Path(sys.executable)
+                log = DATA_DIR / "update-setup.log"
+                helper = ("Start-Process -Wait -FilePath " + q(exe) + " -ArgumentList '/SILENT','/SUPPRESSMSGBOXES',"
+                          "'/NORESTART','/UPDATER'," + q('/LOG="' + str(log) + '"') + "\n"
+                          "Start-Process -FilePath " + q(pyw) + " -ArgumentList " + q('"' + str(APP_DIR / "launch_win.py") + '"')
+                          + ",'show'\n")
+                enc = base64.b64encode(helper.encode("utf-16-le")).decode()
+                subprocess.Popen(["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command",
+                                  "Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile -EncodedCommand "
+                                  + enc + "'"], creationflags=winsys.NO_WINDOW, close_fds=True)
                 print(f"[void] update: running {exe}", flush=True)
-                return                                 # setup stops us, updates Void and starts him again
+                return                                 # setup stops us and updates Void; the helper starts him again
             how = cls.how()
             if how != "git":
                 raise RuntimeError("update Void with your package manager" if how == "package"

@@ -104,6 +104,7 @@ jobs:
           if ($v -and $v.Trim() -eq $built) { "PASS  updated to v$built" } else { "FAIL  version after update: $v"; $fails++ }
           $back = $false; for ($i = 0; $i -lt 60 -and -not $back; $i++) { $back = Up; if (-not $back) { Start-Sleep 2 } }
           if ($back) { "PASS  Void started again by itself" } else { "FAIL  server didn't come back"; $fails++ }
+          if ($fails) { "--- update-setup.log"; Get-Content "$root\update-setup.log" -Tail 25 -ErrorAction SilentlyContinue; "--- server.log"; Get-Content "$root\server.log" -Tail 15 -ErrorAction SilentlyContinue }
           & "$root\bin\void.cmd" stop
           exit $fails
       - name: Uninstall
