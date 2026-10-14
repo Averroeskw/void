@@ -1853,8 +1853,10 @@ function showInfo(){ syncEye(); document.body.classList.toggle('faceyou',info.co
 async function refresh(){ try{ info=await (await fetch('/api/state')).json(); showInfo(); }catch(e){} }
 function toggleMute(){ muted=!muted; try{localStorage.setItem('void.muted',muted?'1':'0');}catch(e){} if(muted) shush(); tick(muted?'voice off':'voice on'); if(setEl.classList.contains('on')) renderSettings(); }
 
-window.voidHidden=()=>{ hiddenNow=true; endListening(); menu(false); hideAsk(); };
-window.voidShown=()=>{ hiddenNow=false; entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
+// hidden (Esc, hide, closing him) = fully off: he stops talking and the server closes the mic — no "hey Void" until
+// he's shown again (Start menu, your hotkey, or `void`)
+window.voidHidden=()=>{ hiddenNow=true; endListening(); menu(false); hideAsk(); shush(); post('/api/sleep',{on:true}).catch(()=>{}); };
+window.voidShown=()=>{ hiddenNow=false; post('/api/sleep',{on:false}).catch(()=>{}); entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
   if(info.listen_on_show&&!info.hover) setTimeout(()=>startRec('auto'),450); else setTimeout(()=>poke('wink',900),350); }); };
 async function comeBack(){ if(!info.hover) return; await toggleHover(false); await sleep(700); }
 window.voidCmd=async c=>{ hiddenNow=false;

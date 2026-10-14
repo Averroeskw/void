@@ -33,6 +33,10 @@ New here? Start with the <a href="../README.md">README</a>: it gets you running 
 | **drag** him | park him anywhere; he remembers the spot (outside hover mode) |
 | **Esc** | close menus → cancel listening → stop Claude → shush → hide |
 
+**Hidden means off.** Once he's hidden (Esc, *hide* in his menu) the mic is closed and he stops talking — he can't hear
+"hey Void" until you bring him back with the Start menu / app launcher, your hotkey, or `void`. `void stop` quits him
+completely.
+
 After he answers, keep talking for a few seconds and he still hears you, no "hey Void" needed (`follow_up` in the
 config).
 

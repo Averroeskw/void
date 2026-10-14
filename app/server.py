@@ -1070,6 +1070,7 @@ class Wake:
     follow_from = follow_until = 0.0         # the "just talk, no 'hey Void'" window right after he stops talking
     follow_on = False                        # what the page was last told (it shows him listening while it's open)
     cut = None                               # you clicked him ("finish") or pressed Space/Esc ("cancel") while he heard you
+    asleep = False                           # he's hidden: the mic stays closed until he's shown again
 
     @classmethod
     def wanted(cls):
@@ -1105,7 +1106,7 @@ class Wake:
 
     @classmethod
     def should_run(cls):
-        if Listen.lock.locked():
+        if cls.asleep or Listen.lock.locked():
             return False
         if cls.speaking():                       # while he talks: only to catch "stop" / "hey Void" (barge-in)
             return bool(CFG.get("barge_in"))
@@ -2302,6 +2303,14 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/listen":
                 Wake.end_follow("cancel")                # a normal recording takes over from the follow-up window
                 return self.listen()
+            if p == "/api/sleep":                  # hidden = fully off: mic closed, no "hey Void", no voice
+                Wake.asleep = bool(json.loads(self._body() or b"{}").get("on"))
+                if Wake.asleep:
+                    Speaker.stop()
+                    Wake.hush()
+                    if Listen.current:
+                        Listen.current.stop(cancel=True)
+                return self._json({"ok": True, "asleep": Wake.asleep})
             if p == "/api/follow":
                 Wake.end_follow("finish" if json.loads(self._body() or b"{}").get("act") == "finish" else "cancel")
                 return self._json({"ok": True})
