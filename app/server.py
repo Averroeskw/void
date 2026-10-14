@@ -106,6 +106,8 @@ DEFAULTS = {
     "mic_auto": True,
     # ask GitHub twice a day whether a newer Void is out (nothing about you is sent) and offer "Update now"
     "update_check": True,
+    # hold this anywhere to talk, let go to send (Windows watches it itself; on Linux bind `void ptt-down` / `ptt-up`)
+    "ptt_hotkey": "Ctrl+Alt+Space",
     "language": "en",
     "stt_prewarm": True,
 
@@ -2379,7 +2381,11 @@ def diagnostics():
         add("speech model", f"{_whisper._void_name} on {_whisper._void_dev}")
     else:
         add("speech model", _whisper_err or "not loaded yet")
-    add("cuda libraries", "yes" if importlib.util.find_spec("nvidia.cublas") else "no")
+    try:                                         # (find_spec raises when there's no nvidia package at all)
+        cuda = importlib.util.find_spec("nvidia.cublas") is not None
+    except (ImportError, ValueError):
+        cuda = False
+    add("cuda libraries", "yes" if cuda else "no")
     add("mic", f"device: {CFG.get('mic_device') or 'system default'}")
     if WIN:
         lv = winsys.mic_level(CFG.get("mic_device") or "")
@@ -2405,6 +2411,7 @@ def diagnostics():
 def state_info():
     return {
         "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
+        "platform": "windows" if WIN else "linux", "ptt_hotkey": CFG.get("ptt_hotkey", "") or "",
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
@@ -2587,6 +2594,10 @@ class Handler(BaseHTTPRequestHandler):
                             "barge_in", "sfx", "update_check"):
                     if key in b:
                         upd[key] = bool(b[key])
+                if "ptt_hotkey" in b:
+                    k = str(b["ptt_hotkey"] or "").strip()
+                    if k == "" or re.fullmatch(r"((Ctrl|Alt|Shift|Win)\+){0,4}[A-Za-z0-9`]+", k):
+                        upd["ptt_hotkey"] = k[:40]
                 if b.get("code_face") in ("him", "you"):
                     upd["code_face"] = b["code_face"]
                 if "mic_device" in b:

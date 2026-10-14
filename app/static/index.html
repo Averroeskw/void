@@ -434,6 +434,8 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <label class="tg"><input type="checkbox" id="listenShowSw"><span class="sw"></span><span class="l">Listen as soon as he pops up</span></label>
         <label class="tg"><input type="checkbox" id="sfxSw"><span class="sw"></span><span class="l">Sound effects<small>Little blips when he wakes, opens his menu or finishes.</small></span></label>
       </div>
+      <div class="row"><div class="t">Push-to-talk hotkey</div><div class="h" id="pttHelp">Hold it anywhere, even in another app, to talk. Let go to send.</div>
+        <div class="bar" id="pttBar"><button class="btn" id="pttSet"></button><button class="btn" id="pttOff">Turn off</button></div></div>
       <div class="row"><div class="t">Microphone</div><select id="micSel"></select></div>
       <div class="row"><div class="t">Speech recognition</div><div class="h">Better understands you more often but takes a moment longer.</div><div class="seg" id="sttChips"></div></div>
     </div>
@@ -1759,7 +1761,7 @@ function renderSettings(){
   const sw={rootSw:info.root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
     clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random,
     updSw:info.update_check!==false};
-  renderUpdate();
+  renderUpdate(); renderPtt();
   for(const k in sw){ const e=document.getElementById(k); if(e) e.checked=!!sw[k]; }
   const ps=restPu();
   $('#pupChips').innerHTML=[['slit','▮ slits'],['circle','● circles'],['dot','• dots']].map(([id,l])=>`<button data-ps="${id}" class="${ps===id?'on':''}">${l}</button>`).join('');
@@ -1778,6 +1780,33 @@ function renderSettings(){
   $$('#skinGrid button').forEach(b=>miniVoid(b.querySelector('svg'),{...L,skin:b.dataset.skin},false));
   selectPart(pkPart); renderRecent();
 }
+// push-to-talk hotkey: Windows watches the combo itself; on Linux your compositor binds `void ptt-down` / `void ptt-up`
+let pttCapture=false;
+function pttLinux(k){                               // "Ctrl+Alt+Space" → Hyprland's "CTRL ALT, SPACE"
+  const p=(k||'Ctrl+Alt+Space').split('+'), key=p.pop(); return [p.map(m=>m.toUpperCase().replace('WIN','SUPER')).join(' '), key.toUpperCase()];
+}
+function renderPtt(){
+  const k=info.ptt_hotkey||'', b=$('#pttSet');
+  if(info.platform==='windows'){
+    b.textContent=pttCapture?'Press your keys…':(k||'Set a hotkey'); $('#pttOff').hidden=!k||pttCapture;
+  }else{
+    const [m,key]=pttLinux(k); $('#pttBar').hidden=true;
+    $('#pttHelp').innerHTML=`Hold a key combo anywhere to talk. Bind it in your desktop, e.g. Hyprland:<br><code>bind = ${esc(m)}, ${esc(key)}, exec, void ptt-down</code><br><code>bindr = ${esc(m)}, ${esc(key)}, exec, void ptt-up</code><br>sway: <code>bindsym</code> … <code>void ptt-down</code> and <code>bindsym --release</code> … <code>void ptt-up</code>. Other desktops: bind <code>void listen</code>.`;
+  }
+}
+function pttName(e){                                // a keydown → "Ctrl+Alt+Space", or '' if it's only a modifier
+  const c=e.code; let key='';
+  if(/^Key[A-Z]$/.test(c)) key=c.slice(3); else if(/^Digit\d$/.test(c)) key=c.slice(5); else if(/^F\d{1,2}$/.test(c)) key=c;
+  else key=({Space:'Space',Backquote:'`',Insert:'Insert',Home:'Home',End:'End',PageUp:'PageUp',PageDown:'PageDown',Pause:'Pause'})[c]||'';
+  if(!key) return '';
+  const mods=[e.ctrlKey&&'Ctrl',e.altKey&&'Alt',e.shiftKey&&'Shift',e.metaKey&&'Win'].filter(Boolean);
+  if(!mods.length&&!/^F\d/.test(key)&&key!=='Pause') return '';      // a bare letter or Space would take over normal typing
+  return [...mods,key].join('+');
+}
+addEventListener('keydown',e=>{ if(!pttCapture) return; e.preventDefault(); e.stopImmediatePropagation();
+  if(e.key==='Escape'){ pttCapture=false; return renderPtt(); }
+  const k=pttName(e); if(!k) return;
+  pttCapture=false; setSetting({ptt_hotkey:k}).then(()=>{ native('ptt:'+k); renderPtt(); tick('hold '+k+' anywhere to talk'); }); },true);
 // updates: what's installed, whether a newer release is out, and how this install updates itself
 function renderUpdate(){
   const u=info.update||{}, now=$('#updNow'), txt=$('#updTxt');
@@ -1833,6 +1862,8 @@ setEl.addEventListener('click',e=>{
   if(e.target.closest('#projAdd')){ const n=$('#projName').value.trim(), p=$('#projPath').value.trim(); if(!n||!p) return tick('give it a name and a folder',true);
     post('/api/projects',{op:'add',name:n,path:p}).then(r=>r.json()).then(j=>{ if(j.error) return tick(j.error,true); $('#projName').value=''; $('#projPath').value=''; tick('added '+n); return refresh().then(renderSettings); }); }
   if(bo){ settings(false); openPanel(bo.dataset.open); }
+  if(e.target.closest('#pttSet')){ pttCapture=true; renderPtt(); }
+  if(e.target.closest('#pttOff')) setSetting({ptt_hotkey:''}).then(()=>{ native('ptt:'); renderPtt(); tick('push-to-talk hotkey off'); });
   if(e.target.closest('#diagCopy')) copyDiagnostics();
   if(e.target.closest('#diagReport')) post('/api/report').then(()=>tick('opening GitHub — paste the report there')).catch(()=>tick('couldn’t open the browser',true));
   if(e.target.closest('#updCheck')){ $('#updTxt').textContent='Checking…';
@@ -1914,6 +1945,8 @@ window.voidCmd=async c=>{ hiddenNow=false;
   if(c==='listen'){ await comeBack(); if(rec) stopRec(false); else startRec('auto'); }
   else if(c==='look'){ await comeBack(); shoot('window').then(j=>{ if(j) startRec('auto'); }); }
   else if(c==='live'){ await comeBack(); toggleLive(); }
+  else if(c==='ptt-down'){ await comeBack(); if((busy||playing)&&!pendingAppr) await interrupt(); if(!rec) startRec('ptt'); }   // push-to-talk hotkey held
+  else if(c==='ptt-up'){ if(rec&&rec.mode==='ptt') stopRec(false); }                                                          // …and let go
   else if(c==='hover') toggleHover(); else if(c==='hover-on') toggleHover(true); else if(c==='hover-off') toggleHover(false); };
 
 // click-through: tell the window which bits are solid (the ball + whatever is open); the rest passes clicks to your desktop
@@ -2150,6 +2183,7 @@ const CP=(()=>{
 
 refresh().then(()=>{
   if(info.hover && NATIVE){ native('hover:on'); setHoverClass(true); }
+  if(NATIVE) native('ptt:'+(info.ptt_hotkey||''));          // the Windows window watches this combo (Linux ignores it)
   if(info.claude===false){ fail("I can't find Claude Code — install it and run `claude` once to sign in."); }
   else if(info.mic===false) tick('no mic recorder — install libpulse or alsa-utils',true);
   else if(!info.tts && !muted) tick('no voice engine — install espeak-ng or piper',true);

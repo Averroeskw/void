@@ -54,6 +54,26 @@ window.voidQt = true;   // Chromium through Qt, not WebKitGTK: the page skips it
 """
 
 
+# push-to-talk combos like "Ctrl+Alt+Space" → ({"ctrl", "alt"}, virtual-key code of Space)
+MOD_VKS = {"ctrl": (0x11,), "alt": (0x12,), "shift": (0x10,), "win": (0x5B, 0x5C)}
+KEY_VKS = {"space": 0x20, "`": 0xC0, "insert": 0x2D, "home": 0x24, "end": 0x23, "pageup": 0x21, "pagedown": 0x22,
+           "pause": 0x13, **{f"f{n}": 0x6F + n for n in range(1, 25)}}
+
+
+def parse_combo(text):
+    parts = [p.strip().lower() for p in (text or "").split("+") if p.strip()]
+    if not parts:
+        return None
+    key, mods = parts[-1], frozenset(p for p in parts[:-1] if p in MOD_VKS)
+    if key in KEY_VKS:
+        vk = KEY_VKS[key]
+    elif len(key) == 1 and key.isalnum():
+        vk = ord(key.upper())                                            # A–Z and 0–9 are their own codes
+    else:
+        return None
+    return mods, vk
+
+
 def log(msg):
     print(f"[void] {msg}", file=sys.stderr, flush=True)
 
@@ -131,6 +151,8 @@ class VoidWindow(QWidget):
         threading.Thread(target=self._serve, daemon=True).start()
         self.base = url.split("?")[0]
         threading.Thread(target=self._watch_server, daemon=True).start()
+        self.ptt, self.ptt_held = None, False                           # the push-to-talk combo (the page sends it)
+        threading.Thread(target=self._ptt_hook, daemon=True).start()
         QTimer.singleShot(1500, self._tell_page)
         self.poll = QTimer(self, interval=33, timeout=self._poll_mouse)    # click-through ~30×/s; hover ~120×/s
         self.poll.setTimerType(Qt.PreciseTimer)
@@ -178,6 +200,9 @@ class VoidWindow(QWidget):
                 self.rects = json.loads(msg[7:])
             except ValueError:
                 self.rects = None
+            return
+        if msg.startswith("ptt:"):
+            self.ptt = parse_combo(msg[4:])
             return
         if msg.startswith("dragby:"):
             try:
@@ -251,6 +276,11 @@ class VoidWindow(QWidget):
             self.show_me()
         elif c == "hide":
             self.hide_me()
+        elif c in ("ptt-down", "ptt-up"):
+            log(f"push-to-talk: {c[4:]}")
+            if c == "ptt-down" and not self.isVisible():
+                self.show_me()
+            self._js("window.voidCmd&&voidCmd(%s)" % json.dumps(c))
         elif c in ("listen", "look", "live", "hover", "hover-on", "hover-off"):
             if not self.isVisible():
                 self.show_me()
@@ -285,6 +315,55 @@ class VoidWindow(QWidget):
                     launch_win._start("server", [str(APP / "server.py")])
                 except Exception as e:  # noqa: BLE001
                     log(f"couldn't restart the server: {e}")
+
+    def _ptt_hook(self):
+        """The push-to-talk hotkey, anywhere in Windows: a low-level keyboard hook (RegisterHotKey can't tell when a
+        key is let go). It only compares each key with the combo; everything else passes straight through untouched,
+        and nothing is recorded. The combo's own key presses are kept from the app you're in."""
+        import ctypes.wintypes as wt
+        user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+        LRESULT = ctypes.c_ssize_t
+        HOOKPROC = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wt.WPARAM, wt.LPARAM)
+        user32.CallNextHookEx.argtypes = (wt.HHOOK, ctypes.c_int, wt.WPARAM, wt.LPARAM)
+        user32.CallNextHookEx.restype = LRESULT
+        user32.SetWindowsHookExW.argtypes = (ctypes.c_int, HOOKPROC, wt.HINSTANCE, wt.DWORD)
+        user32.SetWindowsHookExW.restype = wt.HHOOK
+        user32.GetAsyncKeyState.restype = ctypes.c_short
+        kernel32.GetModuleHandleW.restype = wt.HMODULE
+
+        class KBD(ctypes.Structure):
+            _fields_ = [("vk", wt.DWORD), ("scan", wt.DWORD), ("flags", wt.DWORD), ("time", wt.DWORD),
+                        ("extra", ctypes.c_size_t)]
+
+        def held(vks):
+            return any(user32.GetAsyncKeyState(v) & 0x8000 for v in vks)
+
+        def proc(code, wparam, lparam):
+            combo = self.ptt
+            if code == 0 and combo:
+                mods, key = combo
+                vk = ctypes.cast(lparam, ctypes.POINTER(KBD)).contents.vk
+                if vk == key:
+                    down = wparam in (0x100, 0x104)                     # WM_KEYDOWN / WM_SYSKEYDOWN
+                    if down and not self.ptt_held and all(held(MOD_VKS[m]) for m in mods):
+                        self.ptt_held = True
+                        self.remote.cmd.emit("ptt-down")
+                        return 1
+                    if self.ptt_held:
+                        if not down:
+                            self.ptt_held = False
+                            self.remote.cmd.emit("ptt-up")
+                        return 1                                         # (and swallow the key's auto-repeat)
+            return user32.CallNextHookEx(None, code, wparam, lparam)
+
+        self._ptt_proc = HOOKPROC(proc)                                  # keep it alive: Windows calls it
+        if not user32.SetWindowsHookExW(13, self._ptt_proc, kernel32.GetModuleHandleW(None), 0):   # WH_KEYBOARD_LL
+            log("push-to-talk hotkey unavailable (couldn't watch the keyboard)")
+            return
+        msg = wt.MSG()
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:   # low-level hooks need a message loop
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
 
     def _serve(self):
         srv = socket.socket()

@@ -116,7 +116,8 @@ def main():
     if cmd == "render":
         print("render modes are a Linux thing — on Windows he always draws with Chromium")
         return 0
-    if cmd not in ("toggle", "show", "hide", "quit", "listen", "look", "live", "hover", "hover-on", "hover-off"):
+    if cmd not in ("toggle", "show", "hide", "quit", "listen", "look", "live", "hover", "hover-on", "hover-off",
+                   "ptt-down", "ptt-up"):
         print(__doc__)
         return 2
     if not up():
@@ -131,9 +132,10 @@ def main():
     import window_win
     if window_win.send(cmd):
         return 0
-    if cmd in ("hide", "quit"):
+    if cmd in ("hide", "quit", "ptt-up"):
         return 0
-    _start("window", [str(APP / "window_win.py"), URL + "?native=1", "show" if cmd == "toggle" else cmd])
+    first = {"toggle": "show", "ptt-down": "listen"}.get(cmd, cmd)      # (not open yet: a push-to-talk press just listens)
+    _start("window", [str(APP / "window_win.py"), URL + "?native=1", first])
     return 0
 
 

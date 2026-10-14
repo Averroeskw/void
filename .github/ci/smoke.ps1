@@ -59,6 +59,25 @@ Check "clipboard" ($c -match "copied on windows") "$c"
 & $VPY (Join-Path $APP "window_win.py") "http://127.0.0.1:47777/?native=1" --selftest "$OUT\face.png" 2>&1 | Out-Host
 Check "his window renders" (Test-Path "$OUT\face.png")
 
+# the push-to-talk hotkey: press and hold Ctrl+Alt+Space (the default) like a person would, then let go
+Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class Keys {
+  [StructLayout(LayoutKind.Sequential)] public struct KI { public ushort vk, scan; public uint flags, time; public IntPtr extra; }
+  [StructLayout(LayoutKind.Explicit, Size = 40)] public struct INPUT { [FieldOffset(0)] public uint type; [FieldOffset(8)] public KI ki; }
+  [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] i, int size);
+  public static uint Key(ushort vk, bool up) { var i = new INPUT[1]; i[0].type = 1; i[0].ki.vk = vk; i[0].ki.flags = up ? 2u : 0u; return SendInput(1, i, Marshal.SizeOf(typeof(INPUT))); }
+}
+"@
+$before = (Get-Content "$ROOT\server.log").Count
+[Keys]::Key(0x11, $false) | Out-Null; [Keys]::Key(0x12, $false) | Out-Null; [Keys]::Key(0x20, $false) | Out-Null
+Start-Sleep 1
+[Keys]::Key(0x20, $true) | Out-Null; [Keys]::Key(0x12, $true) | Out-Null; [Keys]::Key(0x11, $true) | Out-Null
+Start-Sleep 2
+$new = (Get-Content "$ROOT\server.log" | Select-Object -Skip $before) -join "`n"
+Check "push-to-talk hotkey: held" ($new -match "push-to-talk: down") ""
+Check "push-to-talk hotkey: let go" ($new -match "push-to-talk: up") ""
+
 & "$ROOT\bin\void.cmd" stop
 Start-Sleep 2
 $alive = $false; try { Invoke-RestMethod http://127.0.0.1:47777/api/state -TimeoutSec 2 | Out-Null; $alive = $true } catch {}

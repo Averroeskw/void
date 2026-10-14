@@ -6,6 +6,7 @@
 #   void see [screen]  print a picture of your window (or whole screen) — Claude uses this to look when it needs to
 #   void live       live view on/off: he sees your screen with everything you say, until you turn it off
 #   void hover      toggle hover mode (he floats next to your mouse)
+#   void ptt-down / void ptt-up   push-to-talk: bind to a key's press and release (Hyprland: bind / bindr)
 #   void show|hide|quit
 #   void doctor     check mic, voice and Claude Code
 #   void diagnostics  a report to paste when asking for help (nothing is sent)
@@ -23,6 +24,13 @@ ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/void"
 SHARE="$(cd "$(dirname "$(readlink -f "$0")")/../share/void" 2>/dev/null && pwd || true)"
 if [ -d "$ROOT/app" ] || [ -z "$SHARE" ] || [ ! -d "$SHARE/app" ]; then APP="$ROOT/app"; else APP="$SHARE/app"; fi
 PY="$ROOT/venv/bin/python"; LOG="$ROOT/server.log"
+# push-to-talk from a desktop key binding (one call on press, one on release): straight to the running window, fast
+case "${1:-}" in ptt-down|ptt-up)
+  PSOCK="${XDG_RUNTIME_DIR:-/tmp}/void-$(id -u).sock"
+  if [ -S "$PSOCK" ] && python3 -c 'import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect(sys.argv[1]); s.sendall(sys.argv[2].encode())' "$PSOCK" "$1" 2>/dev/null; then exit 0; fi
+  [ "$1" = ptt-up ] && exit 0
+  set -- listen ;;                                     # he isn't open yet: start him and just listen
+esac
 if [ "${1:-}" = setup ]; then
   [ -x "${SHARE:-}/install.sh" ] && exec "$SHARE/install.sh" --user
   echo "void setup is for system-wide installs — run ./install.sh from the folder you downloaded instead" >&2; exit 1

@@ -781,7 +781,8 @@ class VoidWindow:
             fn = {"toggle": self.toggle, "show": self.show, "hide": self.hide, "quit": self.quit,
                   "listen": lambda: self.cmd("listen"), "look": lambda: self.cmd("look"), "live": lambda: self.cmd("live"),
                   "hover": lambda: self.cmd("hover"), "hover-on": lambda: self.cmd("hover-on"),
-                  "hover-off": lambda: self.cmd("hover-off")}.get(cmd)
+                  "hover-off": lambda: self.cmd("hover-off"),
+                  "ptt-down": lambda: self.cmd("ptt-down"), "ptt-up": lambda: self._js("window.voidCmd&&voidCmd('ptt-up')")}.get(cmd)
             if fn:
                 GLib.idle_add(fn)
 
