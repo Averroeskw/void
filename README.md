@@ -72,10 +72,14 @@ cd void && ./install.sh
 void
 ```
 
-Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the system packages for you.
+Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the system packages for you, and
+**Update now** in his settings keeps him current.
 
-<sub>Update with <code>git pull && ./install.sh</code>.<br>
-Gentoo or system-wide? See the <a href="docs/GUIDE.md#install-from-source">guide</a>.</sub>
+**Ubuntu / Debian package:** download `void-claude_…_all.deb` from the
+[latest release](https://github.com/PLAYER99-void/void/releases/latest), then
+`sudo apt install ./void-claude_*_all.deb` and `void setup`.
+
+<sub>Gentoo or system-wide? See the <a href="docs/GUIDE.md#install-from-source">guide</a>.</sub>
 
 </td>
 </tr>

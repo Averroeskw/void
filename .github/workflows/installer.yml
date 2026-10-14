@@ -1,11 +1,12 @@
 name: installer
-# Builds VoidSetup.exe, installs Void with it on a clean Windows machine, runs the smoke test, then uninstalls.
-# Pushing a tag like v1.0.0 also publishes VoidSetup.exe on that release.
+# Builds VoidSetup.exe (and tests it on a clean Windows machine), the .deb (installed and run on Ubuntu) and the Arch
+# package. Pushing a tag like v1.0.0 also publishes VoidSetup.exe and the .deb on that release.
 on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths: ["installer/**", "app/**", "install.ps1", ".github/workflows/installer.yml", ".github/ci/**"]
+    paths: ["installer/**", "app/**", "install.ps1", "install.sh", "bin/**", "data/**", "meson.build", "packaging/**",
+            ".github/workflows/installer.yml", ".github/ci/**"]
   workflow_dispatch:
 permissions:
   contents: write
@@ -128,9 +129,67 @@ jobs:
           path: |
             dist/VoidSetup.exe
             ci-out
+
+  deb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build void-claude.deb
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq meson ninja-build
+          if [ "$GITHUB_REF_TYPE" = tag ]; then printf '%s' "${GITHUB_REF_NAME#v}" > app/VERSION; fi
+          bash packaging/deb/build.sh dist
+          ls -l dist
+      - name: Install it, run "void setup", and start Void's server from the package
+        run: |
+          sudo apt-get install -y ./dist/void-claude_*_all.deb
+          test -x /usr/bin/void && test -f /usr/share/void/app/server.py && echo "PASS  files in place"
+          void setup
+          test -x ~/.local/share/void/venv/bin/python && echo "PASS  void setup made the Python environment"
+          ~/.local/share/void/venv/bin/python /usr/share/void/app/server.py > server.log 2>&1 &
+          for i in $(seq 60); do curl -fs http://127.0.0.1:47777/api/state > state.json && break; sleep 1; done
+          python3 - <<'PY'
+          import json, sys
+          s = json.load(open("state.json"))
+          ok = s.get("version") not in (None, "0.0.0") and s["update"]["how"] == "package"
+          print(("PASS" if ok else "FAIL") + f"  server answers: version {s.get('version')}, updates via {s['update']['how']}")
+          sys.exit(0 if ok else 1)
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb
+          retention-days: 14
+          path: dist/*.deb
+
+  arch:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the AUR package (void-claude-git)
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git meson
+          useradd -m builder
+          cp -r packaging/arch/void-claude-git /home/builder/pkg && chown -R builder /home/builder/pkg
+          su builder -c "cd ~/pkg && makepkg --nodeps --noconfirm"
+          ls /home/builder/pkg/*.pkg.tar.zst
+          pacman -Qlp /home/builder/pkg/*.pkg.tar.zst | grep -E "usr/bin/void$|usr/share/void/app/server.py$"
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: [build, deb, arch]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: art
       - name: Publish on the release
-        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/VoidSetup.exe
+          files: |
+            art/VoidSetup/dist/VoidSetup.exe
+            art/deb/*.deb
           generate_release_notes: true
