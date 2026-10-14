@@ -2104,11 +2104,16 @@ function sendRegion(force){
   calmCheck();
   if(!NATIVE) return;
   if(document.body.classList.contains('hover')){ const s2='[]'; if(force||lastRegion!==s2){ lastRegion=s2; native('region:'+s2); } return; }
-  if(!info.click_through){ if(lastRegion!=='off'){ lastRegion='off'; native('region:null'); } return; }
+  const inBar=document.body.classList.contains('bar');
+  if(!info.click_through&&!inBar){ if(lastRegion!=='off'){ lastRegion='off'; native('region:null'); } return; }
   const rs=[], add=(el,pad=0)=>{ if(!el) return; const r=el.getBoundingClientRect(); if(!(r.width&&r.height)) return; const g=16, x0=Math.floor((r.left-pad)/g)*g, y0=Math.floor((r.top-pad)/g)*g, x1=Math.ceil((r.right+pad)/g)*g, y1=Math.ceil((r.bottom+pad)/g)*g;
     rs.push([x0,y0,x1-x0,y1-y0]); };   // coarse grid: the region only changes when something opens/closes, not as he sways
-  add(E.body,8);
-  if(document.body.classList.contains('bar')) add($('#barPill'),2);      // the whole notch takes clicks
+  if(inBar){   // the notch: only a tight box round his eyes takes clicks; the rest of it (and what drops out of it) lets clicks through
+    const edge=EDGES.find(e=>document.body.classList.contains('e-'+e))||'top', r=$('#barPill').getBoundingClientRect(), R=Math.round;
+    if(edge==='top') rs.push([R(r.left+r.width/2-75),R(r.top),150,52]);
+    else if(edge==='bottom') rs.push([R(r.left+r.width/2-75),R(r.bottom-52),150,52]);
+    else rs.push([edge==='left'?R(r.left):R(r.right-68),R(r.top+r.height/2-65),68,130]);
+  } else add(E.body,8);
   if(menuOn) $$('.mb').forEach(b=>add(b,2));
   if(ask.classList.contains('on')) add(ask,4);
   if(setEl.classList.contains('on')) add(setEl,4);
