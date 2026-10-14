@@ -147,10 +147,20 @@ B=""
 for c in chromium google-chrome-stable google-chrome brave brave-browser vivaldi-stable microsoft-edge-stable thorium-browser; do
   command -v "$c" >/dev/null 2>&1 && { B="$c"; break; }
 done
-if [ -z "$B" ]; then exec xdg-open "$URL"; fi
+# the page never contains the server's token: hand the browser a one-time ticket (60 s, single use) to trade for it
+TICKET="$("$PY" - "$ROOT/runtime.json" "$PORT" <<'PY' 2>/dev/null || true
+import json, sys, urllib.request
+rt = json.load(open(sys.argv[1]))
+req = urllib.request.Request(f"http://127.0.0.1:{sys.argv[2]}/api/ticket", data=b"{}",
+                             headers={"Content-Type": "application/json", "X-Void-Token": rt["token"]})
+print(json.load(urllib.request.urlopen(req, timeout=5))["ticket"])
+PY
+)"
+PAGE="${URL}#ticket=${TICKET}"
+if [ -z "$B" ]; then exec xdg-open "$PAGE"; fi
 
 # Browser fallback: dedicated profile + app window. (No mic flags needed — the server records the mic itself.)
-setsid -f "$B" --app="$URL" --class=Void --name=Void \
+setsid -f "$B" --app="$PAGE" --class=Void --name=Void \
   --user-data-dir="$ROOT/browser" --window-size=340,460 \
   --ozone-platform-hint=auto --autoplay-policy=no-user-gesture-required \
   --no-first-run --no-default-browser-check \

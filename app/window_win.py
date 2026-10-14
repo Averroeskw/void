@@ -142,7 +142,8 @@ class VoidWindow(QWidget):
             lambda origin, feat: page.setFeaturePermission(origin, feat, QWebEnginePage.PermissionDeniedByUser))
         page.renderProcessTerminated.connect(lambda *a: (log("page renderer stopped — reloading"),
                                                          QTimer.singleShot(400, v.reload)))
-        v.load(QUrl(url))
+        self.url = url
+        v.load(QUrl(self._authed_url()))
 
         self._load_pos()
         self.show()
@@ -200,6 +201,9 @@ class VoidWindow(QWidget):
                 self.rects = json.loads(msg[7:])
             except ValueError:
                 self.rects = None
+            return
+        if msg == "reauth":                                              # the server restarted: hand over its new token
+            self.view.load(QUrl(self._authed_url()))
             return
         if msg.startswith("ptt:"):
             self.ptt = parse_combo(msg[4:])
@@ -285,6 +289,17 @@ class VoidWindow(QWidget):
             if not self.isVisible():
                 self.show_me()
             self._js("window.voidCmd&&voidCmd(%s)" % json.dumps(c))
+
+    def _authed_url(self):
+        """The page's address with the server's token after '#': read from runtime.json (only you can read it) and
+        never on a command line or in the page the server hands out; the part after '#' is never sent anywhere."""
+        for _ in range(50):                                              # (a just-started server writes it in a moment)
+            try:
+                return self.url + "#t=" + json.loads((DATA / "runtime.json").read_text())["token"]
+            except (OSError, ValueError, KeyError):
+                time.sleep(0.1)
+        log("couldn't read the server's token (runtime.json)")
+        return self.url
 
     def _server_up(self):
         import urllib.error

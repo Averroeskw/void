@@ -299,7 +299,8 @@ class VoidWindow:
                                                                  GLib.timeout_add(400, lambda: (_v.reload(), False)[1]))[1] and False)
         except TypeError:
             pass
-        v.load_uri(url)
+        self.url = url
+        v.load_uri(self._authed_url())
         w.add(v)
         w.connect("delete-event", lambda *a: (self.hide(), True)[1])
         if not self.layer:
@@ -736,11 +737,27 @@ class VoidWindow:
                 log(f"hover: moving the window failed ({e})")
 
     # ---- messages from the page
+    def _authed_url(self):
+        """The page's address with the server's token after '#': read from runtime.json (only you can read it) and
+        never on a command line or in the page the server hands out; the part after '#' is never sent anywhere."""
+        rt = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), "void", "runtime.json")
+        for _ in range(50):                                            # (a just-started server writes it in a moment)
+            try:
+                with open(rt) as f:
+                    return self.url + "#t=" + json.load(f)["token"]
+            except (OSError, ValueError, KeyError):
+                time.sleep(0.1)
+        log("couldn't read the server's token (runtime.json)")
+        return self.url
+
     def _on_msg(self, _ucm, res):
         try:
             msg = res.get_js_value().to_string()
         except AttributeError:
             msg = res.to_string()
+        if msg == "reauth":                                            # the server restarted: hand over its new token
+            self.view.load_uri(self._authed_url())
+            return
         if msg.startswith("region:"):
             try:
                 self.rects = json.loads(msg[7:])

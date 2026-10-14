@@ -149,10 +149,12 @@ jobs:
           void setup
           test -x ~/.local/share/void/venv/bin/python && echo "PASS  void setup made the Python environment"
           ~/.local/share/void/venv/bin/python /usr/share/void/app/server.py > server.log 2>&1 &
-          for i in $(seq 60); do curl -fs http://127.0.0.1:47777/api/state > state.json && break; sleep 1; done
+          for i in $(seq 60); do curl -fs http://127.0.0.1:47777/api/state > /dev/null && break; sleep 1; done
           python3 - <<'PY'
-          import json, sys
-          s = json.load(open("state.json"))
+          import json, os, sys, urllib.request
+          tok = json.load(open(os.path.expanduser("~/.local/share/void/runtime.json")))["token"]
+          s = json.load(urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:47777/api/state",
+                                                                      headers={"X-Void-Token": tok})))
           ok = s.get("version") not in (None, "0.0.0") and s["update"]["how"] == "package"
           print(("PASS" if ok else "FAIL") + f"  server answers: version {s.get('version')}, updates via {s['update']['how']}")
           sys.exit(0 if ok else 1)

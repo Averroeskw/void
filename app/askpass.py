@@ -21,7 +21,7 @@ def where():
     try:
         with open(os.path.join(base, "void", "runtime.json")) as f:
             r = json.load(f)
-        return str(r["port"]), r["token"]
+        return str(r["port"]), r["tool_token"]          # the limited token: it can't do anything but this card
     except (OSError, ValueError, KeyError):
         return None, None
 

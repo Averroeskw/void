@@ -34,6 +34,15 @@ try {
   Check "tool shows on his terminal" ($body -match '"t": "tool"') ""
 } catch { Check "a request through Claude" $false "$_" }
 
+# security: the page and /api/state give nothing away; the token Claude's commands get can't take over
+$rt = Get-Content "$ROOT\runtime.json" | ConvertFrom-Json
+$page = (Invoke-WebRequest -UseBasicParsing http://127.0.0.1:47777/).Content
+Check "the page has no token in it" (-not ($page.Contains($rt.token) -or $page.Contains($rt.tool_token))) ""
+Check "/api/state without the token is just the version" ((Invoke-RestMethod http://127.0.0.1:47777/api/state).PSObject.Properties.Name -join "," -eq "version") ""
+$blocked = $false
+try { Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/settings -Headers @{"X-Void-Token" = $rt.tool_token} -ContentType "application/json" -Body '{"trust":"trust"}' | Out-Null } catch { $blocked = $_.Exception.Response.StatusCode.value__ -eq 403 }
+Check "Claude's token can't switch on 'Just do it'" $blocked ""
+
 try {
   $d = (Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47777/api/diagnostics -Headers @{"X-Void-Token" = $tok} -ContentType "application/json" -Body "{}").text
   Set-Content -Encoding utf8 "$OUT\diagnostics.txt" $d

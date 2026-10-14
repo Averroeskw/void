@@ -148,8 +148,9 @@ In the typing box: `/new` `/cd <dir>` `/history` `/memory` `/remember …` `/for
 Settings → Brain:
 
 - **Ask me first** (default): he edits files on his own, but before running a command or going online he shows a card,
-  asks out loud, and waits. Say "yes", "no" or "always" (no more asking for that command this chat), or click / press
-  Y / N.
+  asks out loud, and waits. Say "yes", "no" or "always", or click / press Y / N. "Always" means no more asking for
+  that *exact* command until you start a new chat, continue an old one or switch folders. It isn't offered for
+  commands that run other commands (`&&`, `;`, `|`, `$(…)`…): those are asked about every time.
 - **Just do it**: runs anything without asking.
 - **Look, don't touch**: reads and explains, changes nothing.
 - **Root mode** (Linux): like "just do it", plus `sudo` works. When he needs root, a small password card appears right

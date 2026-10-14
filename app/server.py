@@ -51,7 +51,13 @@ else:
     DATA_DIR = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "void"
     CONF_PATH = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "void" / "config.json"
 STATE_PATH = DATA_DIR / "state.json"
+# Two passwords per run. TOKEN is the window's: it can do everything, so it's never put anywhere other programs can
+# see it (not in Claude's environment, not in the page the server hands out); the window reads it from runtime.json,
+# which only you can read. TOOL_TOKEN goes to the commands Claude runs (the approval hook, `void see`, the sudo
+# password helper) and only works for those: asking you to approve, looking at the screen, and the sudo card in root mode.
 TOKEN = secrets.token_urlsafe(24)
+TOOL_TOKEN = secrets.token_urlsafe(24)
+TOOL_PATHS = {"/api/approve", "/api/capture", "/api/askpass"}
 
 VOICE_PROMPT = (
     "You are being driven from Void, a small voice-first desktop shell for Claude Code. "
@@ -425,32 +431,75 @@ def approval_say(tool, inp):
     return f"Can I use {tool}?"
 
 
-SEE_RE = re.compile(r"(?:\S*[/\\])?void(?:\.cmd)? see(?: window| screen)?")
+def is_void_see(cmd):
+    """`void see` (look at the screen) runs without the approval card — but only when the command is exactly that:
+    `void see`, `void see window` or `void see screen`, optionally with the full path of Void's own launcher. No
+    pattern: a shell can do a lot before a `/void see` with no spaces at all."""
+    launchers = {"void", "void.cmd", str(Path.home() / ".local" / "bin" / "void"), "/usr/bin/void", "/usr/local/bin/void"}
+    if WIN:
+        launchers |= {str(DATA_DIR / "bin" / "void"), str(DATA_DIR / "bin" / "void.cmd")}
+    launchers |= {p.replace("\\", "/") for p in launchers}
+    return cmd in {f"{l} see{w}" for l in launchers for w in ("", " window", " screen")}
+
+
+# commands that run other commands: "always" for one of these would approve whatever is chained after it
+CHAINED_RE = re.compile(r"&&|\|\||[;|&<>`\n]|\$\(")
+
+
+class Tickets:
+    """One-time, short-lived tickets: the browser fallback (no window to hand over the token) opens the page with one
+    and trades it for the token once."""
+    live, lock = {}, threading.Lock()
+
+    @classmethod
+    def new(cls):
+        t = secrets.token_urlsafe(18)
+        with cls.lock:
+            cls.live[t] = time.monotonic() + 60
+        return t
+
+    @classmethod
+    def claim(cls, t):
+        with cls.lock:
+            exp = cls.live.pop(t, None) if t else None
+        return exp is not None and time.monotonic() < exp
 
 
 class Approvals:
     def __init__(self):
         self.pending = {}
-        self.always = set()                    # tools approved "for this chat"
+        self.always = set()                    # exact commands / tools approved for this chat (reset() on a new one)
         self.lock = threading.Lock()
 
+    def reset(self):
+        """A new chat, a resumed one, or another folder: "always" answers don't carry over."""
+        with self.lock:
+            self.always.clear()
+
     def ask(self, tool, inp, timeout=600):
-        key = tool if tool != "Bash" else "Bash:" + (summarize_input(inp).split() or [""])[0]
+        # the raw, complete command (summarize_input() shortens it and folds newlines away)
+        cmd = str(inp.get("command") or "").strip() if tool == "Bash" and isinstance(inp, dict) else ""
+        key = "Bash:" + cmd if tool == "Bash" else tool          # the whole command, never just its first word
+        can_always = not (tool == "Bash" and CHAINED_RE.search(cmd))
         if key in self.always:
-            return {"ok": True, "why": "the user said yes to this for the whole chat"}
+            return {"ok": True, "why": "the user said yes to this exact command for this chat"}
         ev = threading.Event()
         aid = secrets.token_hex(4)
         item = {"id": aid, "tool": tool, "key": key, "detail": approval_text(tool, inp), "ev": ev, "ans": None}
         with self.lock:
             self.pending[aid] = item
-        BUS.pub(t="approve", id=aid, tool=tool, detail=item["detail"], key=key, say=approval_say(tool, inp))
+        BUS.pub(t="approve", id=aid, tool=tool, detail=item["detail"], key=key, say=approval_say(tool, inp),
+                always=can_always)
         ev.wait(timeout)
         with self.lock:
             self.pending.pop(aid, None)
         ans = item["ans"] or "no"
+        if ans == "always" and not can_always:
+            ans = "yes"                                           # just this once
         BUS.pub(t="approve_done", id=aid, ans=ans)
         if ans == "always":
-            self.always.add(key)
+            with self.lock:
+                self.always.add(key)
         if ans in ("yes", "always"):
             return {"ok": True}
         if item["ans"] is None:
@@ -2094,7 +2143,7 @@ def run_claude(prompt, emit, partial):
     env["PATH"] = str(Path.home() / ".local" / "bin") + os.pathsep + env.get("PATH", "")
     if CFG.get("root_mode") and not WIN:
         env["SUDO_ASKPASS"] = str(APP_DIR / "askpass.py")
-    env["VOID_PORT"], env["VOID_TOKEN"] = str(CFG["port"]), TOKEN
+    env["VOID_PORT"], env["VOID_TOKEN"] = str(CFG["port"]), TOOL_TOKEN   # (the limited one: every command Claude runs sees it)
     proc = subprocess.Popen(build_cmd(binary, partial), cwd=ST.cwd, env=env, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1,
                             encoding="utf-8", errors="replace", **spawn_kw())
@@ -2349,7 +2398,7 @@ def redact(text):
     if len(user) >= 3:
         text = re.sub(r"(?<![A-Za-z0-9])" + re.escape(user) + r"(?![A-Za-z0-9])", "<user>", text, flags=re.I)
     text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "<email>", text)
-    return text.replace(TOKEN, "<token>")
+    return text.replace(TOKEN, "<token>").replace(TOOL_TOKEN, "<token>")
 
 
 def diagnostics():
@@ -2469,16 +2518,16 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             return self._json({"error": "bad host"}, 403)
         p = urlparse(self.path).path
-        if p == "/api/state":
-            return self._json(state_info())
+        if p == "/api/state":                      # without the window's token: just "it's running" and the version
+            if secrets.compare_digest(self.headers.get("X-Void-Token") or "", TOKEN):
+                return self._json(state_info())
+            return self._json({"version": VERSION})
         if p == "/":
             p = "/index.html"
         f = (STATIC / p.lstrip("/")).resolve()
         if STATIC.resolve() not in f.parents or not f.is_file():
             return self._json({"error": "not found"}, 404)
-        data = f.read_bytes()
-        if f.name == "index.html":
-            data = data.replace(b"__VOID_TOKEN__", TOKEN.encode())
+        data = f.read_bytes()                      # (the page has no token in it: the window hands it over itself)
         self.send_response(200)
         self.send_header("Content-Type", CTYPES.get(f.suffix, "application/octet-stream"))
         self.send_header("Content-Length", str(len(data)))
@@ -2487,10 +2536,20 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if not self._host_ok() or self.headers.get("X-Void-Token") != TOKEN:
-            return self._json({"error": "forbidden"}, 403)
         p = urlparse(self.path).path
+        if not self._host_ok():
+            return self._json({"error": "forbidden"}, 403)
+        if p == "/api/claim":                      # the browser fallback trades a one-time ticket for the token
+            if Tickets.claim(str(json.loads(self._body() or b"{}").get("ticket") or "")):
+                return self._json({"token": TOKEN})
+            return self._json({"error": "forbidden"}, 403)
+        tok = self.headers.get("X-Void-Token") or ""
+        full = secrets.compare_digest(tok, TOKEN)
+        if not full and not (secrets.compare_digest(tok, TOOL_TOKEN) and p in TOOL_PATHS):
+            return self._json({"error": "forbidden"}, 403)
         try:
+            if p == "/api/ticket":                 # (window token only) a one-time ticket for the browser fallback
+                return self._json({"ticket": Tickets.new()})
             if p == "/api/ask":
                 return self.ask()
             if p == "/api/tts":
@@ -2628,6 +2687,7 @@ class Handler(BaseHTTPRequestHandler):
                 if r and r.get("cd"):
                     ST.cwd, ST.session = r["cd"], None
                     ST.save()
+                    APPROVALS.reset()
                     r["state"] = state_info()
                 return self._json({"handled": bool(r), **(r or {})})
             if p == "/api/projects":
@@ -2644,10 +2704,12 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/approve":
                 b = json.loads(self._body() or b"{}")
                 cmd = str((b.get("input") or {}).get("command") or "").strip()
-                if b.get("tool") == "Bash" and SEE_RE.fullmatch(cmd):     # only looking at the screen: no card
+                if b.get("tool") == "Bash" and is_void_see(cmd):          # only looking at the screen: no card
                     return self._json({"ok": True, "why": "just looking at the screen"})
                 return self._json(APPROVALS.ask(str(b.get("tool") or "?"), b.get("input") or {}))
             if p == "/api/askpass":                   # askpass.py (sudo -A) is waiting for the password
+                if WIN or not CFG.get("root_mode"):   # the password card only exists in root mode
+                    return self._json({"error": "root mode is off"}, 403)
                 b = json.loads(self._body() or b"{}")
                 return self._json(AskPass.ask(str(b.get("prompt") or "Password:")))
             if p == "/api/askpass/answer":
@@ -2665,6 +2727,10 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/capture":
                 b = json.loads(self._body() or b"{}")
                 kind = b.get("kind", "screen")
+                if not full:                          # Claude's commands may look at the screen, never your clipboard
+                    if kind not in ("window", "screen"):
+                        return self._json({"error": "forbidden"}, 403)
+                    b["by"] = "claude"
                 try:
                     shot = capture(kind)
                     if b.get("by") == "claude":          # `void see` during a task: show him looking
@@ -2700,12 +2766,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"error": f"that folder is gone: {pretty_path(d)}"}, 400)
                 ST.cwd, ST.session = d, b.get("session") or None
                 ST.save()
+                APPROVALS.reset()
                 return self._json(state_info())
             if p == "/api/devices":
                 return self._json({"mics": list_mics()})
             if p == "/api/new":
                 ST.session = None
                 ST.save()
+                APPROVALS.reset()
                 return self._json(state_info())
             if p == "/api/cd":
                 raw = json.loads(self._body() or b"{}").get("path", "~")
@@ -2714,6 +2782,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"error": f"not a directory: {pretty_path(path)}"}, 400)
                 ST.cwd, ST.session = path, None
                 ST.save()
+                APPROVALS.reset()
                 return self._json(state_info())
             return self._json({"error": "not found"}, 404)
         except Exception as e:  # noqa: BLE001
@@ -2873,6 +2942,7 @@ class Handler(BaseHTTPRequestHandler):
                 if r == "retry_fresh":
                     ST.session = None
                     ST.save()
+                    APPROVALS.reset()
                     emit(t="note", text="previous session couldn't be resumed — started fresh")
                     continue
                 break
@@ -2920,7 +2990,7 @@ def main():
     if args.see:                                 # view-only: no clicking or typing, ever
         try:
             rt = json.loads((DATA_DIR / "runtime.json").read_text())
-            port, tok = os.environ.get("VOID_PORT") or rt["port"], os.environ.get("VOID_TOKEN") or rt["token"]
+            port, tok = os.environ.get("VOID_PORT") or rt["port"], os.environ.get("VOID_TOKEN") or rt["tool_token"]
             import urllib.request
             req = urllib.request.Request(f"http://127.0.0.1:{port}/api/capture",
                                          data=json.dumps({"kind": args.see, "by": "claude"}).encode(),
@@ -2969,7 +3039,7 @@ def main():
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         fd = os.open(rt, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
-            json.dump({"port": CFG["port"], "token": TOKEN}, f)
+            json.dump({"port": CFG["port"], "token": TOKEN, "tool_token": TOOL_TOKEN}, f)
     except OSError:
         pass
     srv.daemon_threads = True
