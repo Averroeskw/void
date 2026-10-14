@@ -129,6 +129,8 @@ class VoidWindow(QWidget):
         self.remote = Remote()
         self.remote.cmd.connect(self._remote_cmd)
         threading.Thread(target=self._serve, daemon=True).start()
+        self.base = url.split("?")[0]
+        threading.Thread(target=self._watch_server, daemon=True).start()
         QTimer.singleShot(1500, self._tell_page)
         self.poll = QTimer(self, interval=33, timeout=self._poll_mouse)    # click-through ~30×/s; hover ~120×/s
         self.poll.setTimerType(Qt.PreciseTimer)
@@ -253,6 +255,36 @@ class VoidWindow(QWidget):
             if not self.isVisible():
                 self.show_me()
             self._js("window.voidCmd&&voidCmd(%s)" % json.dumps(c))
+
+    def _server_up(self):
+        import urllib.error
+        import urllib.request
+        try:
+            urllib.request.urlopen(self.base + "api/state", timeout=2)
+            return True
+        except urllib.error.HTTPError:                                    # it answered: it's running
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _watch_server(self):
+        """If the server stops (a crash), start it again instead of leaving him deaf with "failed to fetch". The page
+        reconnects by itself: a new server means a new token, and it reloads when it sees "forbidden"."""
+        misses, last = 0, 0.0
+        while True:
+            time.sleep(3)
+            if self._server_up():
+                misses = 0
+                continue
+            misses += 1
+            if misses >= 2 and time.monotonic() - last > 20:
+                last = time.monotonic()
+                log("the server isn't answering — starting it again")
+                try:
+                    import launch_win
+                    launch_win._start("server", [str(APP / "server.py")])
+                except Exception as e:  # noqa: BLE001
+                    log(f"couldn't restart the server: {e}")
 
     def _serve(self):
         srv = socket.socket()

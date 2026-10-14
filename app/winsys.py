@@ -242,32 +242,67 @@ def startup_link():
 
 
 # ---------------------------------------------------------------- volume, media keys, brightness, lock, apps
-def _endpoint_volume():
+# Windows' audio controls are COM objects: they must be made, used and released on one thread. Released on another
+# (Python frees them wherever the last reference dies) they can crash the whole server with no traceback, so every
+# volume / mic-level call runs on this one thread and only plain values come back.
+_com_jobs, _com_lock = None, threading.Lock()
+
+
+def _com_loop():
+    import gc
     import comtypes
     comtypes.CoInitialize()
+    while True:
+        fn, args, done = _com_jobs.get()
+        try:
+            out = (True, fn(*args))
+        except Exception as e:  # noqa: BLE001
+            out = (False, RuntimeError(str(e)))       # a fresh error: the original's traceback holds COM objects
+        # pycaw's objects reference each other, so some only go when the garbage collector runs: run it here, now,
+        # before anyone else's collection can free them on the wrong thread
+        fn = args = None
+        gc.collect()
+        done.put(out)
+
+
+def _on_com_thread(fn, *args):
+    global _com_jobs
+    with _com_lock:
+        if _com_jobs is None:
+            _com_jobs = queue.Queue()
+            threading.Thread(target=_com_loop, daemon=True, name="void-com").start()
+    done = queue.Queue(maxsize=1)
+    _com_jobs.put((fn, args, done))
+    ok, val = done.get(timeout=15)
+    if not ok:
+        raise val
+    return val
+
+
+def _endpoint_volume():
     from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
     spk = AudioUtilities.GetSpeakers()
     if hasattr(spk, "EndpointVolume"):                         # newer pycaw
         return spk.EndpointVolume
     from comtypes import CLSCTX_ALL
-    iface = spk.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    return ctypes.cast(iface, ctypes.POINTER(IAudioEndpointVolume))
+    return spk.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None).QueryInterface(IAudioEndpointVolume)  # (not a cast)
 
 
 def volume_get():
     """→ (percent, muted) or (None, False)."""
-    try:
+    def get():
         v = _endpoint_volume()
         return round(v.GetMasterVolumeLevelScalar() * 100), bool(v.GetMute())
+    try:
+        return _on_com_thread(get)
     except Exception:  # noqa: BLE001
         return None, False
 
 
 def _mic_endpoint(hint=""):
     """The Windows volume control of the mic Void records from: the one whose name matches mic_device (sounddevice
-    cuts names to 31 characters, so it may be just the start), else the default recording device."""
+    cuts names to 31 characters, so it may be just the start), else the default recording device. COM thread only."""
     import comtypes
-    comtypes.CoInitialize()
     from comtypes import CLSCTX_ALL
     from pycaw.constants import CLSID_MMDeviceEnumerator
     from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, IMMDeviceEnumerator
@@ -279,21 +314,22 @@ def _mic_endpoint(hint=""):
                 dev = en.GetDevice(d.id)                       # {0.0.1.…} = a recording device
                 break
     dev = dev or en.GetDefaultAudioEndpoint(1, 0)              # eCapture, eConsole
-    iface = dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    return ctypes.cast(iface, ctypes.POINTER(IAudioEndpointVolume))
+    # QueryInterface, not ctypes.cast: a cast makes a second pointer without a reference of its own, so the object is
+    # released twice and the process eventually crashes
+    return dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None).QueryInterface(IAudioEndpointVolume)
 
 
 def mic_level(hint=""):
     """→ the mic's Windows level, 0.0–1.0, or None."""
     try:
-        return float(_mic_endpoint(hint).GetMasterVolumeLevelScalar())
+        return _on_com_thread(lambda: float(_mic_endpoint(hint).GetMasterVolumeLevelScalar()))
     except Exception:  # noqa: BLE001
         return None
 
 
 def set_mic_level(level, hint=""):
     try:
-        _mic_endpoint(hint).SetMasterVolumeLevelScalar(max(0.0, min(1.0, level)), None)
+        _on_com_thread(lambda: _mic_endpoint(hint).SetMasterVolumeLevelScalar(max(0.0, min(1.0, level)), None))
         return True
     except Exception:  # noqa: BLE001
         return False
@@ -308,7 +344,7 @@ def _key(vk, times=1):
 
 def volume_set(op, val=None):
     """op: set | up | down | mute | unmute. Uses the volume control itself, or the volume keys if that's unavailable."""
-    try:
+    def change():
         v = _endpoint_volume()
         if op == "set":
             v.SetMasterVolumeLevelScalar(max(0, min(100, val)) / 100, None)
@@ -317,6 +353,8 @@ def volume_set(op, val=None):
             v.SetMasterVolumeLevelScalar(max(0, min(100, cur + (val or 10) * (1 if op == "up" else -1))) / 100, None)
         else:
             v.SetMute(op == "mute", None)
+    try:
+        _on_com_thread(change)
         return True
     except Exception:  # noqa: BLE001
         if op in ("up", "down"):
