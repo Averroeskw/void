@@ -20,8 +20,10 @@ New-Item -ItemType Directory -Force (Join-Path $env:APPDATA "void") | Out-Null
 Set-Content -Encoding UTF8 (Join-Path $env:APPDATA "void\config.json") ('{"claude_bin": "' + ("$ROOT\fakeclaude.cmd" -replace '\\','\\') + '", "wake_word": false, "stt_prewarm": false, "trust": "trust"}')
 
 & "$ROOT\bin\void.cmd" show
-Start-Sleep 12
-try { $st = Invoke-RestMethod http://127.0.0.1:47777/api/state; Check "server answers" $true "(voice: $($st.tts))" } catch { Check "server answers" $false "$_" }
+for ($i = 0; $i -lt 30 -and -not (Test-Path "$ROOT\window.port"); $i++) { Start-Sleep 1 }   # (slow test machines)
+Start-Sleep 4
+try { $st = Invoke-RestMethod http://127.0.0.1:47777/api/state -Headers @{"X-Void-Token" = (Get-Content "$ROOT\runtime.json" | ConvertFrom-Json).token}
+      Check "server answers" $true "(voice: $($st.tts))" } catch { Check "server answers" $false "$_" }
 Check "window running" (Test-Path "$ROOT\window.port") "(port file)"
 
 $tok = (Get-Content "$ROOT\runtime.json" | ConvertFrom-Json).token
