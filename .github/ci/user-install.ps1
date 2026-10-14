@@ -16,6 +16,15 @@ function Check($name, $ok, $detail = "") { Add-Content $results ("{0}  {1} {2}" 
 $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole("Administrators")
 Check "running as a normal user" (-not $admin) "($env:USERNAME)"
 
+# an older uv already on the PC (like a real user's: uv 0.9 has no `venv --force`); setup must not depend on it
+$bin = Join-Path $env:USERPROFILE ".local\bin"
+New-Item -ItemType Directory -Force $bin | Out-Null
+Invoke-WebRequest "https://github.com/astral-sh/uv/releases/download/0.9.2/uv-x86_64-pc-windows-msvc.zip" -OutFile "$env:TEMP\olduv.zip" -UseBasicParsing
+Expand-Archive "$env:TEMP\olduv.zip" "$env:TEMP\olduv" -Force
+Get-ChildItem "$env:TEMP\olduv" -Recurse -Filter "uv*.exe" | Copy-Item -Destination $bin
+$env:Path = "$bin;$env:Path"
+Check "old uv 0.9.2 on PATH, without venv --force" (-not ((& "$bin\uv.exe" venv --help | Out-String) -match "--force"))
+
 foreach ($round in 1, 2, 3) {
   $tasks = if ($round -eq 1) { "claudecode,desktopicon" } else { "" }   # round 1 also installs Claude Code + desktop icon
   if ($round -eq 3) {
@@ -41,6 +50,7 @@ foreach ($round in 1, 2, 3) {
   Check "round ${round}: void command" (Test-Path "$root\bin\void.cmd")
   Copy-Item "$root\install.log" "$Out\user-install-$round.log" -ErrorAction SilentlyContinue
   if ($round -eq 1) {
+    Check "Void has his own uv" ([bool](Get-ChildItem "$root\uv" -Recurse -Filter "uv.exe" -ErrorAction SilentlyContinue))
     Check "Claude Code installed" (Test-Path "$env:USERPROFILE\.local\bin\claude.exe")
     Check "desktop shortcut" (Test-Path (Join-Path ([Environment]::GetFolderPath("Desktop")) "Void.lnk"))
   }

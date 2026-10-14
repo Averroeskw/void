@@ -21,28 +21,40 @@ if (-not (Test-Path (Join-Path $env:WINDIR "System32\vcruntime140_1.dll"))) {
 }
 
 # ---------------------------------------------------------------- uv (Python environment tool)
-# uv's own installer puts it here, and a window opened before that doesn't have it on PATH yet: use it, don't reinstall
-$uvHome = Join-Path $env:USERPROFILE ".local\bin"
-if ((Test-Path (Join-Path $uvHome "uv.exe")) -and -not (($env:Path -split ";") -contains $uvHome)) { $env:Path += ";$uvHome" }
+# Void keeps his own uv in $ROOT\uv and keeps it up to date: an older uv you already have may not know the options used
+# below. Your own uv (or uv from pip) is only the fallback when that download fails. Your PATH and uv aren't touched.
+$UVDIR = Join-Path $ROOT "uv"
+function OwnUv { Get-ChildItem $UVDIR -Recurse -Filter "uv.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName }
+$script:UVEXE = OwnUv
 $script:PYUV = $null
 # (named RunUv, not UV: PowerShell names ignore case, so a function "UV" calling uv would call itself)
 function RunUv {
+  if ($script:UVEXE) { & $script:UVEXE @args; return }
   $exe = Get-Command uv -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($exe) { & $exe.Source @args } elseif ($script:PYUV) { & $script:PYUV -m uv @args } else { $global:LASTEXITCODE = 1 }
 }
-if (-not (Have uv)) {
+if ($script:UVEXE) {
+  & $script:UVEXE self update 2>$null | Out-Null                 # a working older copy is fine if this fails
+} else {
   Say "Installing uv (Python environment tool)..."
-  foreach ($p in @("py", "python")) {
-    if (-not $script:PYUV -and (Have $p)) {
-      & $p -m pip install --user --quiet --disable-pip-version-check uv 2>$null
-      if ($LASTEXITCODE -eq 0) { $script:PYUV = (Get-Command $p).Source }
+  $env:UV_INSTALL_DIR, $env:UV_NO_MODIFY_PATH = $UVDIR, "1"
+  try { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression } catch { Warn "couldn't download uv: $_" }
+  Remove-Item Env:UV_INSTALL_DIR, Env:UV_NO_MODIFY_PATH -ErrorAction SilentlyContinue
+  $script:UVEXE = OwnUv
+}
+if (-not $script:UVEXE) {
+  Warn "couldn't download Void's own uv - trying the one already on this PC"
+  $uvHome = Join-Path $env:USERPROFILE ".local\bin"            # uv's installer puts it here; may not be on PATH yet
+  if ((Test-Path (Join-Path $uvHome "uv.exe")) -and -not (($env:Path -split ";") -contains $uvHome)) { $env:Path += ";$uvHome" }
+  if (-not (Have uv)) {
+    foreach ($p in @("py", "python")) {
+      if (-not $script:PYUV -and (Have $p)) {
+        & $p -m pip install --user --quiet --disable-pip-version-check uv 2>$null
+        if ($LASTEXITCODE -eq 0) { $script:PYUV = (Get-Command $p).Source }
+      }
     }
   }
-  if (-not $script:PYUV) {
-    try { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression } catch { Warn "couldn't download uv: $_" }
-    $env:Path = [Environment]::GetEnvironmentVariable("Path", "User") + ";" + [Environment]::GetEnvironmentVariable("Path", "Machine")
-  }
-  if (-not (Have uv) -and -not $script:PYUV) { Warn "couldn't install uv - see https://docs.astral.sh/uv/ and run install.ps1 again"; exit 1 }
+  if (-not (Have uv) -and -not $script:PYUV) { Warn "couldn't install uv - check your internet connection and run setup again"; exit 1 }
 }
 
 # ---------------------------------------------------------------- Python 3.12 + the libraries
@@ -82,7 +94,12 @@ if (-not (PyWorks $VPY)) {
   if (-not $py -or -not (PyWorks (Join-Path $py.FullName "python.exe"))) {
     Warn "couldn't download Python 3.12 - check your internet connection and run setup again"; exit 1
   }
-  RunUv venv --clear --force --python ($py.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1') $venv
+  # clear out whatever is left at $venv ourselves (older uv has no --clear / --force); a folder something still holds
+  # is moved aside and removed on the next run
+  Get-ChildItem $ROOT -Directory -Filter "venv.old-*" -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+  if (Test-Path $venv) { Remove-Item -Recurse -Force $venv -ErrorAction SilentlyContinue }
+  if (Test-Path $venv) { Rename-Item $venv "venv.old-$(Get-Date -Format yyyyMMddHHmmss)" -ErrorAction SilentlyContinue }
+  RunUv venv --python ($py.Name -replace '^cpython-(3\.12\.\d+)-.*', '$1') $venv
   if (-not (PyWorks $VPY)) { Warn "couldn't set up Void's Python environment in $venv"; exit 1 }
 }
 # the window (Qt + Chromium), mic/speakers, screenshots, volume control, speech recognition, voices
