@@ -1,4 +1,4 @@
-﻿# Maintainer: PLAYER99-void <PLAYER99-void@users.noreply.github.com>
+# Maintainer: PLAYER99-void <PLAYER99-void@users.noreply.github.com>
 # Void from the latest main branch. After installing, each user runs `void setup` once (their voice + speech models).
 pkgname=void-claude-git
 _src=void
