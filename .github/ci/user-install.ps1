@@ -28,6 +28,9 @@ foreach ($round in 1, 2, 3) {
     [IO.File]::WriteAllBytes($enc, [byte[]]::new((Get-Item $enc).Length))
     & "$($base.FullName)\python.exe" -I -c "pass" 2>$null
     Check "round 3: Python really broken before setup" ($LASTEXITCODE -ne 0)
+    # and something outside Void's folder (like an Explorer window) keeps app\static busy, so app\ can't be removed
+    $holder = Start-Process powershell.exe -WorkingDirectory "$root\app\static" -ArgumentList "-NoProfile", "-Command", "Start-Sleep 900" -PassThru -WindowStyle Hidden
+    Start-Sleep 2
   }
   $p = Start-Process $Setup -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/TASKS=`"$tasks`"", "/LOG=`"$Out\user-setup-$round.log`"" -Wait -PassThru
   Check "round ${round}: setup finished" ($p.ExitCode -eq 0) "(exit $($p.ExitCode))"
@@ -38,6 +41,10 @@ foreach ($round in 1, 2, 3) {
   Check "round ${round}: void command" (Test-Path "$root\bin\void.cmd")
   Copy-Item "$root\install.log" "$Out\user-install-$round.log" -ErrorAction SilentlyContinue
   if ($round -eq 1) { Check "Claude Code installed" (Test-Path "$env:USERPROFILE\.local\bin\claude.exe") }
-  if ($round -eq 3) { Check "round 3: setup stopped the old Void" ($sleeper.HasExited) }
+  if ($round -eq 3) {
+    Check "round 3: setup stopped the old Void" ($sleeper.HasExited)
+    Check "round 3: app files in place despite the busy folder" ((Test-Path "$root\app\server.py") -and -not (Test-Path "$root\app\app"))
+    Stop-Process -Id $holder.Id -Force -ErrorAction SilentlyContinue
+  }
 }
 Add-Content $results "DONE"

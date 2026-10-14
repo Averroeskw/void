@@ -93,10 +93,19 @@ RunUv pip install --python $VPY -U piper-tts
 if ($LASTEXITCODE -ne 0) { Warn "piper-tts failed to install - Void will use Kokoro only" }
 
 Say "Copying Void's files..."
-if (Test-Path (Join-Path $ROOT "app\launch_win.py")) { & $VPY (Join-Path $ROOT "app\launch_win.py") stop | Out-Null }
-Remove-Item -Recurse -Force (Join-Path $ROOT "app") -ErrorAction SilentlyContinue
-Copy-Item -Recurse (Join-Path $SRC "app") (Join-Path $ROOT "app")
 $APP = Join-Path $ROOT "app"
+# Void still running, or an Explorer window showing his folder, can stop the old app folder from being removed.
+# Stop him, then copy the folder's *contents* (copying the folder into one that's still there nests it as app\app).
+if (Test-Path (Join-Path $APP "launch_win.py")) { & $VPY (Join-Path $APP "launch_win.py") stop 2>$null | Out-Null }
+Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$ROOT\*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+Remove-Item -Recurse -Force $APP -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $APP | Out-Null
+Copy-Item -Recurse -Force (Join-Path $SRC "app\*") $APP
+Remove-Item -Recurse -Force (Join-Path $APP "app") -ErrorAction SilentlyContinue      # left by older installers' nesting bug
+if (-not (Test-Path (Join-Path $APP "server.py"))) {
+  Warn "couldn't copy Void's files into $APP - close anything using that folder and run setup again"; exit 1
+}
 & $VPY -c "from PIL import Image; Image.open(r'$APP\static\icon.png').save(r'$APP\static\icon.ico', sizes=[(256,256),(64,64),(48,48),(32,32),(16,16)])"
 
 # ---------------------------------------------------------------- voices
