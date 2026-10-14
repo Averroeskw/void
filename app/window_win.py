@@ -218,33 +218,67 @@ class VoidWindow(QWidget):
             return
         {"drag": self._drag, "dragend": self._save_pos, "hide": self.hide_me, "show": self.show_me,
          "hover:on": lambda: self.set_hover(True), "hover:off": lambda: self.set_hover(False),
-         "bar:on": lambda: self.set_bar(True), "bar:off": lambda: self.set_bar(False),
+         "bar:top": lambda: self.set_bar("top"), "bar:bottom": lambda: self.set_bar("bottom"),
+         "bar:left": lambda: self.set_bar("left"), "bar:right": lambda: self.set_bar("right"),
+         "bar:off": lambda: self.set_bar(None),
          "wide:on": lambda: self.set_wide(True), "wide:off": lambda: self.set_wide(False),
          "code:on": lambda: self.set_wide(True, "code"), "code:off": lambda: self.set_wide(False, "code"),
          "kbd:grab": self._grab_keys, "kbd:release": lambda: None,
          "peek:hide": self.hide, "peek:show": self.show_me}.get(msg, lambda: None)()
 
-    def set_bar(self, on):
-        """Top bar: the window goes to the top-center of the screen he's on (the page draws the notch at the top of
-        the window); back to the blob's own spot when it's turned off."""
-        if self.bar == on:
-            return
-        self.bar = on
-        if on:
-            self.bar_home = (self.x() + self.wide_shift, self.y())
+    # ---- the bar: merged into a screen edge as a notch (the page draws it on the matching side of the window)
+    def set_bar(self, edge, to=None):
+        """Dock on `edge` (top / bottom / left / right) of the screen he's on, or undock (None): back to the blob's
+        own spot, or to `to` when he's pulled out by the mouse. Tells the page with voidDock()."""
+        edge = edge if edge in ("top", "bottom", "left", "right") else None
+        if edge:
+            if not self.bar:
+                self.bar_home = (self.x() + self.wide_shift, self.y())
+            self.bar = edge
             scr = QGuiApplication.screenAt(self.frameGeometry().center()) or QGuiApplication.primaryScreen()
-            g = scr.geometry()                                           # the real top edge, above any taskbar
-            self.move(g.center().x() - W // 2 - self.wide_shift, g.top())
-        elif self.bar_home:
-            self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
-            self._save_pos()
+            g = scr.availableGeometry()                                  # (the bottom edge sits above the taskbar)
+            x = {"top": g.center().x() - W // 2, "bottom": g.center().x() - W // 2,
+                 "left": g.left(), "right": g.right() - W + 1}[edge]
+            y = {"top": g.top(), "bottom": g.bottom() - H + 1,
+                 "left": g.center().y() - H // 2, "right": g.center().y() - H // 2}[edge]
+            self.move(x - self.wide_shift, y)
+        else:
+            was, self.bar = self.bar, None
+            if to:
+                self.move(int(to[0]), int(to[1]))
+                self._save_pos()
+            elif was and self.bar_home:
+                self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
+                self._save_pos()
+        self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
+
+    def _drag_done(self):
+        """After you drop the blob: right up against a screen edge? He merges into it as the bar."""
+        cx, cy = self.x() + self.wide_shift + BALL[0], self.y() + BALL[1]
+        scr = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
+        g = scr.availableGeometry()
+        dist = {"top": cy - g.top(), "bottom": g.bottom() - cy, "left": cx - g.left(), "right": g.right() - cx}
+        edge = min(dist, key=dist.get)
+        if dist[edge] < 120:                                             # his ball (r≈84 px) touching the edge
+            self.set_bar(edge)
+
+    def _watch_drag(self):
+        """Windows moves the window itself while you drag (startSystemMove); watch for the mouse button coming up."""
+        def check():
+            if not (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000):   # VK_LBUTTON released
+                self._drag_t.stop()
+                self._drag_done()
+        self._drag_t = QTimer(self, interval=50, timeout=check)
+        self._drag_t.start()
 
     def _drag(self):
-        if self.bar:                                                     # the notch stays put
-            return
+        if self.bar:                                                     # pulling the bar away: out pops the blob,
+            c = QCursor.pos()                                            # under your mouse, still being dragged
+            self.set_bar(None, to=(c.x() - BALL[0] - self.wide_shift, c.y() - BALL[1]))
         if not self.hover and self.windowHandle():
             self._set_through(False)
             self.windowHandle().startSystemMove()
+            self._watch_drag()
 
     def _grab_keys(self):
         self.activateWindow()

@@ -116,6 +116,7 @@ DEFAULTS = {
     "ptt_hotkey": "Ctrl+Alt+Space",
     # how he sits on your desktop: "orb" (the floating blob) or "bar" (his eyes in a notch at the top of the screen)
     "presence": "orb",
+    "bar_edge": "top",           # which screen edge the bar is merged into: top | bottom | left | right
     "language": "en",
     "stt_prewarm": True,
 
@@ -2545,6 +2546,7 @@ def state_info():
         "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
         "platform": "windows" if WIN else "linux", "ptt_hotkey": CFG.get("ptt_hotkey", "") or "",
         "presence": "bar" if CFG.get("presence") == "bar" else "orb",
+        "bar_edge": CFG.get("bar_edge") if CFG.get("bar_edge") in ("top", "bottom", "left", "right") else "top",
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
@@ -2743,6 +2745,8 @@ class Handler(BaseHTTPRequestHandler):
                         upd["ptt_hotkey"] = k[:40]
                 if b.get("presence") in ("orb", "bar"):
                     upd["presence"] = b["presence"]
+                if b.get("bar_edge") in ("top", "bottom", "left", "right"):
+                    upd["bar_edge"] = b["bar_edge"]
                 if b.get("code_face") in ("him", "you"):
                     upd["code_face"] = b["code_face"]
                 if "mic_device" in b:

@@ -28,16 +28,35 @@ body.hover #stage{transform:scale(.17)}
 body.hover #orbBack,body.hover #orbFront,body.hover #workW,body.hover #haloW,body.hover #vring,body.hover #raysW,body.hover #fx,body.hover #fxBack,
 body.hover #think,body.hover #anger,body.hover #sweat,body.hover #zz,body.hover #qmark,body.hover #tears,body.hover #cap,body.hover #chip,body.hover #atts{display:none}
 body.hover #shadow{display:none}
-/* top bar: the very same eyes (#face is untouched), his ball folded away, hanging from the top edge in a pill */
-/* MacBook-notch look: pure black, flush with the top edge, softly rounded bottom, little inward curves where it meets the edge */
-#barPill{position:absolute;left:50%;top:0;width:210px;height:36px;transform:translateX(-50%) scaleY(0);transform-origin:50% 0;
-  border-radius:0 0 16px 16px;background:#000;pointer-events:none;z-index:0;
-  box-shadow:0 6px 16px -8px var(--glow);transition:transform .5s var(--ease),width .45s var(--ease)}
-#barPill::before,#barPill::after{content:"";position:absolute;top:0;width:10px;height:10px}
-#barPill::before{left:-10px;background:radial-gradient(circle at 0 100%,transparent 9.5px,#000 10px)}
-#barPill::after{right:-10px;background:radial-gradient(circle at 100% 100%,transparent 9.5px,#000 10px)}
-body.bar #barPill{transform:translateX(-50%) scaleY(1)}
-body.bar #stage{transform:translateY(-147px) scale(.32)}
+/* top bar: the very same eyes (#face is untouched), his ball folded away, merged into a screen edge as a notch.
+   MacBook-notch look: pure black, flush with the edge, rounded on the open side, little inward curves where it meets
+   the edge. Docks on any edge: body.bar + .e-top / .e-bottom / .e-left / .e-right */
+#barPill{position:absolute;background:#000;pointer-events:none;z-index:0;opacity:0;
+  box-shadow:0 0 14px -6px var(--glow);transition:opacity .4s var(--ease),box-shadow .5s var(--ease)}
+body.bar #barPill{opacity:1;pointer-events:auto;cursor:pointer}
+#barPill::before,#barPill::after{content:"";position:absolute;width:12px;height:12px}
+body.e-top #barPill,body.e-bottom #barPill{left:50%;width:260px;height:52px;margin-left:-130px}
+body.e-left #barPill,body.e-right #barPill{top:50%;width:68px;height:210px;margin-top:-105px}
+body.e-top #barPill{top:0;border-radius:0 0 22px 22px}
+body.e-top #barPill::before{top:0;left:-12px;background:radial-gradient(circle at 0 100%,transparent 11.5px,#000 12px)}
+body.e-top #barPill::after{top:0;right:-12px;background:radial-gradient(circle at 100% 100%,transparent 11.5px,#000 12px)}
+body.e-bottom #barPill{bottom:0;border-radius:22px 22px 0 0}
+body.e-bottom #barPill::before{bottom:0;left:-12px;background:radial-gradient(circle at 0 0,transparent 11.5px,#000 12px)}
+body.e-bottom #barPill::after{bottom:0;right:-12px;background:radial-gradient(circle at 100% 0,transparent 11.5px,#000 12px)}
+body.e-left #barPill{left:0;border-radius:0 22px 22px 0}
+body.e-left #barPill::before{left:0;top:-12px;background:radial-gradient(circle at 100% 0,transparent 11.5px,#000 12px)}
+body.e-left #barPill::after{left:0;bottom:-12px;background:radial-gradient(circle at 100% 100%,transparent 11.5px,#000 12px)}
+body.e-right #barPill{right:0;border-radius:22px 0 0 22px}
+body.e-right #barPill::before{right:0;top:-12px;background:radial-gradient(circle at 0 0,transparent 11.5px,#000 12px)}
+body.e-right #barPill::after{right:0;bottom:-12px;background:radial-gradient(circle at 0 100%,transparent 11.5px,#000 12px)}
+/* his eyes, bigger than before, centred in the notch (the eyes sit a touch above the ball's centre: +2.5px) */
+body.e-top #stage{transform:translateY(-136px) scale(.46)}
+body.e-bottom #stage{transform:translateY(272px) scale(.46)}
+body.e-left #stage{transform:translate(-136px,68px) scale(.46)}
+body.e-right #stage{transform:translate(136px,68px) scale(.46)}
+/* talking with him (he's listening or answering): the whole notch wears his halo */
+body.bar.convo #barPill{box-shadow:0 0 0 1.5px var(--glow),0 0 24px 4px var(--glow);animation:convo 1.8s ease-in-out infinite}
+@keyframes convo{50%{box-shadow:0 0 0 1.5px var(--glow),0 0 34px 8px var(--glow)}}
 body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,body.bar #shadow,
 body.bar #body>circle,body.bar #body>ellipse,body.bar #accBack,body.bar #accFront,body.bar #liveTag{display:none}
 #guy{width:330px;height:330px;overflow:visible;pointer-events:none}
@@ -1698,15 +1717,28 @@ async function toggleHover(force){
   poke(on?'curious':'wink',1200);
 }
 window.voidHover=on=>setHoverClass(on);
-// top bar: the same eyes in a notch at the top of the screen; the window moves itself there (bar:on / bar:off)
-function setBarClass(on){ document.body.classList.toggle('bar',on); const b=$('[data-a="bar"] span'); if(b) b.textContent=on?'blob':'top bar'; sendRegion(true); }
+// the bar: the same eyes merged into a screen edge as a notch. The window docks and undocks itself (drag him onto an
+// edge / pull the bar away) and tells the page with voidDock(edge|''); the menu switch docks him at the top.
+const EDGES=['top','bottom','left','right'];
+function setBarClass(edge){
+  const b=document.body; b.classList.toggle('bar',!!edge); EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e));
+  const l=$('[data-a="bar"] span'); if(l) l.textContent=edge?'blob':'top bar'; sendRegion(true);
+}
+window.voidDock=edge=>{ edge=EDGES.includes(edge)?edge:''; setBarClass(edge); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
+  setSetting(edge?{presence:'bar',bar_edge:edge}:{presence:'orb'}); poke(edge?'wink':'happy',900); };
 async function toggleBar(force){
   const on=typeof force==='boolean'?force:info.presence!=='bar';
   if(!NATIVE){ tick('the top bar works in the Void window (not the browser fallback)',true); return; }
   if(on&&info.hover) await toggleHover(false);
-  await setSetting({presence:on?'bar':'orb'}); native(on?'bar:on':'bar:off'); setBarClass(on);
-  poke(on?'wink':'happy',1000);
+  native(on?'bar:top':'bar:off');               // the window moves and answers with voidDock()
 }
+// the whole notch is him: click to talk, right-click for the menu, drag it away to pull him out as the blob
+$('#barPill').addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=[e.clientX,e.clientY]; dragged=false; });
+$('#barPill').addEventListener('click',e=>{ if(!dragged) E.body.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
+$('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
+let convoOn=false;
+function convoCheck(){ const on=!!(rec||playing||follow); if(on!==convoOn){ convoOn=on; document.body.classList.toggle('convo',on); } }
+setInterval(convoCheck,120);
 window.voidHoverUnsupported=()=>{ tick('hover mode needs Hyprland or X11 on this desktop',true); setSetting({hover:false}); setHoverClass(false); };
 window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
   if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };
@@ -2223,7 +2255,7 @@ const CP=(()=>{
 
 refresh().then(()=>{
   if(info.hover && NATIVE){ native('hover:on'); setHoverClass(true); }
-  else if(info.presence==='bar' && NATIVE){ native('bar:on'); setBarClass(true); }
+  else if(info.presence==='bar' && NATIVE) native('bar:'+(info.bar_edge||'top'));   // the window docks, then voidDock()
   if(NATIVE) native('ptt:'+(info.ptt_hotkey||''));          // the Windows window watches this combo (Linux ignores it)
   if(info.claude===false){ fail("I can't find Claude Code — install it and run `claude` once to sign in."); }
   else if(info.mic===false) tick('no mic recorder — install libpulse or alsa-utils',true);
