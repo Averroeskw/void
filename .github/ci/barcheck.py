@@ -4,7 +4,7 @@ import re
 import sys
 
 path, want_layer, edges = sys.argv[1], sys.argv[2], sys.argv[3:]
-lines = open(path, encoding="utf-8", errors="replace").read().splitlines()
+lines = open(path, encoding="utf-8-sig", errors="replace").read().splitlines()
 fails = 0
 for edge in edges:
     m = [re.search(r"selftest-bar: (\w+) x=(-?\d+) y=(-?\d+) w=(\d+) h=(\d+) area=(-?\d+),(-?\d+),(\d+),(\d+) "
