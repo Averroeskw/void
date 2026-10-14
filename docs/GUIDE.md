@@ -321,7 +321,8 @@ plain browser app window instead (handy if WebKitGTK misbehaves).
 ## Updates
 
 Settings → More shows which version you have and whether a newer one is out (Void asks GitHub's public release list
-twice a day; turn that off with **Check for updates**). **Update now** installs it: on Windows it runs the new
+when he starts, every 6 hours and when you open Settings; **Check now** asks straight away, and **Check for updates**
+turns it off). **Update now** installs it: on Windows it runs the new
 VoidSetup.exe quietly and Void comes back by himself; on Linux, if you installed from a `git clone`, it runs
 `git pull` and `install.sh` for you. Installed from a package? Update with your package manager.
 

@@ -49,13 +49,13 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 
 <table>
 <tr>
-<th width="50%">Windows 10 / 11</th>
-<th width="50%">Linux</th>
+<th width="50%"><img src="https://img.shields.io/badge/Windows_10_%2F_11-0078D4?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40IDkuOCAydjkuNEgwem0xMC45LTEuNkwyNCAwdjExLjNIMTAuOXpNMCAxMi42aDkuOFYyMkwwIDIwLjZ6bTEwLjkgMEgyNFYyNGwtMTMuMS0xLjh6Ii8%2BPC9zdmc%2B" alt="Windows 10 / 11"></th>
+<th width="50%"><img src="https://img.shields.io/badge/Linux-333333?style=flat-square&logo=linux&logoColor=white" alt="Linux"></th>
 </tr>
 <tr>
 <td valign="top">
 
-<p align="center"><a href="https://github.com/PLAYER99-void/void/releases/latest/download/VoidSetup.exe"><img src="https://img.shields.io/badge/Download-VoidSetup.exe-3d9b74?style=for-the-badge&logo=windows&logoColor=white" alt="Download VoidSetup.exe"></a></p>
+<p align="center"><a href="https://github.com/PLAYER99-void/void/releases/latest/download/VoidSetup.exe"><img src="https://img.shields.io/badge/Download-VoidSetup.exe-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40IDkuOCAydjkuNEgwem0xMC45LTEuNkwyNCAwdjExLjNIMTAuOXpNMCAxMi42aDkuOFYyMkwwIDIwLjZ6bTEwLjkgMEgyNFYyNGwtMTMuMS0xLjh6Ii8%2BPC9zdmc%2B" alt="Download VoidSetup.exe for Windows"></a></p>
 
 1. Download **VoidSetup.exe** and run it.
 2. Wait a few minutes while it sets up his voice and hearing.
@@ -67,14 +67,22 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 </td>
 <td valign="top">
 
+<p align="center"><a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/badge/Download-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Download the .deb for Ubuntu and Debian"></a></p>
+
+<p align="center">
+<img src="https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white" alt="Arch Linux">
+<img src="https://img.shields.io/badge/Fedora-51A2DA?style=flat-square&logo=fedora&logoColor=white" alt="Fedora">
+<img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=ubuntu&logoColor=white" alt="Ubuntu">
+<img src="https://img.shields.io/badge/Debian-A81D33?style=flat-square&logo=debian&logoColor=white" alt="Debian">
+</p>
+
+**Any of these:** the installer gets the system packages for you, and **Update now** in his settings keeps him current.
+
 ```bash
 git clone https://github.com/PLAYER99-void/void.git
 cd void && ./install.sh
 void
 ```
-
-Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the system packages for you, and
-**Update now** in his settings keeps him current.
 
 **Ubuntu / Debian package:** download `void-claude_…_all.deb` from the
 [latest release](https://github.com/PLAYER99-void/void/releases/latest), then
@@ -129,13 +137,14 @@ Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the sy
 <tr>
 <td align="center"><img src="assets/demo/pet.webp" width="300" alt="Void being petted"><br>
 <b>Pet him</b><br><sub>Rub the mouse over him and he purrs. Click him too much and he dodges.</sub></td>
-<td align="center"><img src="assets/void.png" width="200" alt="Void"><br>
+<td align="center"><img src="assets/demo/remember.webp" width="300" alt="Void remembering where your blog is, then switching to it"><br>
 <b>He remembers</b><br><sub>Say "remember my blog is in ~/code/blog" and he knows it in every chat.</sub></td>
 </tr>
 <tr>
 <td align="center"><img src="assets/demo/notch.webp" width="300" alt="Void as a notch at the top of the screen: listening, talking, running a command, and his menu"><br>
-<b>He becomes a notch</b><br><sub>Push him into any screen edge. He glows while you talk, and his words and commands drop out of the notch. Clicks go through to what's under it.</sub></td>
-<td align="center" valign="middle"><b>Top, bottom, left or right</b><br><sub>Right-click → <b>top bar</b>, or just drag him into an edge. Drag him out and he's the orb again, back where he was. Works on Windows and on Linux (layer-shell desktops like Hyprland, sway and KDE, and X11 / GNOME).</sub></td>
+<b>He becomes a notch</b><br><sub>He glows while you talk, and his words and commands drop out of the notch. Clicks go through to what's under it.</sub></td>
+<td align="center"><img src="assets/demo/edges.webp" width="300" alt="Void merging into the top, right, bottom and left edges of the screen"><br>
+<b>Top, bottom, left or right</b><br><sub>Drag him into any edge (or right-click → <b>top bar</b>). Drag him out and he's the orb again. Windows and Linux.</sub></td>
 </tr>
 </table>
 

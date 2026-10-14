@@ -2365,10 +2365,16 @@ class Updates:
         threading.Thread(target=cls.loop, daemon=True).start()
 
     @classmethod
+    def stale(cls, age):
+        return time.time() - float(cls.info.get("checked") or 0) > age
+
+    @classmethod
     def loop(cls):
-        while True:
-            if CFG.get("update_check", True) and time.time() - float(cls.info.get("checked") or 0) > 12 * 3600:
+        first = True
+        while True:                            # once when he starts (if the last answer is over an hour old), then
+            if CFG.get("update_check", True) and cls.stale(3600 if first else 6 * 3600):   # every 6 hours
                 cls.check()
+            first = False
             time.sleep(600)
 
     @classmethod
@@ -2697,8 +2703,10 @@ class Handler(BaseHTTPRequestHandler):
                 import webbrowser
                 webbrowser.open(ISSUE_URL)
                 return self._json({"ok": True})
-            if p == "/api/update/check":
-                Updates.check()
+            if p == "/api/update/check":                     # {"stale": s}: only if the last check is older than s
+                st = json.loads(self._body() or b"{}").get("stale")
+                if not isinstance(st, (int, float)) or Updates.stale(st):
+                    Updates.check()
                 return self._json(Updates.status())
             if p == "/api/update":
                 Updates.install()
