@@ -2893,7 +2893,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 self.wfile.write(b"data: " + json.dumps(kw).encode() + b"\n\n")
                 self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+            except ConnectionError:                 # (broken pipe / reset / Windows' "aborted": the window went away)
                 alive[0] = False
         return emit, alive
 

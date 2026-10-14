@@ -110,12 +110,12 @@ public class Keys {
   public static uint Key(ushort vk, bool up) { var i = new INPUT[1]; i[0].type = 1; i[0].ki.vk = vk; i[0].ki.flags = up ? 2u : 0u; return SendInput(1, i, Marshal.SizeOf(typeof(INPUT))); }
 }
 "@
-$before = (Get-Content "$ROOT\server.log").Count
 [Keys]::Key(0x11, $false) | Out-Null; [Keys]::Key(0x12, $false) | Out-Null; [Keys]::Key(0x20, $false) | Out-Null
 Start-Sleep 1
 [Keys]::Key(0x20, $true) | Out-Null; [Keys]::Key(0x12, $true) | Out-Null; [Keys]::Key(0x11, $true) | Out-Null
 Start-Sleep 2
-$new = (Get-Content "$ROOT\server.log" | Select-Object -Skip $before) -join "`n"
+# (the whole log: the window and the server write it through separate handles, so new lines can land anywhere)
+$new = (Get-Content "$ROOT\server.log") -join "`n"
 Check "push-to-talk hotkey: held" ($new -match "push-to-talk: down") ""
 Check "push-to-talk hotkey: let go" ($new -match "push-to-talk: up") ""
 
