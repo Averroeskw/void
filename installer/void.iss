@@ -73,6 +73,9 @@ Filename: "{app}\venv\Scripts\pythonw.exe"; Parameters: """{app}\app\launch_win.
   Description: "Start Void now"; Flags: postinstall nowait skipifsilent; Check: InstallSucceeded
 Filename: "powershell.exe"; Parameters: "-NoExit -NoProfile -Command ""Write-Host 'Sign in to Claude Code, then close this window.' -ForegroundColor Green; & '{%USERPROFILE}\.local\bin\claude.exe'"""; \
   Description: "Sign in to Claude Code (needed once)"; Flags: postinstall nowait skipifsilent; Check: ClaudeJustInstalled
+; "Update now" in Void runs setup silently with /UPDATER: start him again when it's done
+Filename: "{app}\venv\Scripts\pythonw.exe"; Parameters: """{app}\app\launch_win.py"" show"; WorkingDir: "{app}\app"; \
+  Flags: nowait; Check: UpdaterRun
 
 [UninstallRun]
 Filename: "{app}\venv\Scripts\python.exe"; Parameters: """{app}\app\launch_win.py"" stop"; \
@@ -103,6 +106,11 @@ end;
 function ClaudeJustInstalled: Boolean;
 begin
   Result := InstallOk and ClaudeInstalled;
+end;
+
+function UpdaterRun: Boolean;
+begin
+  Result := InstallOk and (Pos('/UPDATER', Uppercase(GetCmdTail)) > 0);
 end;
 
 function ClaudePath: String;

@@ -453,7 +453,10 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <label class="tg"><input type="checkbox" id="autoSw"><span class="sw"></span><span class="l">Start when I log in<small>Ready and listening for “hey Void”.</small></span></label>
         <label class="tg"><input type="checkbox" id="notifySw"><span class="sw"></span><span class="l">Notify me when a long task finishes<small>…while he's hidden.</small></span></label>
         <label class="tg"><input type="checkbox" id="popupSw"><span class="sw"></span><span class="l">Pop back up when it's done</span></label>
+        <label class="tg"><input type="checkbox" id="updSw"><span class="sw"></span><span class="l">Check for updates<small>Asks GitHub for the latest version twice a day. Nothing about you is sent.</small></span></label>
       </div>
+      <div class="row"><div class="t">Void <span id="verTxt"></span></div><div class="h" id="updTxt"></div>
+        <div class="bar"><button class="btn" id="updNow" hidden>⬇ Update now</button><button class="btn" id="updCheck">Check now</button></div></div>
       <div class="row"><div class="t">Memory &amp; history</div><div class="h">Say “remember …” and he keeps it for every future chat.</div>
         <div class="bar"><button class="btn" data-open="memory">🧠 Memory <i id="memCount"></i></button><button class="btn" data-open="history">🕘 History</button></div></div>
       <div class="row"><div class="t">Things you can just say</div>
@@ -1751,7 +1754,9 @@ function renderSettings(){
   $('#modelChips').innerHTML=MODELS.map(([id,l])=>`<button data-m="${id}" class="${cur===id?'on':''}">${l}</button>`).join('');
   $('#voiceChips').innerHTML=(info.voices||[]).map(v=>`<button data-v="${v.id}" class="${info.voice===v.id?'on':''}">${v.label}${v.downloading?'<i>⇣</i>':''}</button>`).join('');
   const sw={rootSw:info.root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
-    clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random};
+    clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random,
+    updSw:info.update_check!==false};
+  renderUpdate();
   for(const k in sw){ const e=document.getElementById(k); if(e) e.checked=!!sw[k]; }
   const ps=restPu();
   $('#pupChips').innerHTML=[['slit','▮ slits'],['circle','● circles'],['dot','• dots']].map(([id,l])=>`<button data-ps="${id}" class="${ps===id?'on':''}">${l}</button>`).join('');
@@ -1769,6 +1774,23 @@ function renderSettings(){
   $('#skinGrid').innerHTML=(info.skins||Object.keys(SKIN_LABELS)).map(k=>`<button data-skin="${k}" class="${L.skin===k?'on':''}"><svg viewBox="-125 -150 250 250"></svg>${SKIN_LABELS[k]||k}</button>`).join('');
   $$('#skinGrid button').forEach(b=>miniVoid(b.querySelector('svg'),{...L,skin:b.dataset.skin},false));
   selectPart(pkPart); renderRecent();
+}
+// updates: what's installed, whether a newer release is out, and how this install updates itself
+function renderUpdate(){
+  const u=info.update||{}, now=$('#updNow'), txt=$('#updTxt');
+  $('#verTxt').textContent=info.version&&info.version!=='0.0.0'?'v'+info.version:'';
+  now.hidden=!(u.newer&&(u.how==='setup'||u.how==='git')&&u.state!=='updating');
+  txt.textContent=u.state==='updating'?'Updating… he’ll be back in a minute or two.'
+    :u.state==='failed'?'Update failed: '+(u.error||'see the log')
+    :u.newer?(u.how==='package'?`v${u.latest} is out — update with your package manager.`:u.how==='manual'?`v${u.latest} is out — run install.sh from the folder you installed from.`:`v${u.latest} is out.`)
+    :u.latest?'You have the latest version.':(info.update_check===false?'Update checks are off.':'Not checked yet.');
+}
+function announceUpdate(){                         // one quiet tick per new version, never a pop-up
+  const u=info.update||{}; if(!u.newer) return;
+  let seen=''; try{ seen=localStorage.getItem('void-upd-seen')||''; }catch(e){}
+  if(seen===u.latest) return;
+  try{ localStorage.setItem('void-upd-seen',u.latest); }catch(e){}
+  tick(`v${u.latest} is out — Settings → More to update`);
 }
 async function loadMics(){
   try{ const j=await (await post('/api/devices')).json(), cur=info.mic_device||'';
@@ -1797,6 +1819,10 @@ setEl.addEventListener('click',e=>{
   if(e.target.closest('#projAdd')){ const n=$('#projName').value.trim(), p=$('#projPath').value.trim(); if(!n||!p) return tick('give it a name and a folder',true);
     post('/api/projects',{op:'add',name:n,path:p}).then(r=>r.json()).then(j=>{ if(j.error) return tick(j.error,true); $('#projName').value=''; $('#projPath').value=''; tick('added '+n); return refresh().then(renderSettings); }); }
   if(bo){ settings(false); openPanel(bo.dataset.open); }
+  if(e.target.closest('#updCheck')){ $('#updTxt').textContent='Checking…';
+    post('/api/update/check').then(r=>r.json()).then(u=>{ info.update=u; renderUpdate(); }).catch(()=>tick('couldn’t reach GitHub',true)); }
+  if(e.target.closest('#updNow')) post('/api/update').then(r=>r.json()).then(u=>{ info.update=u; renderUpdate();
+    if(u.state==='failed') return tick(u.error||'update failed',true); poke('excited',900); tick('updating — I’ll be right back'); });
 });
 setEl.addEventListener('change',e=>{
   const id=e.target.id, on=e.target.checked;
@@ -1811,6 +1837,7 @@ setEl.addEventListener('change',e=>{
   if(id==='clickSw') setSetting({click_through:on}).then(()=>sendRegion(true));
   if(id==='notifySw') setSetting({notify_done:on});
   if(id==='popupSw') setSetting({popup_done:on});
+  if(id==='updSw') setSetting({update_check:on}).then(renderUpdate);
   if(id==='codeSw'){ setSetting({code_panel:on}); if(!on) CP.hide(); }
   if(id==='micSel') setSetting({mic_device:e.target.value}).then(()=>tick('microphone changed'));
   if(id==='linkSw'){ const L=curLook(); const patch={link:on}; if(on){ patch.pupR=L.pupL; patch.whiteR=L.whiteL; } setLook(patch).then(()=>selectPart(pkPart.replace('R','L'))); }
@@ -1857,7 +1884,7 @@ async function slash(cmd){
 /* ================= wiring ================= */
 function showInfo(){ syncEye(); document.body.classList.toggle('faceyou',info.code_face==='you'); input.placeholder=`ask in ${info.cwd_display||'~'}…`; const l=$('#cwdLbl'); if(l) l.textContent=info.cwd_display||'folder';
   document.body.classList.toggle('root',!!info.root); }
-async function refresh(){ try{ info=await (await fetch('/api/state')).json(); showInfo(); }catch(e){} }
+async function refresh(){ try{ info=await (await fetch('/api/state')).json(); showInfo(); announceUpdate(); }catch(e){} }
 function toggleMute(){ muted=!muted; try{localStorage.setItem('void.muted',muted?'1':'0');}catch(e){} if(muted) shush(); tick(muted?'voice off':'voice on'); if(setEl.classList.contains('on')) renderSettings(); }
 
 // hidden (Esc, hide, closing him) = fully off: he stops talking and the server closes the mic — no "hey Void" until

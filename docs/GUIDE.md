@@ -215,6 +215,7 @@ Windows.
 | `whisper_model` | `auto` | `small.en` on an NVIDIA GPU, `base.en` on CPU; or `tiny.en` / `medium.en` |
 | `stt_hint` | coding words | words he should expect (add your project names) |
 | `mic_device` | `""` | input to record from (Settings → Voice lists them) |
+| `update_check` | `true` | ask GitHub twice a day whether a newer Void is out (nothing about you is sent); Settings → More shows it with an **Update now** button |
 | `mic_auto` | `true` | keep your voice at a good level: after you speak he turns the Windows mic level up if you came in quiet, down if you clipped, and boosts it himself past 100% (Windows) |
 | `extra_args` | `[]` | extra CLI flags for `claude` |
 
@@ -278,6 +279,13 @@ On Windows, right-click the Void shortcut → Properties → Shortcut key.
 
 `VOID_NO_LAYER=1 void` skips the overlay and uses a normal always-on-top window. `VOID_BROWSER=1 void` opens him in a
 plain browser app window instead (handy if WebKitGTK misbehaves).
+
+## Updates
+
+Settings → More shows which version you have and whether a newer one is out (Void asks GitHub's public release list
+twice a day; turn that off with **Check for updates**). **Update now** installs it: on Windows it runs the new
+VoidSetup.exe quietly and Void comes back by himself; on Linux, if you installed from a `git clone`, it runs
+`git pull` and `install.sh` for you. Installed from a package? Update with your package manager.
 
 ## Starting at login
 

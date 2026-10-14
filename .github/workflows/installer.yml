@@ -25,7 +25,8 @@ jobs:
       - name: Build VoidSetup.exe
         shell: pwsh
         run: |
-          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { "0.0.0" }
+          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { (Get-Content app\VERSION -TotalCount 1).Trim() }
+          Set-Content -Encoding ascii -NoNewline app\VERSION $version          # what Void reports and compares for updates
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
           & $iscc "/DAppVersion=$version" installer\void.iss
@@ -69,6 +70,36 @@ jobs:
       - name: Smoke test
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .github\ci\smoke.ps1
+      - name: Self-update ("Update now")
+        shell: pwsh
+        env:
+          VOID_CI: "1"
+        run: |
+          $root = "$env:LOCALAPPDATA\void"
+          $setup = (Resolve-Path dist\VoidSetup.exe).Path
+          $json = Join-Path $pwd "ci-out\release.json"
+          # a pretend "latest release" that points at the setup just built
+          @{ tag_name = "v99.0.0"; html_url = "https://github.com/PLAYER99-void/void/releases";
+             assets = @(@{ name = "VoidSetup.exe"; browser_download_url = "file:///" + ($setup -replace '\\', '/') }) } |
+            ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 $json
+          $env:VOID_UPDATE_URL = "file:///" + ($json -replace '\\', '/')
+          $built = (Get-Content "$root\app\VERSION" -TotalCount 1).Trim()
+          Set-Content -Encoding ascii -NoNewline "$root\app\VERSION" "0.0.1"                 # pretend it's old
+          & "$root\bin\void.cmd" restart
+          function Up { try { Invoke-RestMethod http://127.0.0.1:47777/api/state -TimeoutSec 2 | Out-Null; $true } catch { $false } }
+          for ($i = 0; $i -lt 60 -and -not (Up); $i++) { Start-Sleep 1 }
+          $h = @{ "X-Void-Token" = (Get-Content "$root\runtime.json" | ConvertFrom-Json).token }
+          $c = Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/update/check -Headers $h -ContentType application/json -Body "{}"
+          $fails = 0
+          if ($c.newer -and $c.current -eq "0.0.1") { "PASS  sees v$($c.latest) is newer than v$($c.current)" } else { "FAIL  update check: $($c | ConvertTo-Json -Compress)"; $fails++ }
+          Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/update -Headers $h -ContentType application/json -Body "{}" | Out-Null
+          $deadline = (Get-Date).AddMinutes(10)
+          do { Start-Sleep 5; $v = (Get-Content "$root\app\VERSION" -TotalCount 1 -ErrorAction SilentlyContinue) } while (((-not $v) -or $v.Trim() -eq "0.0.1" -or -not (Up)) -and (Get-Date) -lt $deadline)
+          if ($v -and $v.Trim() -eq $built) { "PASS  updated to v$built" } else { "FAIL  version after update: $v"; $fails++ }
+          $back = $false; for ($i = 0; $i -lt 60 -and -not $back; $i++) { $back = Up; if (-not $back) { Start-Sleep 2 } }
+          if ($back) { "PASS  Void started again by itself" } else { "FAIL  server didn't come back"; $fails++ }
+          & "$root\bin\void.cmd" stop
+          exit $fails
       - name: Uninstall
         shell: pwsh
         run: |

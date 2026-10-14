@@ -41,6 +41,10 @@ if WIN:
         if _s is not None and hasattr(_s, "reconfigure"):
             _s.reconfigure(encoding="utf-8", errors="replace")
 STATIC = APP_DIR / "static"
+try:                                            # written by the release build (and kept in git for git installs)
+    VERSION = (APP_DIR / "VERSION").read_text(encoding="utf-8").strip() or "0.0.0"
+except OSError:
+    VERSION = "0.0.0"
 if WIN:
     DATA_DIR, CONF_PATH = winsys.data_dir(), winsys.config_dir() / "config.json"
 else:
@@ -100,6 +104,8 @@ DEFAULTS = {
     # keep the mic at a level he hears well: turn the Windows mic level up when your voice comes in quiet, down when it
     # clips, and boost it himself past 100%
     "mic_auto": True,
+    # ask GitHub twice a day whether a newer Void is out (nothing about you is sent) and offer "Update now"
+    "update_check": True,
     "language": "en",
     "stt_prewarm": True,
 
@@ -1208,7 +1214,7 @@ class Wake:
 
 
 def doctor():
-    print("Void doctor\n")
+    print(f"Void doctor (version {VERSION})\n")
     if WIN:
         print("inputs (any part of a name works as mic_device):")
         for m in winsys.list_mics():
@@ -2186,8 +2192,131 @@ def stop_proc():
             pass
 
 
+# ---------------------------------------------------------------- updates
+UPDATE_URL = os.environ.get("VOID_UPDATE_URL") or "https://api.github.com/repos/PLAYER99-void/void/releases/latest"
+
+
+def vtuple(v):
+    """'v1.2.10' → (1, 2, 10), so versions compare as numbers."""
+    nums = [int(n) for n in re.findall(r"\d+", str(v or ""))[:3]]
+    return tuple(nums + [0] * (3 - len(nums)))
+
+
+class Updates:
+    """Is a newer Void out? Asks GitHub's public "latest release" — at most twice a day; nothing about you is sent —
+    and installs it on request: on Windows by running the new VoidSetup.exe (it stops Void, updates and starts him
+    again), on a git install of Linux by `git pull` + install.sh + `void show`."""
+    info = {}                    # {"latest", "url", "setup", "checked"} — also kept in update.json
+    state, error = "idle", ""    # idle | updating | failed
+
+    @classmethod
+    def cache(cls):
+        return DATA_DIR / "update.json"
+
+    @classmethod
+    def start(cls):
+        try:
+            cls.info = json.loads(cls.cache().read_text())
+        except (OSError, ValueError):
+            cls.info = {}
+        try:                                       # what an update run on Linux left behind (it restarted us)
+            res = (DATA_DIR / "update.result").read_text().strip()
+            (DATA_DIR / "update.result").unlink()
+            if res != "0":
+                cls.state, cls.error = "failed", "the update didn't finish — run ./install.sh in a terminal to see why"
+        except OSError:
+            pass
+        threading.Thread(target=cls.loop, daemon=True).start()
+
+    @classmethod
+    def loop(cls):
+        while True:
+            if CFG.get("update_check", True) and time.time() - float(cls.info.get("checked") or 0) > 12 * 3600:
+                cls.check()
+            time.sleep(600)
+
+    @classmethod
+    def check(cls):
+        import urllib.request
+        try:
+            req = urllib.request.Request(UPDATE_URL, headers={"Accept": "application/vnd.github+json",
+                                                              "User-Agent": f"Void/{VERSION}"})
+            rel = json.load(urllib.request.urlopen(req, timeout=15))
+        except Exception as e:  # noqa: BLE001
+            print(f"[void] update check: {e}", file=sys.stderr)
+            return False
+        cls.info = {"latest": str(rel.get("tag_name") or "").lstrip("v"), "url": rel.get("html_url") or "",
+                    "setup": next((a.get("browser_download_url") for a in rel.get("assets") or []
+                                   if a.get("name") == "VoidSetup.exe"), ""), "checked": time.time()}
+        try:
+            cls.cache().write_text(json.dumps(cls.info))
+        except OSError:
+            pass
+        return True
+
+    @classmethod
+    def how(cls):
+        """setup (Windows) | git (Linux, installed from a clone) | package (AUR/.deb/meson) | manual"""
+        if WIN:
+            return "setup"
+        try:
+            src = (DATA_DIR / "source").read_text().strip()
+        except OSError:
+            return "manual"
+        if src == "package":
+            return "package"
+        return "git" if (Path(src) / ".git").exists() and (Path(src) / "install.sh").exists() else "manual"
+
+    @classmethod
+    def status(cls):
+        latest = cls.info.get("latest") or ""
+        return {"current": VERSION, "latest": latest, "newer": bool(latest) and vtuple(latest) > vtuple(VERSION),
+                "url": cls.info.get("url") or "", "how": cls.how(), "state": cls.state, "error": cls.error}
+
+    @classmethod
+    def install(cls):
+        if cls.state == "updating":
+            return
+        cls.state, cls.error = "updating", ""
+        threading.Thread(target=cls._install, daemon=True).start()
+
+    @classmethod
+    def _install(cls):
+        try:
+            if WIN:
+                import urllib.request
+                if not cls.info.get("setup"):
+                    raise RuntimeError("this release has no VoidSetup.exe")
+                exe = Path(tempfile.gettempdir()) / "VoidSetup-update.exe"
+                urllib.request.urlretrieve(cls.info["setup"], exe)
+                # through `cmd /c start`: setup isn't our child, so it survives when it stops Void (and this server)
+                subprocess.Popen(["cmd", "/c", "start", "", str(exe), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+                                  "/UPDATER"], creationflags=winsys.NO_WINDOW, close_fds=True)
+                print(f"[void] update: running {exe}", flush=True)
+                return                                 # setup stops us, updates Void and starts him again
+            how = cls.how()
+            if how != "git":
+                raise RuntimeError("update Void with your package manager" if how == "package"
+                                   else "update by running install.sh from the folder you installed from")
+            src = (DATA_DIR / "source").read_text().strip()
+            void_bin = Path.home() / ".local" / "bin" / "void"
+            res = DATA_DIR / "update.result"
+            # install.sh stops this server and the window at the end, so the whole thing runs on its own and
+            # starts Void again afterwards, success or not; the result is read back by the new server (start())
+            script = (f'cd {shlex.quote(src)} && git pull --ff-only && ./install.sh </dev/null; '
+                      f'echo $? > {shlex.quote(str(res))}; {shlex.quote(str(void_bin))} show')
+            with open(DATA_DIR / "update.log", "ab") as log:
+                subprocess.Popen(["bash", "-c", script], stdout=log, stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL, start_new_session=True)
+            print("[void] update: git pull + install.sh running (log: update.log)", flush=True)
+        except Exception as e:  # noqa: BLE001
+            cls.state, cls.error = "failed", str(e)
+            print(f"[void] update failed: {e}", file=sys.stderr)
+
+
 def state_info():
     return {
+        "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
@@ -2322,6 +2451,12 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/stop":
                 stop_proc()
                 return self._json({"ok": True})
+            if p == "/api/update/check":
+                Updates.check()
+                return self._json(Updates.status())
+            if p == "/api/update":
+                Updates.install()
+                return self._json(Updates.status())
             if p == "/api/settings":
                 b = json.loads(self._body() or b"{}")
                 upd = {}
@@ -2355,7 +2490,7 @@ class Handler(BaseHTTPRequestHandler):
                 if "follow_up" in b:
                     upd["follow_up"] = max(0, min(60, int(b.get("follow_up") or 0)))
                 for key in ("wake_word", "notify_done", "popup_done", "code_panel", "hover", "click_through", "autostart", "listen_on_show",
-                            "barge_in", "sfx"):
+                            "barge_in", "sfx", "update_check"):
                     if key in b:
                         upd[key] = bool(b[key])
                 if b.get("code_face") in ("him", "you"):
@@ -2714,6 +2849,7 @@ def main():
     _wire_quick()
     threading.Thread(target=warm_tts, daemon=True).start()
     Wake.ensure()
+    Updates.start()
     srv = ThreadingHTTPServer(("127.0.0.1", int(CFG["port"])), Handler)
     try:                                       # where askpass.py finds us if sudo cleaned its environment (owner-only)
         rt = DATA_DIR / "runtime.json"

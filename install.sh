@@ -92,6 +92,9 @@ else
   APPD="$ROOT/app"
 fi
 rm -f "$ROOT/window.mode"     # re-pick the window render mode with the new defaults
+# where this install came from, for "Update now": a git clone updates itself; a system-wide install (package/meson)
+# is updated by the package manager
+if [ $USER_ONLY = 1 ]; then echo package > "$ROOT/source"; else printf '%s\n' "$SRC" > "$ROOT/source"; fi
 
 say "Python env (3.12 via uv — the speech libraries don't all support the newest Python yet)…"
 # 3.12 from the system if it has it, else uv fetches one; last resort: the system's own python3
