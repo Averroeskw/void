@@ -75,7 +75,8 @@ body.bar #barPill.pulse{animation:notchPulse .9s var(--ease)}
   100%{box-shadow:0 0 14px -6px var(--glow)}}
 body.bar #fxBack,body.bar #flash{display:none}
 /* in the notch: no status line; his words drop out of the notch in a black panel that grows from it */
-body.bar #chip{display:none}
+body.bar #chip,body.bar #moreB{display:none}
+.pn .hd{cursor:grab} .pn .hd button,.pn .hd input{cursor:pointer}   /* grab the header to move the panel (and him) */
 /* what he says and what he runs show INSIDE the notch: it grows to hold them (dropSync sets its size), one black shape,
    no separate box. The caption and the terminal share the same spot and the same type. */
 body.bar #barPill{transition:opacity .4s var(--ease),box-shadow .5s var(--ease),height .3s var(--ease),width .3s var(--ease),margin .3s var(--ease)}
@@ -1644,7 +1645,14 @@ async function send(text,opts={}){
 /* ================= panels: history, memory, quick actions ================= */
 const panelEl=$('#panel'); let panelKind=null;
 const ago=ts=>{ const s=Date.now()/1000-ts; return s<60?'just now':s<3600?`${s/60|0} min ago`:s<86400?`${s/3600|0} h ago`:`${s/86400|0} d ago`; };
-function closePanels(){ const was=panelEl.classList.contains('on')||setEl.classList.contains('on'); panelEl.classList.remove('on'); panelKind=null; setEl.classList.remove('on'); document.body.classList.remove('pnl'); if(was) native('wide:off'); }
+let pnMoved=false;
+function closePanels(){ const was=panelEl.classList.contains('on')||setEl.classList.contains('on'); panelEl.classList.remove('on'); panelKind=null; setEl.classList.remove('on'); document.body.classList.remove('pnl'); if(was) native('wide:off');
+  reDock(); }
+function reDock(){ if(!pnMoved) return; pnMoved=false;      // a panel dragged the notch away: back to its edge
+  const edge=EDGES.find(e=>document.body.classList.contains('e-'+e)); if(edge) native('bar:'+edge); }
+// a panel's header is a handle: drag it to move the window (in the notch, he goes back to his edge when it closes)
+$$('.pn .hd').forEach(h=>h.addEventListener('mousedown',e=>{ if(e.button!==0||e.target.closest('button,input,select')) return;
+  e.preventDefault(); pnMoved=true; native('pmove'); }));
 async function openPanel(kind){
   menu(false); hideAsk(); setEl.classList.remove('on'); panelKind=kind; panelEl.classList.add('on'); document.body.classList.add('pnl'); native('wide:on');
   const body=$('#pBody'), tools=$('#pTools'); tools.innerHTML='';
@@ -1752,7 +1760,8 @@ function layoutMenu(){
   bs.forEach((b,i)=>{ const a=(a0+i*(a1-a0)/(bs.length-1))*Math.PI/180;
     b.style.setProperty('--x',(Math.cos(a)*r).toFixed(0)+'px'); b.style.setProperty('--y',(Math.sin(a)*r).toFixed(0)+'px'); });
 }
-function menu(on){ if(on) layoutMenu(); if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
+let menuShutAt=0;
+function menu(on){ if(on) layoutMenu(); if(!on&&menuOn) menuShutAt=performance.now(); if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
   ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
@@ -1819,6 +1828,7 @@ const TRUST=[['ask','✋','Ask me first','Edits files on his own; asks you (out 
   ['readonly','👀','Look, don’t touch','Can read and explain things, but changes nothing.']];
 const setEl=$('#set');
 function settings(on,tab){ setEl.classList.toggle('on',on); document.body.classList.toggle('pnl',on); if(!panelEl.classList.contains('on')) native(on?'wide:on':'wide:off');
+  if(!on&&!panelEl.classList.contains('on')) reDock();
   if(on){ menu(false); hideAsk(); panelEl.classList.remove('on'); panelKind=null; if(tab) showTab(tab); renderSettings(); loadMics(); requestAnimationFrame(moveInd); }
   sendRegion(true); }
 function moveInd(){ const b=$('#tabs button.on'), ind=$('#tabInd'); if(!b||!ind) return; ind.style.width=b.offsetWidth+'px'; ind.style.transform=`translateX(${b.offsetLeft-3}px)`; }
@@ -2154,7 +2164,9 @@ async function interrupt(){ const was=busy; shush(); CP.hide(); sfx('pop'); poke
   if(was){ post('/api/stop'); for(let i=0;i<80&&busy;i++) await sleep(50); } }
 let spaceHeld=false;
 // left-click: talk (or cut in) · right-click: his sparks swoosh out into the menu
-E.body.addEventListener('click',()=>{ if(dragged){ dragged=false; return; } downAt=null; menu(false);
+E.body.addEventListener('click',()=>{ if(dragged){ dragged=false; return; } downAt=null;
+  if(menuOn){ menu(false); return; }                   // menu open: this click just closes it
+  if(menuShutAt&&performance.now()-menuShutAt<300) return;   // (it was just closed by the mousedown of this same click)
   const n=performance.now(); clicks=clicks.filter(c=>n-c<1400); clicks.push(n);
   if(clicks.length>=6){ clicks=[]; dodge(); poke('annoyed',1600); return; }
   if(clicks.length===4){ dodge(); poke('surprised',800); return; }

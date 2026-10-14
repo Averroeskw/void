@@ -216,7 +216,7 @@ class VoidWindow(QWidget):
             except ValueError:
                 pass
             return
-        {"drag": self._drag, "dragend": self._save_pos, "hide": self.hide_me, "show": self.show_me,
+        {"drag": self._drag, "pmove": self._pmove, "dragend": self._save_pos, "hide": self.hide_me, "show": self.show_me,
          "hover:on": lambda: self.set_hover(True), "hover:off": lambda: self.set_hover(False),
          "bar:top": lambda: self.set_bar("top"), "bar:bottom": lambda: self.set_bar("bottom"),
          "bar:left": lambda: self.set_bar("left"), "bar:right": lambda: self.set_bar("right"),
@@ -280,6 +280,13 @@ class VoidWindow(QWidget):
             self._set_through(False)
             self.windowHandle().startSystemMove()
             self._watch_drag()
+
+    def _pmove(self):
+        """Dragging a panel's header: move the window as it is (no undocking, no docking on drop; in the bar the
+        page sends bar:<edge> when the panel closes, which puts the notch back)."""
+        if not self.hover and self.windowHandle():
+            self._set_through(False)
+            self.windowHandle().startSystemMove()
 
     def _grab_keys(self):
         self.activateWindow()
