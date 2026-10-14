@@ -112,6 +112,7 @@ class VoidWindow(QWidget):
         self.resize(W, H)
         self.cur_w, self.wide_shift, self.want_panel, self.want_code = W, 0, False, False
         self.hover, self.hpos, self.home, self.rects, self.through = False, None, None, None, None
+        self.bar, self.bar_home = False, None                                # top bar: his eyes in a notch up top
         self.shown = True
         self.save_t = QTimer(self, singleShot=True, interval=700, timeout=self._save_pos)   # save after you stop moving him
 
@@ -177,7 +178,7 @@ class VoidWindow(QWidget):
         self.move(x, y)
 
     def moveEvent(self, ev):
-        if not self.hover:
+        if not self.hover and not self.bar:
             self.save_t.start()
         super().moveEvent(ev)
 
@@ -217,12 +218,30 @@ class VoidWindow(QWidget):
             return
         {"drag": self._drag, "dragend": self._save_pos, "hide": self.hide_me, "show": self.show_me,
          "hover:on": lambda: self.set_hover(True), "hover:off": lambda: self.set_hover(False),
+         "bar:on": lambda: self.set_bar(True), "bar:off": lambda: self.set_bar(False),
          "wide:on": lambda: self.set_wide(True), "wide:off": lambda: self.set_wide(False),
          "code:on": lambda: self.set_wide(True, "code"), "code:off": lambda: self.set_wide(False, "code"),
          "kbd:grab": self._grab_keys, "kbd:release": lambda: None,
          "peek:hide": self.hide, "peek:show": self.show_me}.get(msg, lambda: None)()
 
+    def set_bar(self, on):
+        """Top bar: the window goes to the top-center of the screen he's on (the page draws the notch at the top of
+        the window); back to the blob's own spot when it's turned off."""
+        if self.bar == on:
+            return
+        self.bar = on
+        if on:
+            self.bar_home = (self.x() + self.wide_shift, self.y())
+            scr = QGuiApplication.screenAt(self.frameGeometry().center()) or QGuiApplication.primaryScreen()
+            g = scr.geometry()                                           # the real top edge, above any taskbar
+            self.move(g.center().x() - W // 2 - self.wide_shift, g.top())
+        elif self.bar_home:
+            self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
+            self._save_pos()
+
     def _drag(self):
+        if self.bar:                                                     # the notch stays put
+            return
         if not self.hover and self.windowHandle():
             self._set_through(False)
             self.windowHandle().startSystemMove()

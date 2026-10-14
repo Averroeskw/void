@@ -28,6 +28,18 @@ body.hover #stage{transform:scale(.17)}
 body.hover #orbBack,body.hover #orbFront,body.hover #workW,body.hover #haloW,body.hover #vring,body.hover #raysW,body.hover #fx,body.hover #fxBack,
 body.hover #think,body.hover #anger,body.hover #sweat,body.hover #zz,body.hover #qmark,body.hover #tears,body.hover #cap,body.hover #chip,body.hover #atts{display:none}
 body.hover #shadow{display:none}
+/* top bar: the very same eyes (#face is untouched), his ball folded away, hanging from the top edge in a pill */
+/* MacBook-notch look: pure black, flush with the top edge, softly rounded bottom, little inward curves where it meets the edge */
+#barPill{position:absolute;left:50%;top:0;width:210px;height:36px;transform:translateX(-50%) scaleY(0);transform-origin:50% 0;
+  border-radius:0 0 16px 16px;background:#000;pointer-events:none;z-index:0;
+  box-shadow:0 6px 16px -8px var(--glow);transition:transform .5s var(--ease),width .45s var(--ease)}
+#barPill::before,#barPill::after{content:"";position:absolute;top:0;width:10px;height:10px}
+#barPill::before{left:-10px;background:radial-gradient(circle at 0 100%,transparent 9.5px,#000 10px)}
+#barPill::after{right:-10px;background:radial-gradient(circle at 100% 100%,transparent 9.5px,#000 10px)}
+body.bar #barPill{transform:translateX(-50%) scaleY(1)}
+body.bar #stage{transform:translateY(-147px) scale(.32)}
+body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,body.bar #shadow,
+body.bar #body>circle,body.bar #body>ellipse,body.bar #accBack,body.bar #accFront,body.bar #liveTag{display:none}
 #guy{width:330px;height:330px;overflow:visible;pointer-events:none}
 #body{pointer-events:visiblePainted;cursor:pointer}
 #pL{fill:var(--whiteL);stroke:var(--lineL,none)} #pR{fill:var(--whiteR);stroke:var(--lineR,none)}
@@ -333,6 +345,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
 </head>
 <body class="m-idle">
 <div id="flash"></div><div id="paint"></div>
+<div id="barPill"></div>
 <div id="stage">
   <svg id="guy" viewBox="-150 -150 300 300">
     <defs>
@@ -1653,6 +1666,7 @@ panelEl.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='memNe
 /* ================= right-click menu ================= */
 const ICON={
   new:'<path d="M12 5v14M5 12h14"/>',
+  bar:'<path d="M2 4h20"/><path d="M7 4v2a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V4"/>',
   cd:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   talk:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>',
@@ -1661,7 +1675,7 @@ const ICON={
   set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   hide:'<path d="M6 6l12 12M18 6 6 18"/>',
 };
-const MENU=[['talk','talk'],['new','new chat'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['set','settings'],['hide','hide']];
+const MENU=[['talk','talk'],['bar','top bar'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['set','settings'],['hide','hide']];
 const MENU_XY=[];
 menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*Math.PI/180, r=122;
   MENU_XY[i]=[Math.cos(ang)*r/1.1, Math.sin(ang)*r/1.1];                 // same spot in the face's SVG units (330px = 300 units)
@@ -1669,7 +1683,7 @@ menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*
 let menuOn=false;
 function menu(on){ if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
-  ({talk:()=>startRec('auto'), new:()=>slash('/new'), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
+  ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
 function dismiss(){ menu(false); hideAsk(); closePanels(); endListening(); if(!native('hide')) poke('sleepy',1200); }
 // Esc / hiding him: he stops listening — a recording in progress is dropped and the "just keep talking" window closes
@@ -1684,6 +1698,15 @@ async function toggleHover(force){
   poke(on?'curious':'wink',1200);
 }
 window.voidHover=on=>setHoverClass(on);
+// top bar: the same eyes in a notch at the top of the screen; the window moves itself there (bar:on / bar:off)
+function setBarClass(on){ document.body.classList.toggle('bar',on); const b=$('[data-a="bar"] span'); if(b) b.textContent=on?'blob':'top bar'; sendRegion(true); }
+async function toggleBar(force){
+  const on=typeof force==='boolean'?force:info.presence!=='bar';
+  if(!NATIVE){ tick('the top bar works in the Void window (not the browser fallback)',true); return; }
+  if(on&&info.hover) await toggleHover(false);
+  await setSetting({presence:on?'bar':'orb'}); native(on?'bar:on':'bar:off'); setBarClass(on);
+  poke(on?'wink':'happy',1000);
+}
 window.voidHoverUnsupported=()=>{ tick('hover mode needs Hyprland or X11 on this desktop',true); setSetting({hover:false}); setHoverClass(false); };
 window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
   if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };
@@ -1985,6 +2008,7 @@ function sendRegion(force){
   const rs=[], add=(el,pad=0)=>{ if(!el) return; const r=el.getBoundingClientRect(); if(!(r.width&&r.height)) return; const g=16, x0=Math.floor((r.left-pad)/g)*g, y0=Math.floor((r.top-pad)/g)*g, x1=Math.ceil((r.right+pad)/g)*g, y1=Math.ceil((r.bottom+pad)/g)*g;
     rs.push([x0,y0,x1-x0,y1-y0]); };   // coarse grid: the region only changes when something opens/closes, not as he sways
   add(E.body,8);
+  if(document.body.classList.contains('bar')) add($('#barPill'),2);      // the whole notch takes clicks
   if(menuOn) $$('.mb').forEach(b=>add(b,2));
   if(ask.classList.contains('on')) add(ask,4);
   if(setEl.classList.contains('on')) add(setEl,4);
@@ -2199,6 +2223,7 @@ const CP=(()=>{
 
 refresh().then(()=>{
   if(info.hover && NATIVE){ native('hover:on'); setHoverClass(true); }
+  else if(info.presence==='bar' && NATIVE){ native('bar:on'); setBarClass(true); }
   if(NATIVE) native('ptt:'+(info.ptt_hotkey||''));          // the Windows window watches this combo (Linux ignores it)
   if(info.claude===false){ fail("I can't find Claude Code — install it and run `claude` once to sign in."); }
   else if(info.mic===false) tick('no mic recorder — install libpulse or alsa-utils',true);

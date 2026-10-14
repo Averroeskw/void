@@ -114,6 +114,8 @@ DEFAULTS = {
     "update_check": True,
     # hold this anywhere to talk, let go to send (Windows watches it itself; on Linux bind `void ptt-down` / `ptt-up`)
     "ptt_hotkey": "Ctrl+Alt+Space",
+    # how he sits on your desktop: "orb" (the floating blob) or "bar" (his eyes in a notch at the top of the screen)
+    "presence": "orb",
     "language": "en",
     "stt_prewarm": True,
 
@@ -2542,6 +2544,7 @@ def state_info():
     return {
         "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
         "platform": "windows" if WIN else "linux", "ptt_hotkey": CFG.get("ptt_hotkey", "") or "",
+        "presence": "bar" if CFG.get("presence") == "bar" else "orb",
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
         "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
@@ -2738,6 +2741,8 @@ class Handler(BaseHTTPRequestHandler):
                     k = str(b["ptt_hotkey"] or "").strip()
                     if k == "" or re.fullmatch(r"((Ctrl|Alt|Shift|Win)\+){0,4}[A-Za-z0-9`]+", k):
                         upd["ptt_hotkey"] = k[:40]
+                if b.get("presence") in ("orb", "bar"):
+                    upd["presence"] = b["presence"]
                 if b.get("code_face") in ("him", "you"):
                     upd["code_face"] = b["code_face"]
                 if "mic_device" in b:
