@@ -59,7 +59,7 @@ from_package(){
   esac
   say "Finding the latest release…"
   url="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
-         | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*"\(http[^"]*\)"/\1/' | grep -E "$pat" | head -n 1)" || true
+         | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*"\(http[^"]*\)"/\1/' | grep -E -e "$pat" | head -n 1)" || true   # (-e: Arch's starts with "-")
   [ -n "$url" ] || { warn "the latest release has no $KIND package"; return 1; }
   f="$TMP/${url##*/}"
   say "Downloading ${url##*/}…"
