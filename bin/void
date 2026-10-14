@@ -8,6 +8,7 @@
 #   void hover      toggle hover mode (he floats next to your mouse)
 #   void show|hide|quit
 #   void doctor     check mic, voice and Claude Code
+#   void diagnostics  a report to paste when asking for help (nothing is sent)
 #   void stress     test his voice for stutters under heavy load
 #   void render default|nodmabuf|nocomp   how the window is drawn (nocomp is steadiest on NVIDIA)
 #   void server     run the server in the foreground (for debugging)
@@ -44,6 +45,7 @@ quitwin(){ pkill -f "$APP/window.py" >/dev/null 2>&1 || true; killbrowser
 case "${1:-}" in
   stop)    stop; quitwin; echo "Void stopped"; exit 0 ;;
   stress)  exec "$PY" "$APP/server.py" --stress-voice "${@:2}" ;;
+  diagnostics) exec "$PY" "$APP/server.py" --diagnostics ;;
   see)     exec "$PY" "$APP/server.py" --see "${2:-window}" ;;            # view-only picture of your screen (for Claude)     # speak under heavy load, report any stutter
   doctor)  echo "── window ──"
            for c in /usr/bin/python3 /usr/bin/python; do [ -x "$c" ] && { "$c" "$APP/window.py" --check 2>&1 | tail -n 3 || echo "overlay: window can't start (pacman -S python-gobject webkit2gtk-4.1 gtk-layer-shell)"; break; }; done
@@ -69,7 +71,7 @@ fi
 
 CMD="${1:-toggle}"
 case "$CMD" in toggle|show|hide|quit|restart|listen|look|live|hover|hover-on|hover-off) ;;
-  *) echo "usage: void [listen|look|live|hover|show|hide|quit|doctor|stress|render|stop|restart|log|server]" >&2; exit 2 ;; esac
+  *) echo "usage: void [listen|look|live|hover|show|hide|quit|doctor|diagnostics|stress|render|stop|restart|log|server]" >&2; exit 2 ;; esac
 [ "$CMD" = restart ] && CMD=show
 FIRST="$CMD"; [ "$FIRST" = toggle ] && FIRST=show
 

@@ -3,6 +3,7 @@ if they aren't running, then passes the command on — the same commands as the 
 
     void            show / hide him            void see [screen]  print a picture of your window (for Claude)
     void listen     pop up and listen          void doctor        check mic, voice and Claude Code
+    void diagnostics  a report to paste when asking for help (nothing is sent)
     void look       screenshot, then listen    void stress        test his voice for stutters
     void live       live view on/off           void log           follow the server log
     void hover      hover mode on/off          void stop | restart
@@ -86,8 +87,8 @@ def stop():
 def main():
     args = sys.argv[1:]
     cmd = args[0] if args else "toggle"
-    if cmd in ("doctor", "stress", "setup", "server"):            # these run here, in the console
-        flag = {"doctor": ["--doctor"], "stress": ["--stress-voice"], "server": []}.get(cmd)
+    if cmd in ("doctor", "diagnostics", "stress", "setup", "server"):   # these run here, in the console
+        flag = {"doctor": ["--doctor"], "diagnostics": ["--diagnostics"], "stress": ["--stress-voice"], "server": []}.get(cmd)
         if flag is None:
             print("Run install.ps1 again to update Void's voice and speech models.")
             return 0

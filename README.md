@@ -139,7 +139,7 @@ Run **`void doctor`** first. It checks your mic, his voice and Claude Code in a 
 | He can't hear me | Check the level meter in `void doctor`, then pick the right mic in Settings → Voice. |
 | "I can't find Claude Code" | Install [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and run `claude` once to sign in. |
 | Windows: "DLL load failed" | Install the [Visual C++ runtime](https://aka.ms/vs/17/release/vc_redist.x64.exe), then `void restart`. |
-| Something else | See [Troubleshooting](docs/GUIDE.md#troubleshooting), or [open an issue](https://github.com/PLAYER99-void/void/issues). |
+| Something else | Right-click him → Settings → More → **Copy diagnostics**, then **Report a problem** and paste it. Or see [Troubleshooting](docs/GUIDE.md#troubleshooting). |
 
 <br>
 

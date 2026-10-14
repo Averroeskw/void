@@ -827,6 +827,7 @@ class MicAuto:
     sees (transcribe_pcm already evens out what Whisper gets)."""
     soft = 1.0
     last = 0.0
+    last_peak = None                              # loudest moments of the last thing you said (for diagnostics)
     TARGET, QUIET, LOUD = 0.45, 0.18, 0.9         # loudest moments of your speech (0–1)
 
     @classmethod
@@ -840,7 +841,7 @@ class MicAuto:
         clipped = float((a > 0.97).mean())
         if pk < 0.003:                            # dead or muted input: nothing to learn (Listen says so)
             return
-        cls.last = time.monotonic()
+        cls.last, cls.last_peak = time.monotonic(), pk
         hint = CFG.get("mic_device") or ""
         hw = winsys.mic_level(hint) if WIN else None
         if clipped > 0.002 or pk > cls.LOUD:
@@ -2329,6 +2330,78 @@ class Updates:
             print(f"[void] update failed: {e}", file=sys.stderr)
 
 
+# ---------------------------------------------------------------- diagnostics ("Copy diagnostics", `void diagnostics`)
+ISSUE_URL = "https://github.com/PLAYER99-void/void/issues/new?template=bug.md"
+
+
+def redact(text):
+    """Blank out what could identify you: your home folder and user name, email addresses, and this run's token."""
+    import getpass
+    home = str(Path.home())
+    for h in {home, home.replace("\\", "/"), home.replace("\\", "\\\\")}:
+        text = re.sub(re.escape(h), "~", text, flags=re.I)
+    try:
+        user = getpass.getuser()
+    except Exception:  # noqa: BLE001
+        user = ""
+    if len(user) >= 3:
+        text = re.sub(r"(?<![A-Za-z0-9])" + re.escape(user) + r"(?![A-Za-z0-9])", "<user>", text, flags=re.I)
+    text = re.sub(r"[\w.+-]+@[\w-]+\.[\w.-]+", "<email>", text)
+    return text.replace(TOKEN, "<token>")
+
+
+def diagnostics():
+    """A plain-text report for asking for help: versions, what Void found (mic, voice, speech model, Claude Code) and
+    the end of the log. Nothing is sent anywhere — you paste it where you want. Memory, history, projects and what
+    you said aren't included; your home folder, user name and email addresses are blanked out."""
+    import importlib.util
+    import platform
+    L = []
+
+    def add(k, v):
+        L.append(f"{k:<18} {v}")
+    add("void", f"{VERSION} ({Updates.how()} install; latest seen: {Updates.info.get('latest') or '?'})")
+    add("system", platform.platform())
+    if not WIN:
+        add("desktop", " / ".join(x for x in (os.environ.get("XDG_CURRENT_DESKTOP"), os.environ.get("XDG_SESSION_TYPE"),
+                                              "hyprland" if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") else "") if x) or "?")
+    add("python", platform.python_version())
+    cb = claude_bin()
+    cv = "not found"
+    if cb:
+        try:
+            cv = (subprocess.run([cb, "--version"], capture_output=True, text=True, timeout=10, **spawn_kw()).stdout or "found").strip()
+        except Exception:  # noqa: BLE001
+            cv = "found (version unknown)"
+    add("claude code", cv)
+    add("voice engine", f"{tts_engine() or 'none'} (voice: {CFG.get('voice')})")
+    if _whisper:
+        add("speech model", f"{_whisper._void_name} on {_whisper._void_dev}")
+    else:
+        add("speech model", _whisper_err or "not loaded yet")
+    add("cuda libraries", "yes" if importlib.util.find_spec("nvidia.cublas") else "no")
+    add("mic", f"device: {CFG.get('mic_device') or 'system default'}")
+    if WIN:
+        lv = winsys.mic_level(CFG.get("mic_device") or "")
+        add("mic level", "?" if lv is None else f"{lv:.0%} (Windows)")
+        try:
+            import winreg
+            k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64", 0,
+                               winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+            add("vc++ runtime", winreg.QueryValueEx(k, "Version")[0])
+        except OSError:
+            add("vc++ runtime", "not found")
+    add("mic auto-level", f"{'on' if CFG.get('mic_auto', True) else 'off'}, boost {MicAuto.soft:.1f}x, last voice peak "
+                          + ("-" if MicAuto.last_peak is None else f"{MicAuto.last_peak:.3f}"))
+    add("settings", ", ".join(f"{k}={CFG.get(k)}" for k in ("trust", "wake_word", "barge_in", "follow_up", "tts",
+                                                             "whisper_model", "model", "hover", "update_check")))
+    try:
+        log = (DATA_DIR / "server.log").read_text(encoding="utf-8", errors="replace").splitlines()[-60:]
+    except OSError:
+        log = ["(no server.log)"]
+    return redact("Void diagnostics\n\n" + "\n".join(L) + "\n\n--- last lines of server.log ---\n" + "\n".join(log) + "\n")
+
+
 def state_info():
     return {
         "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
@@ -2465,6 +2538,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
             if p == "/api/stop":
                 stop_proc()
+                return self._json({"ok": True})
+            if p == "/api/diagnostics":
+                return self._json({"text": diagnostics()})
+            if p == "/api/report":                 # opens GitHub's "new issue" page — only ever this one address
+                import webbrowser
+                webbrowser.open(ISSUE_URL)
                 return self._json({"ok": True})
             if p == "/api/update/check":
                 Updates.check()
@@ -2820,6 +2899,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--print-port", action="store_true")
     ap.add_argument("--doctor", action="store_true")
+    ap.add_argument("--diagnostics", action="store_true", help="print the report that 'Copy diagnostics' copies")
     ap.add_argument("--warm", action="store_true", help="download/load the speech model and exit")
     ap.add_argument("--sync-autostart", action="store_true", help="add/remove login startup to match the config")
     ap.add_argument("--stress-voice", action="store_true", help="test the voice for stutters under heavy load")
@@ -2846,6 +2926,13 @@ def main():
         return None
     if args.doctor:
         return doctor()
+    if args.diagnostics:
+        try:                                     # just the last check's result (start() would also consume update.result)
+            Updates.info = json.loads(Updates.cache().read_text())
+        except (OSError, ValueError):
+            pass
+        print(diagnostics())
+        return None
     if args.warm:
         m = whisper()
         print(f"speech model ready: {m._void_name} on {m._void_dev}")

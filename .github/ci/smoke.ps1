@@ -34,6 +34,13 @@ try {
   Check "tool shows on his terminal" ($body -match '"t": "tool"') ""
 } catch { Check "a request through Claude" $false "$_" }
 
+try {
+  $d = (Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47777/api/diagnostics -Headers @{"X-Void-Token" = $tok} -ContentType "application/json" -Body "{}").text
+  Set-Content -Encoding utf8 "$OUT\diagnostics.txt" $d
+  Check "diagnostics report" ($d -match "Void diagnostics" -and $d -match "claude code") ""
+  Check "diagnostics hide your folders, name and token" (-not ($d.Contains($env:USERPROFILE) -or $d.Contains($tok) -or $d -match "(?<![A-Za-z0-9])$([regex]::Escape($env:USERNAME))(?![A-Za-z0-9])")) ""
+} catch { Check "diagnostics report" $false "$_" }
+
 $t = & $VPY -c @"
 import sys; sys.path.insert(0, r'$APP'); import winsys, time
 winsys.dpi_aware()

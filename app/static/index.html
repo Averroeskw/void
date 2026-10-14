@@ -457,6 +457,9 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
       </div>
       <div class="row"><div class="t">Void <span id="verTxt"></span></div><div class="h" id="updTxt"></div>
         <div class="bar"><button class="btn" id="updNow" hidden>⬇ Update now</button><button class="btn" id="updCheck">Check now</button></div></div>
+      <div class="row"><div class="t">Need help?</div><div class="h">Copies a report (versions, mic, voice, the end of his log) to paste when you ask for help. Nothing is sent; your name and folders are blanked out.</div>
+        <div class="bar"><button class="btn" id="diagCopy">📋 Copy diagnostics</button><button class="btn" id="diagReport">Report a problem</button></div>
+        <pre id="diagPrev" hidden style="max-height:160px;overflow:auto;font-size:10.5px;white-space:pre-wrap;user-select:text;margin:8px 0 0"></pre></div>
       <div class="row"><div class="t">Memory &amp; history</div><div class="h">Say “remember …” and he keeps it for every future chat.</div>
         <div class="bar"><button class="btn" data-open="memory">🧠 Memory <i id="memCount"></i></button><button class="btn" data-open="history">🕘 History</button></div></div>
       <div class="row"><div class="t">Things you can just say</div>
@@ -1785,6 +1788,17 @@ function renderUpdate(){
     :u.newer?(u.how==='package'?`v${u.latest} is out — update with your package manager.`:u.how==='manual'?`v${u.latest} is out — run install.sh from the folder you installed from.`:`v${u.latest} is out.`)
     :u.latest?'You have the latest version.':(info.update_check===false?'Update checks are off.':'Not checked yet.');
 }
+async function copyDiagnostics(){
+  try{
+    const j=await (await post('/api/diagnostics')).json(), pre=$('#diagPrev');
+    pre.textContent=j.text; pre.hidden=false;
+    let ok=false;
+    try{ await navigator.clipboard.writeText(j.text); ok=true; }catch(e){}
+    if(!ok){ const r=document.createRange(), s=getSelection(); r.selectNodeContents(pre); s.removeAllRanges(); s.addRange(r);
+      try{ ok=document.execCommand('copy'); }catch(e){} s.removeAllRanges(); }
+    tick(ok?'copied — paste it into a GitHub issue':'select the report below and copy it',!ok);
+  }catch(e){ tick('couldn’t make the report: '+e.message,true); }
+}
 function announceUpdate(){                         // one quiet tick per new version, never a pop-up
   const u=info.update||{}; if(!u.newer) return;
   let seen=''; try{ seen=localStorage.getItem('void-upd-seen')||''; }catch(e){}
@@ -1819,6 +1833,8 @@ setEl.addEventListener('click',e=>{
   if(e.target.closest('#projAdd')){ const n=$('#projName').value.trim(), p=$('#projPath').value.trim(); if(!n||!p) return tick('give it a name and a folder',true);
     post('/api/projects',{op:'add',name:n,path:p}).then(r=>r.json()).then(j=>{ if(j.error) return tick(j.error,true); $('#projName').value=''; $('#projPath').value=''; tick('added '+n); return refresh().then(renderSettings); }); }
   if(bo){ settings(false); openPanel(bo.dataset.open); }
+  if(e.target.closest('#diagCopy')) copyDiagnostics();
+  if(e.target.closest('#diagReport')) post('/api/report').then(()=>tick('opening GitHub — paste the report there')).catch(()=>tick('couldn’t open the browser',true));
   if(e.target.closest('#updCheck')){ $('#updTxt').textContent='Checking…';
     post('/api/update/check').then(r=>r.json()).then(u=>{ info.update=u; renderUpdate(); }).catch(()=>tick('couldn’t reach GitHub',true)); }
   if(e.target.closest('#updNow')) post('/api/update').then(r=>r.json()).then(u=>{ info.update=u; renderUpdate();
