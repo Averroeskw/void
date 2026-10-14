@@ -491,7 +491,14 @@ const input=$('#input'), youEl=$('#you'), himEl=$('#him'), cap=$('#cap'), chip=$
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,k)=>a+(b-a)*k;
 const approach=(a,b,dt,rate)=>a+(b-a)*(1-Math.exp(-rate*dt));      // frame-rate independent smoothing
 const hdr=x=>Object.assign({'X-Void-Token':TOKEN},x||{});
-const post=(u,b,o)=>fetch(u,Object.assign({method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(b||{})},o||{}));
+const post=(u,b,o)=>fetch(u,Object.assign({method:'POST',headers:hdr({'Content-Type':'application/json'}),body:JSON.stringify(b||{})},o||{}))
+  .then(r=>{ if(r.status===403) staleToken(); return r; });
+function staleToken(){                       // server restarted with a new token: reload to pick it up (at most once per 10 s)
+  let last=0; try{ last=+sessionStorage.getItem('void-reload')||0; }catch(e){}
+  if(Date.now()-last<10000) return;
+  try{ sessionStorage.setItem('void-reload',Date.now()); }catch(e){}
+  location.reload();
+}
 const native=msg=>{ try{ window.webkit.messageHandlers.voidui.postMessage(msg); return true; }catch(e){ return false; } };
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
