@@ -57,17 +57,68 @@ def dpi_aware():
 
 
 # ---------------------------------------------------------------- microphone
-class Mic:
-    """Records 16-bit mono at `rate`. Same shape as the Linux recorder: read(timeout) → bytes, close()."""
+class ChannelPick:
+    """Two-channel mics: keep the channel your voice is on. Some headsets send it on the second channel only and the
+    first is just noise; recording channel 1 (what a mono stream gets) then hears nothing. Switches to the other channel
+    only when it's clearly louder for half a second, so a single bump doesn't flip it."""
+    SWITCH_BLOCKS = 25                               # 25 × 20 ms
 
-    def __init__(self, rate, device=None):
+    def __init__(self):
+        self.ch, self.e, self.since, self.switched = 0, [0.0, 0.0], 0, False
+
+    def __call__(self, data):
+        import numpy as np
+        a = np.frombuffer(data, dtype=np.int16).reshape(-1, 2).astype(np.int32)
+        for c in (0, 1):
+            self.e[c] = self.e[c] * 0.9 + 0.1 * float(np.abs(a[:, c]).mean())
+        other = 1 - self.ch
+        self.since = self.since + 1 if self.e[other] > 2 * self.e[self.ch] + 30 else 0
+        if self.since >= self.SWITCH_BLOCKS:
+            self.ch, self.since, self.switched = other, 0, True
+            import sys
+            print(f"[void] mic: recording channel {self.ch + 1} of 2 (the other one is near silent)", file=sys.stderr, flush=True)
+        return np.ascontiguousarray(a[:, self.ch], dtype=np.int16).tobytes()
+
+
+class Mic:
+    """Records 16-bit mono at `rate`. Same shape as the Linux recorder: read(timeout) → bytes, close().
+    keep_raw: also keep what came in on every channel (`raw`, interleaved), for `void doctor`."""
+
+    def __init__(self, rate, device=None, keep_raw=False):
         import sounddevice as sd
-        self.q = queue.Queue()
+        self.q, self.raw = queue.Queue(), bytearray() if keep_raw else None
         dev = _mic_index(sd, (device or "").strip())
-        self.stream = sd.RawInputStream(samplerate=rate, channels=1, dtype="int16", blocksize=int(rate * 0.02),
-                                        device=dev, callback=lambda data, frames, t, status: self.q.put(bytes(data)))
+        try:
+            info = sd.query_devices(dev, "input") if dev is not None and not isinstance(dev, str) else sd.query_devices(kind="input")
+            self.info = {"name": info["name"], "driver": sd.query_hostapis(info["hostapi"])["name"],
+                         "channels": int(info["max_input_channels"]), "rate": int(info["default_samplerate"])}
+        except Exception:  # noqa: BLE001
+            self.info = {"name": str(device or "default"), "driver": "?", "channels": 1, "rate": 0}
+        self.pick = None
+
+        def cb(data, frames, t, status):
+            b = bytes(data)
+            if self.raw is not None:
+                self.raw += b
+            self.q.put(self.pick(b) if self.pick else b)
+        for ch in ((2, 1) if self.info["channels"] >= 2 else (1,)):
+            self.pick = ChannelPick() if ch == 2 else None
+            try:
+                self.stream = sd.RawInputStream(samplerate=rate, channels=ch, dtype="int16", blocksize=int(rate * 0.02),
+                                                device=dev, callback=cb)
+                break
+            except Exception:  # noqa: BLE001
+                if ch == 1:
+                    raise                                  # (2 channels refused: try mono, exactly as before)
+        self.channels = ch
         self.stream.start()
         self.name = "sounddevice"
+        Mic.last = self                                    # (for diagnostics: how the last recording was made)
+
+    @property
+    def channel(self):
+        """The channel being recorded (1-based) and whether it switched to it because the other was near silent."""
+        return (self.pick.ch + 1, self.pick.switched) if self.pick else (1, False)
 
     def read(self, timeout):
         out = bytearray()

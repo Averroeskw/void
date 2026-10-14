@@ -352,7 +352,12 @@ Code it found. Logs: `void log`.
 
 **Everywhere**
 
-- **He can't hear you:** check the `void doctor` level meter. Pick the right mic in Settings → Voice. (Since 1.4.3,
+- **He can't hear you:** run `void doctor` and keep talking for the 3 seconds. It shows the mic it recorded (and on a
+  2-channel mic, each channel), how loud you came in, and whether there was any talking in it at all. It also saves
+  what he heard as `doctor.wav` in Void's data folder, so you can listen. **"NO VOICE … only background noise"** means
+  the mic sends no voice to Void: it's muted on the headset (a button, or its own app such as INZONE Hub or
+  G HUB), or it's not the mic you're talking into. Pick the right one in Settings → Voice. Headsets that put your
+  voice on the second channel only are handled automatically since 1.5.4. (Since 1.4.3,
   mics with long names, or two devices with the same name, are found reliably; update if yours wasn't.)
 - **Can't click something under him:** turn on Settings → Look → "Click through around him". In the top bar only the
   area around his eyes takes clicks anyway.

@@ -934,17 +934,36 @@ def run_whisper(audio, beam=None, hint=None) -> str:
         return go()
 
 
+def pcm_audio(pcm: bytes):
+    """Raw s16le 16 kHz mono → float32 for Whisper, evened out: DC offset removed, a quiet mic brought up."""
+    import numpy as np
+    audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+    audio -= float(audio.mean()) if len(audio) else 0.0   # DC offset some cheap mics have
+    pk = float(np.abs(audio).max()) if len(audio) else 0.0
+    if 0 < pk < 0.4:                                       # quiet mic → bring it up (but don't blow up hiss)
+        audio *= min(0.7 / pk, 12.0)
+    return audio
+
+
 def transcribe_pcm(pcm: bytes, **kw) -> str:
     """Raw s16le 16 kHz mono → text."""
-    import numpy as np
     if len(pcm) < 16000 * 2 * 0.3:          # < 0.3 s: nothing worth sending
         return ""
-    audio = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
-    audio -= float(audio.mean())                          # DC offset some cheap mics have
-    pk = float(np.abs(audio).max() or 1.0)
-    if pk < 0.4:                                           # quiet mic → bring it up (but don't blow up hiss)
-        audio *= min(0.7 / pk, 12.0)
-    return run_whisper(audio, **kw)
+    return run_whisper(pcm_audio(pcm), **kw)
+
+
+def speech_seconds(pcm: bytes) -> float:
+    """How many seconds of `pcm` (s16le 16 kHz mono) Whisper's speech detector thinks are someone talking."""
+    from faster_whisper.vad import VadOptions, get_speech_timestamps
+    ts = get_speech_timestamps(pcm_audio(pcm), VadOptions(min_silence_duration_ms=300))
+    return sum(t["end"] - t["start"] for t in ts) / 16000
+
+
+def level_db(pcm: bytes) -> float:
+    """The loud bits of `pcm` (99.5th percentile), in dB below full scale."""
+    import numpy as np
+    a = np.abs(np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0)
+    return 20 * float(np.log10(max(float(np.percentile(a, 99.5)) if len(a) else 0.0, 1e-5)))
 
 
 # ---------------------------------------------------------------- microphone
@@ -1361,9 +1380,13 @@ def doctor():
                 print("  " + ln + ("   <- default" if dflt and dflt in ln else ""))
         print()
     print("recorders tried in order:", "sounddevice" if WIN else (", ".join(c[0] for c in mic_cmds()) or "NONE"))
-    print("recording 3 seconds — say something…", flush=True)
+    print("recording 3 seconds — keep talking the whole time…", flush=True)
     try:
-        mic, name, buf = open_mic()
+        if WIN:                                     # (keep every channel, to see which one your voice is on)
+            mic = winsys.Mic(RATE, CFG.get("mic_device"), keep_raw=True)
+            name, buf = mic.name, b""
+        else:
+            mic, name, buf = open_mic()
         t0, data = time.monotonic(), bytearray(buf)
         while time.monotonic() - t0 < 3:
             try:
@@ -1371,20 +1394,66 @@ def doctor():
             except EOFError:
                 break
         mic.close()
-        s = memoryview(bytes(data[: len(data) // 2 * 2])).cast("h")
+        data = bytes(data[: len(data) // 2 * 2])
+        if WIN:
+            i = mic.info
+            ch, switched = mic.channel
+            print(f"  device: {i['name']} · {i['driver']} · {i['channels']} channel(s) · {i['rate']} Hz"
+                  + (f" · recording channel {ch}" + (" (the other is near silent)" if switched else "")
+                     if mic.channels == 2 else ""))
+        s = memoryview(data).cast("h")
         peak = max((abs(x) for x in s), default=0) / 32768
         bar = "#" * int(min(1, peak * 3) * 30)
         print(f"  {name}: {len(data) / 32000:.1f}s captured, loudest {peak:.3f}  [{bar:<30}]")
-        print(("  -> CLIPPING: input is too loud — turn the mic down to ~65% in Sound settings" if WIN else
-               "  -> CLIPPING: input is too loud — try: wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.65") if peak > 0.98 else
-              "  -> looks good" if peak > 0.02 else "  -> very quiet: wrong input, muted, or gain too low")
-        if peak > 0.02:
+        # what each channel carries: how loud, and whether there's any talking in it at all
+        chans = {"": data}
+        if WIN and mic.channels == 2 and mic.raw:
+            import numpy as np
+            st = np.frombuffer(bytes(mic.raw[: len(mic.raw) // 4 * 4]), dtype=np.int16).reshape(-1, 2)
+            chans = {f"channel {c + 1}": np.ascontiguousarray(st[:, c]).tobytes() for c in (0, 1)}
+        talk = {}
+        for k, pcm in chans.items():
             try:
-                heard = transcribe_pcm(bytes(data))
+                talk[k] = speech_seconds(pcm)
+            except Exception:  # noqa: BLE001
+                talk[k] = None
+            if k:
+                print(f"  {k}: level {level_db(pcm):.0f} dB · talking for "
+                      + ("?" if talk[k] is None else f"{talk[k]:.1f}s"))
+        heard_any = any(v for v in talk.values())
+        wav = DATA_DIR / "doctor.wav"                 # what he heard, so you can listen to it yourself
+        try:
+            import wave as _w
+            with _w.open(str(wav), "wb") as w:
+                raw = bytes(mic.raw) if WIN and mic.channels == 2 and mic.raw else data
+                w.setnchannels(2 if raw is not data else 1)
+                w.setsampwidth(2)
+                w.setframerate(RATE)
+                w.writeframes(raw)
+        except Exception:  # noqa: BLE001
+            wav = None
+        if peak > 0.98:
+            print("  -> CLIPPING: input is too loud — turn the mic down to ~65% in Sound settings" if WIN else
+                  "  -> CLIPPING: input is too loud — try: wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 0.65")
+        elif talk.get("") == 0 or (len(talk) == 2 and not heard_any):
+            print("  -> NO VOICE in what this mic sends, only background noise. Is the mic muted on the headset "
+                  "(a button, or its own app, e.g. INZONE Hub / Logitech G HUB)? Is it the mic you're talking into? "
+                  "Pick another in Settings → Voice.")
+        elif len(talk) == 2 and talk.get("channel 2") and not talk.get("channel 1"):
+            print("  -> your voice is on channel 2 only — Void records that one (since 1.5.4)")
+        elif peak <= 0.02:
+            print("  -> very quiet: wrong input, muted, or gain too low")
+        else:
+            print("  -> looks good")
+        if wav:
+            print(f"  (what he heard is saved in {wav} — play it to hear it yourself)")
+        if peak > 0.002:
+            try:
+                heard = transcribe_pcm(data)
                 print("  heard:", repr(heard))
-                if not heard:
-                    print("  -> no words picked up: talk during the whole 3 seconds, a bit closer to the mic, "
-                          "and check mic_device is the mic you're using")
+                if not heard and heard_any:
+                    print("  -> there's talking but no words came out: speak a bit closer to the mic, in English "
+                          "(or set language in Settings)")
                 print(f"  (speech model: {_whisper._void_name} on {_whisper._void_dev}, {_whisper._void_ct})")
             except Exception as e:  # noqa: BLE001
                 print("  speech-to-text failed:", e)
@@ -2600,6 +2669,10 @@ def diagnostics():
     if WIN:
         lv = winsys.mic_level(CFG.get("mic_device") or "")
         add("mic level", "?" if lv is None else f"{lv:.0%} (Windows)")
+        m = getattr(winsys.Mic, "last", None)
+        if m:
+            add("mic stream", f"{m.info['driver']} · {m.channels} of {m.info['channels']} channel(s) · {m.info['rate']} Hz"
+                              f" · recording channel {m.channel[0]}" + (" (switched: the other is near silent)" if m.channel[1] else ""))
         try:
             import winreg
             k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64", 0,
