@@ -851,14 +851,31 @@ def _gpu_ok():
         return False
 
 
+def _compute_type(device):
+    """float16 on GPUs that do it fast; older cards (GTX 10xx and before) can't, so take the best they can do
+    instead of falling all the way back to the CPU."""
+    if device != "cuda":
+        return "int8"
+    try:
+        import ctranslate2
+        have = ctranslate2.get_supported_compute_types("cuda")
+    except Exception:  # noqa: BLE001
+        return "float16"
+    for ct in ("float16", "int8_float16", "int8_float32", "int8", "float32"):
+        if ct in have:
+            return ct
+    return "default"
+
+
 def _load(device):
     from faster_whisper import WhisperModel
     name = CFG["whisper_model"]
     if name in ("", "auto"):
         name = "small.en" if device == "cuda" else "base.en"
-    m = WhisperModel(name, device=device, compute_type="float16" if device == "cuda" else "int8")
-    m._void_name, m._void_dev = name, device
-    print(f"[void] speech model {name} on {device}", file=sys.stderr)
+    ct = _compute_type(device)
+    m = WhisperModel(name, device=device, compute_type=ct)
+    m._void_name, m._void_dev, m._void_ct = name, device, ct
+    print(f"[void] speech model {name} on {device} ({ct})", file=sys.stderr)
     return m
 
 
@@ -1360,8 +1377,12 @@ def doctor():
               "  -> looks good" if peak > 0.02 else "  -> very quiet: wrong input, muted, or gain too low")
         if peak > 0.02:
             try:
-                print("  heard:", repr(transcribe_pcm(bytes(data))))
-                print(f"  (speech model: {_whisper._void_name} on {_whisper._void_dev})")
+                heard = transcribe_pcm(bytes(data))
+                print("  heard:", repr(heard))
+                if not heard:
+                    print("  -> no words picked up: talk during the whole 3 seconds, a bit closer to the mic, "
+                          "and check mic_device is the mic you're using")
+                print(f"  (speech model: {_whisper._void_name} on {_whisper._void_dev}, {_whisper._void_ct})")
             except Exception as e:  # noqa: BLE001
                 print("  speech-to-text failed:", e)
     except Exception as e:  # noqa: BLE001
