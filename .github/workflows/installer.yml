@@ -83,11 +83,17 @@ jobs:
              assets = @(@{ name = "VoidSetup.exe"; browser_download_url = "file:///" + ($setup -replace '\\', '/') }) } |
             ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 $json
           $env:VOID_UPDATE_URL = "file:///" + ($json -replace '\\', '/')
+          function Up { try { Invoke-RestMethod http://127.0.0.1:47777/api/state -TimeoutSec 2 | Out-Null; $true } catch { $false } }
+          & "$root\bin\void.cmd" stop
+          for ($i = 0; $i -lt 30 -and (Up); $i++) { Start-Sleep 1 }
+          "server down before the test: $(-not (Up))"
           $built = (Get-Content "$root\app\VERSION" -TotalCount 1).Trim()
           Set-Content -Encoding ascii -NoNewline "$root\app\VERSION" "0.0.1"                 # pretend it's old
-          & "$root\bin\void.cmd" restart
-          function Up { try { Invoke-RestMethod http://127.0.0.1:47777/api/state -TimeoutSec 2 | Out-Null; $true } catch { $false } }
+          "VERSION file now: $(Get-Content "$root\app\VERSION")  (built: $built)"
+          & "$root\bin\void.cmd" show
           for ($i = 0; $i -lt 60 -and -not (Up); $i++) { Start-Sleep 1 }
+          "server reports version: $((Invoke-RestMethod http://127.0.0.1:47777/api/state).version)"
+          Get-CimInstance Win32_Process -Filter "Name like 'python%'" | ForEach-Object { "  proc $($_.ProcessId): $($_.CommandLine)" }
           $h = @{ "X-Void-Token" = (Get-Content "$root\runtime.json" | ConvertFrom-Json).token }
           $c = Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/update/check -Headers $h -ContentType application/json -Body "{}"
           $fails = 0
