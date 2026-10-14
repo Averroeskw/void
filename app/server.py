@@ -2511,7 +2511,7 @@ def diagnostics():
     add("claude code", cv)
     add("voice engine", f"{tts_engine() or 'none'} (voice: {CFG.get('voice')})")
     if _whisper:
-        add("speech model", f"{_whisper._void_name} on {_whisper._void_dev}")
+        add("speech model", f"{_whisper._void_name} on {_whisper._void_dev} ({_whisper._void_ct})")
     else:
         add("speech model", _whisper_err or "not loaded yet")
     try:                                         # (find_spec raises when there's no nvidia package at all)

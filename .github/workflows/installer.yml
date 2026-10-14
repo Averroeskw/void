@@ -166,30 +166,31 @@ jobs:
           sudo apt-get install -y -qq xvfb dbus-x11 >/dev/null
           mkdir -p ci-out
           curl -fs http://127.0.0.1:47777/api/state > /dev/null || { ~/.local/share/void/venv/bin/python /usr/share/void/app/server.py >> server.log 2>&1 & sleep 8; }
-          for e in top bottom left; do
+          for e in top bottom left right; do
             env -u WAYLAND_DISPLAY GDK_BACKEND=x11 VOID_NO_LAYER=1 dbus-run-session -- \
               xvfb-run -a -s "-screen 0 1280x800x24" /usr/bin/python3 /usr/share/void/app/window.py \
               "http://127.0.0.1:47777/?native=1" --selftest-bar $e ci-out/bar-$e.png 2>>ci-out/window.log | tee -a ci-out/bar.txt
           done
-          python3 - <<'PY'
-          import re, sys
-          fails = 0
-          for edge in ("top", "bottom", "left"):
-              m = [re.search(r"selftest-bar: (\w+) x=(-?\d+) y=(-?\d+) w=(\d+) h=(\d+) area=(-?\d+),(-?\d+),(\d+),(\d+) layer=(\w+) page=(.*)", l)
-                   for l in open("ci-out/bar.txt") if l.startswith(f"selftest-bar: {edge} ")]
-              m = m[-1] if m else None
-              ok = False
-              if m:
-                  x, y, w, h, ax, ay, aw, ah = map(int, m.groups()[1:9])
-                  cls = m.group(11).split()
-                  where = {"top": abs(x - (ax + (aw - w) / 2)) <= 2 and y == ay,
-                           "bottom": abs(x - (ax + (aw - w) / 2)) <= 2 and abs(y + h - (ay + ah)) <= 1,
-                           "left": x == ax and abs(y - (ay + (ah - h) / 2)) <= 2}[edge]
-                  ok = where and "bar" in cls and f"e-{edge}" in cls
-              print(("PASS" if ok else "FAIL") + f"  top bar docks on the {edge} edge (X11)  {m.group(0) if m else 'no report'}")
-              fails += not ok
-          sys.exit(fails)
-          PY
+          python3 .github/ci/barcheck.py ci-out/bar.txt False top bottom left right
+      - name: His window on Wayland layer-shell (headless sway) — the top bar docks on each edge
+        env:
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"            # (no GPU on the test machine)
+        run: |
+          sudo apt-get install -y -qq sway grim gir1.2-gtklayershell-0.1 >/dev/null
+          export XDG_RUNTIME_DIR=$(mktemp -d) && chmod 700 "$XDG_RUNTIME_DIR"
+          printf 'output * resolution 1280x800 position 0,0\n' > sway.cfg
+          WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman sway -c sway.cfg > ci-out/sway.log 2>&1 &
+          for i in $(seq 30); do ls "$XDG_RUNTIME_DIR"/wayland-* >/dev/null 2>&1 && break; sleep 1; done
+          export WAYLAND_DISPLAY=$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-* | grep -v lock | head -n1)")
+          echo "sway on $WAYLAND_DISPLAY"
+          /usr/bin/python3 /usr/share/void/app/window.py --check
+          for e in top bottom left right; do
+            env -u DISPLAY GDK_BACKEND=wayland dbus-run-session -- /usr/bin/python3 /usr/share/void/app/window.py \
+              "http://127.0.0.1:47777/?native=1" --selftest-bar $e ci-out/layer-$e.png 2>>ci-out/window-layer.log | tee -a ci-out/layer.txt &
+            sleep 14; grim ci-out/layer-$e-screen.png || true; wait $!
+          done
+          python3 .github/ci/barcheck.py ci-out/layer.txt True top bottom left right
       - uses: actions/upload-artifact@v7
         if: always()
         with:

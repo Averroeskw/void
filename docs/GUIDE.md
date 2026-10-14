@@ -362,6 +362,9 @@ Code it found. Logs: `void log`.
   `void restart`.
 - **The mic level stays near zero:** check the plug is in the mic jack (often pink), try the other set of jacks, and
   check the level in Sound settings → Recording → your mic → Properties → Levels.
+- **Older NVIDIA cards (GTX 10-series and before):** since 1.5.0 Void asks the card which number formats it handles and
+  stays on the GPU (`void doctor` shows e.g. `small.en on cuda (int8_float32)`). If it still says "using CPU", copy the
+  whole `void doctor` output into a bug report.
 - **"GPU speech-to-text failed … switching to CPU":** it still works, just slower. For an NVIDIA card, add the CUDA
   libraries: `uv pip install --python "$env:LOCALAPPDATA\void\venv\Scripts\python.exe" -U nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"`, then `void restart`.
 

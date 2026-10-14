@@ -77,7 +77,7 @@ Check "clipboard" ($c -match "copied on windows") "$c"
 Check "his window renders" (Test-Path "$OUT\face.png")
 
 # the top bar: dock him on an edge, check where the window went and that the page turned into the notch
-foreach ($edge in "top", "left", "bottom") {
+foreach ($edge in "top", "left", "right", "bottom") {
   $line = (& $VPY (Join-Path $APP "window_win.py") "http://127.0.0.1:47777/?native=1" --selftest-bar $edge "$OUT\bar-$edge.png" 2>$null | Where-Object { $_ -like "selftest-bar:*" }) | Select-Object -Last 1
   Write-Host $line
   $ok = $false
@@ -88,7 +88,8 @@ foreach ($edge in "top", "left", "bottom") {
     $where = switch ($edge) {
       "top"    { [math]::Abs($x - $cx) -le 2 -and $y -eq $ay }
       "bottom" { [math]::Abs($x - $cx) -le 2 -and [math]::Abs(($y + $h) - ($ay + $ah)) -le 1 }
-      "left"   { $x -eq $ax -and [math]::Abs($y - $cy) -le 2 } }
+      "left"   { $x -eq $ax -and [math]::Abs($y - $cy) -le 2 }
+      "right"  { [math]::Abs(($x + $w) - ($ax + $aw)) -le 1 -and [math]::Abs($y - $cy) -le 2 } }
     $ok = $where -and $cls -match "\bbar\b" -and $cls -match "\be-$edge\b"
   }
   Check "top bar docks on the $edge edge" $ok ""
