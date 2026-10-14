@@ -10,6 +10,7 @@ desktop without layer-shell he restarts himself under XWayland for that, since o
 Runs with the system Python (needs PyGObject + WebKit2GTK 4.1).
 
     window.py URL [toggle|show|hide|quit|listen|look|hover|hover-on|hover-off]
+    window.py URL --selftest-bar EDGE out.png   (dock as the top bar on EDGE, print where, save a picture — for CI)
 
 The first instance owns the window; later calls just send it a command over a unix socket,
 so binding `void` (or `void listen`) to a hotkey pops him in and out like a quick-shell.
@@ -250,6 +251,8 @@ class VoidWindow:
         self.want_panel = self.want_code = False
         self.dragging = False                   # (set before _place() can run — it checks this)
         self.hover = False
+        self.bar, self.bar_home = None, None    # top bar: merged into a screen edge as a notch (None = the blob)
+        self.pmoving = False                    # moving a panel by its header: no docking, no undocking
         self.layer = GtkLayerShell is not None
         self.mon_i, self.mx, self.my = 0, 0, 0
         if self.layer:
@@ -368,6 +371,8 @@ class VoidWindow:
         if (x, y) == (self.mx, self.my) or self.hover:
             return False
         self.mx, self.my = x, y
+        if self.bar:                                      # docked: his blob spot (bar_home) stays where it was
+            return False
         if self.save_t:
             GLib.source_remove(self.save_t)
         self.save_t = GLib.timeout_add(700, self._save_xpos)
@@ -526,17 +531,126 @@ class VoidWindow:
             self.show()
         self._js(f"window.voidCmd&&voidCmd({json.dumps(name)})")
 
-    def drag(self):
+    def drag(self, panel=False):
+        """Move him with the mouse. Pulling the notch away pops the blob out under the mouse; dropping the blob at a
+        screen edge docks him there. panel=True: a panel's header is being dragged, so neither happens."""
         if self.hover:
             return
+        self.pmoving = panel
+        if self.bar and not panel:
+            c = self._cursor_or_none()
+            self.set_bar(None, to=(c[0] - BALL[0], c[1] - BALL[1]) if c else "here")
         if not self.layer:
             seat = Gdk.Display.get_default().get_default_seat()
             _, x, y = seat.get_pointer().get_position()
             self.win.begin_move_drag(1, x, y, Gtk.get_current_event_time())
+            if not panel:
+                self._watch_release()
             return
         if self.hypr.ok() and not self.dragging:       # layer surface: follow the real cursor until the button is let go
             self.dragging = True
             threading.Thread(target=self._drag_loop, daemon=True).start()
+        elif not self.hypr.ok():                       # (no global cursor: the page sends dragby; judged at dragend)
+            self.over = [0, 0]
+
+    def _watch_release(self):
+        """X11: the window manager moves the window while you drag; poll for the mouse button coming up, then see
+        whether he was dropped at a screen edge."""
+        t0 = time.monotonic()
+
+        def check():
+            gw = self.win.get_window()
+            try:
+                dev = Gdk.Display.get_default().get_default_seat().get_pointer()
+                held = bool(gw.get_device_position(dev)[3] & Gdk.ModifierType.BUTTON1_MASK)
+            except Exception:  # noqa: BLE001
+                held = False
+            if held and time.monotonic() - t0 < 30:
+                return True
+            self._dock_if_edge()
+            return False
+        GLib.timeout_add(50, check)
+
+    def _cursor_or_none(self):
+        """The global mouse position where the desktop tells apps (Hyprland, X11/XWayland), else None."""
+        if not (self.hypr.ok() or self._x11()):
+            return None
+        try:
+            return self._cursor()
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _dock_if_edge(self, edge=None):
+        """After you drop the blob: pushed into a screen edge? He merges into it as the bar. Judged by the mouse (a
+        window can't always go past the screen's edge, so his ball can never reach it)."""
+        if self.bar or self.hover:
+            return False
+        if edge is None:
+            c = self._cursor_or_none()
+            if not c:
+                return False
+            _, g = self._mon_at(*c)
+            dist = {"top": c[1] - g.y, "bottom": g.y + g.height - 1 - c[1],
+                    "left": c[0] - g.x, "right": g.x + g.width - 1 - c[0]}
+            edge = min(dist, key=dist.get)
+            if dist[edge] >= 40:
+                return False
+        self.set_bar(edge)
+        return False
+
+    # ---- the bar: merged into a screen edge as a notch (the page draws it on the matching side of the window)
+    def _xmove(self, x, y):
+        self.mx, self.my = int(x), int(y)               # (known now, not only when the WM confirms it)
+        if self.hypr.ok():
+            self.hypr.move(x, y)
+        else:
+            self.win.move(int(x), int(y))
+
+    def set_bar(self, edge, to=None):
+        """Dock on `edge` (top / bottom / left / right) of the monitor he's on, or undock (None): back to the blob's
+        own spot, to `to` (global x, y: he's pulled out by the mouse) or "here" (stay put). Tells the page."""
+        edge = edge if edge in ("top", "bottom", "left", "right") else None
+        if edge and not (self.layer or self._x11() or self.hypr.ok()):
+            log("top bar: needs layer-shell or X11/XWayland — this desktop doesn't let apps place their window")
+            self._js("window.voidBarUnsupported&&voidBarUnsupported()")
+            return
+        if edge:
+            if not self.bar:
+                self.bar_home = (self.mon_i, self.mx + self.wide_shift, self.my)
+            self.bar = edge
+            if self.layer:                                        # margins from the monitor's top-left
+                _, g = self._geom()
+                ox, oy, gw_, gh_ = 0, 0, g.width, g.height        # (over any panels: exclusive zone -1)
+            else:                                                 # a window: the monitor's work area (above taskbars)
+                gx, gy = self.win.get_position()
+                i, _ = self._mon_at(gx + W // 2, gy + H // 2)
+                wa = self._monitors()[i].get_workarea()
+                ox, oy, gw_, gh_ = wa.x, wa.y, wa.width, wa.height
+            x = {"top": (gw_ - W) // 2, "bottom": (gw_ - W) // 2, "left": 0, "right": gw_ - W}[edge]
+            y = {"top": 0, "bottom": gh_ - H, "left": (gh_ - H) // 2, "right": (gh_ - H) // 2}[edge]
+            if self.layer:
+                self._place(x - self.wide_shift, y)
+            else:
+                self._xmove(ox + x - self.wide_shift, oy + y)
+        else:
+            was, self.bar = self.bar, None
+            if to == "here":
+                pass
+            elif to:
+                if self.layer:
+                    i, g = self._mon_at(*to)
+                    self._place(to[0] - g.x, to[1] - g.y, True, i)
+                else:
+                    self._xmove(*to)
+            elif was and self.bar_home:
+                m, hx, hy = self.bar_home
+                if self.layer:
+                    self._place(hx - self.wide_shift, hy, True, m)
+                else:
+                    self._xmove(hx - self.wide_shift, hy)
+            if was:
+                GLib.timeout_add(300, lambda: (self._save_pos() if self.layer else self._save_xpos(), False)[1])
+        self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
 
     def _drag_loop(self):
         try:
@@ -554,8 +668,16 @@ class VoidWindow:
                 continue
             GLib.idle_add(self._place, ox + cx - sx, oy + cy - sy, True)
         self.dragging = False
-        GLib.idle_add(self._save_pos)
-        GLib.idle_add(self._rewide)
+        GLib.idle_add(self._drag_finished)
+
+    def _drag_finished(self, edge=None):
+        if not self.pmoving:
+            self._dock_if_edge(edge)
+        self.pmoving = False
+        if not self.bar:                                 # docked: his blob spot (bar_home) stays where it was
+            self._save_pos()
+        self._rewide()
+        return False
 
     def _rewide(self):
         """After a drag the room either side of him has changed: re-fit the widened window."""
@@ -565,14 +687,33 @@ class VoidWindow:
 
     def drag_by(self, dx, dy):                      # no global cursor (e.g. sway): the page sends how far you dragged
         if self.layer and not self.hover:
-            self._place(self.mx + dx, self.my + dy, True)
+            if self.bar and not self.pmoving:
+                self.set_bar(None, to="here")             # pulling the notch away: the blob pops out right there
+            want = (self.mx + dx, self.my + dy)
+            self._place(*want, True)
+            o = getattr(self, "over", None)               # how far you pushed past the screen's edge (he's clamped)
+            if o is not None:
+                o[0] = (o[0] + dx) if (want[0] != self.mx) else 0
+                o[1] = (o[1] + dy) if (want[1] != self.my) else 0
 
     def drag_end(self):
         if self.dragging:
             self.dragging = False
         elif self.layer:
-            self._save_pos()
-            self._rewide()
+            o, self.over = getattr(self, "over", None), None
+            edge = None
+            if o and not self.pmoving:                     # pushed 40px+ past an edge: dock there
+                if abs(o[1]) >= 40 and abs(o[1]) >= abs(o[0]):
+                    edge = "top" if o[1] < 0 else "bottom"
+                elif abs(o[0]) >= 40:
+                    edge = "left" if o[0] < 0 else "right"
+            if edge:
+                self._drag_finished(edge)
+            else:
+                self.pmoving = False
+                if not self.bar:
+                    self._save_pos()
+                self._rewide()
 
     # ---- click-through: only what the page says is solid takes the mouse
     def _apply_region(self):
@@ -607,6 +748,8 @@ class VoidWindow:
             return
         if self.hover == on:
             return
+        if on and self.bar:                                        # hover mode is the blob: leave the edge first
+            self.set_bar(None)
         if on and self.cur_w > W:
             self.want_code = False
             self.set_wide(False)
@@ -772,8 +915,12 @@ class VoidWindow:
             except ValueError:
                 pass
             return
-        {"drag": self.drag, "dragend": self.drag_end, "hide": self.hide, "show": self.show,
+        {"drag": self.drag, "pmove": lambda: self.drag(panel=True), "dragend": self.drag_end,
+         "hide": self.hide, "show": self.show,
          "hover:on": lambda: self.set_hover(True), "hover:off": lambda: self.set_hover(False),
+         "bar:top": lambda: self.set_bar("top"), "bar:bottom": lambda: self.set_bar("bottom"),
+         "bar:left": lambda: self.set_bar("left"), "bar:right": lambda: self.set_bar("right"),
+         "bar:off": lambda: self.set_bar(None),
          "wide:on": lambda: self.set_wide(True), "wide:off": lambda: self.set_wide(False),
          "kbd:grab": lambda: self.keyboard(True), "kbd:release": lambda: self.keyboard(False),
          "code:on": lambda: self.set_wide(True, "code"), "code:off": lambda: self.set_wide(False, "code"),
@@ -816,6 +963,42 @@ def main():
         print(__doc__)
         sys.exit(2)
     url, cmd = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "toggle")
+    if cmd == "--selftest-bar" and len(sys.argv) > 4:            # dock on an edge, report where, save a picture (CI)
+        edge, out = sys.argv[3], sys.argv[4]
+        win = VoidWindow(url)
+
+        def report():
+            gw = win.win.get_window()
+            x, y = gw.get_root_origin() if not win.layer else (win.mx, win.my)
+            w, h = win.win.get_size()
+            if win.layer:
+                a = win._geom()[1]
+            else:
+                a = win._monitors()[win._mon_at(x + W // 2, y + H // 2)[0]].get_workarea()
+            try:
+                Gdk.pixbuf_get_from_window(gw, 0, 0, w, h).savev(out, "png", [], [])
+            except Exception as e:  # noqa: BLE001
+                log(f"selftest-bar: no picture ({e})")
+
+            def done(view, res):
+                try:
+                    cls = view.evaluate_javascript_finish(res).to_string()
+                except Exception:  # noqa: BLE001
+                    cls = "?"
+                print(f"selftest-bar: {edge} x={x} y={y} w={w} h={h} area={a.x},{a.y},{a.width},{a.height} "
+                      f"layer={win.layer} page={cls}", flush=True)
+                Gtk.main_quit()
+            try:
+                win.view.evaluate_javascript("document.body.className", -1, None, None, None, done)
+            except (AttributeError, TypeError):                     # (older WebKitGTK)
+                print(f"selftest-bar: {edge} x={x} y={y} w={w} h={h} area={a.x},{a.y},{a.width},{a.height} "
+                      f"layer={win.layer} page=?", flush=True)
+                Gtk.main_quit()
+            return False
+        GLib.timeout_add(12000, lambda: (win.set_bar(edge), False)[1])     # (slow test machines: let the page load)
+        GLib.timeout_add(15000, report)
+        Gtk.main()
+        return
     if send(cmd):
         return
     if cmd in ("hide", "quit"):

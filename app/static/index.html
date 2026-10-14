@@ -1652,7 +1652,7 @@ function reDock(){ if(!pnMoved) return; pnMoved=false;      // a panel dragged t
   const edge=EDGES.find(e=>document.body.classList.contains('e-'+e)); if(edge) native('bar:'+edge); }
 // a panel's header is a handle: drag it to move the window (in the notch, he goes back to his edge when it closes)
 $$('.pn .hd').forEach(h=>h.addEventListener('mousedown',e=>{ if(e.button!==0||e.target.closest('button,input,select')) return;
-  e.preventDefault(); pnMoved=true; native('pmove'); }));
+  e.preventDefault(); pnMoved=true; dragNative=true; native('pmove'); }));   // (mouseup sends dragend)
 async function openPanel(kind){
   menu(false); hideAsk(); setEl.classList.remove('on'); panelKind=kind; panelEl.classList.add('on'); document.body.classList.add('pnl'); native('wide:on');
   const body=$('#pBody'), tools=$('#pTools'); tools.innerHTML='';
@@ -1816,6 +1816,7 @@ function convoCheck(){
   if(hearing) $('#barPill').style.setProperty('--lv',Math.min(1,Math.max(micRaw||0,hearRaw||0)).toFixed(2));
 }
 setInterval(convoCheck,50);
+window.voidBarUnsupported=()=>{ tick('the top bar needs layer-shell or X11 on this desktop',true); setSetting({presence:'orb'}); info.presence='orb'; setBarClass(''); };
 window.voidHoverUnsupported=()=>{ tick('hover mode needs Hyprland or X11 on this desktop',true); setSetting({hover:false}); setHoverClass(false); };
 window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
   if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };

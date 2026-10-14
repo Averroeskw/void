@@ -3,6 +3,7 @@ i.e. Chromium). It speaks the same messages with the page as window.py (the GTK/
 
     window_win.py URL [toggle|show|hide|quit|listen|look|live|hover|hover-on|hover-off]
     window_win.py URL --selftest out.png      (load him, save a picture of the window, quit — for test machines)
+    window_win.py URL --selftest-bar EDGE out.png   (the same, docked on a screen edge as the top bar; prints where)
 
 The first instance owns the window; later calls just send it a command over a local socket, so `void listen` on a
 hotkey pops him up and listens. Only the parts of the window you can see take clicks (the page says which); the rest
@@ -216,7 +217,7 @@ class VoidWindow(QWidget):
             except ValueError:
                 pass
             return
-        {"drag": self._drag, "pmove": self._pmove, "dragend": self._save_pos, "hide": self.hide_me, "show": self.show_me,
+        {"drag": self._drag, "pmove": self._pmove, "dragend": lambda: self.bar or self._save_pos(), "hide": self.hide_me, "show": self.show_me,
          "hover:on": lambda: self.set_hover(True), "hover:off": lambda: self.set_hover(False),
          "bar:top": lambda: self.set_bar("top"), "bar:bottom": lambda: self.set_bar("bottom"),
          "bar:left": lambda: self.set_bar("left"), "bar:right": lambda: self.set_bar("right"),
@@ -547,7 +548,22 @@ def main():
             app.quit()
         QTimer.singleShot(9000, snap)
         sys.exit(app.exec())
-    cmd = sys.argv[2] if len(sys.argv) > 2 else "toggle"
+    if len(sys.argv) > 4 and sys.argv[2] == "--selftest-bar":            # dock on an edge, report where, save a picture
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-gpu"
+        app = QApplication(sys.argv[:1])
+        win = VoidWindow(url)
+        edge, out = sys.argv[3], sys.argv[4]
+
+        def report(cls):
+            g = (QGuiApplication.screenAt(win.frameGeometry().center()) or QGuiApplication.primaryScreen()).availableGeometry()
+            win.grab().save(out)
+            print(f"selftest-bar: {edge} x={win.x()} y={win.y()} w={win.width()} h={win.height()} "
+                  f"area={g.x()},{g.y()},{g.width()},{g.height()} page={cls}", flush=True)
+            app.quit()
+        QTimer.singleShot(10000, lambda: win.set_bar(edge))              # (slow test machines: let the page load)
+        QTimer.singleShot(13000,lambda: win.view.page().runJavaScript("document.body.className", report))
+        sys.exit(app.exec())
+    cmd =sys.argv[2] if len(sys.argv) > 2 else "toggle"
     if send(cmd):
         return
     if cmd in ("hide", "quit"):

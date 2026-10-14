@@ -76,6 +76,30 @@ Check "clipboard" ($c -match "copied on windows") "$c"
 & $VPY (Join-Path $APP "window_win.py") "http://127.0.0.1:47777/?native=1" --selftest "$OUT\face.png" 2>&1 | Out-Host
 Check "his window renders" (Test-Path "$OUT\face.png")
 
+# the top bar: dock him on an edge, check where the window went and that the page turned into the notch
+foreach ($edge in "top", "left", "bottom") {
+  $line = (& $VPY (Join-Path $APP "window_win.py") "http://127.0.0.1:47777/?native=1" --selftest-bar $edge "$OUT\bar-$edge.png" 2>$null | Where-Object { $_ -like "selftest-bar:*" }) | Select-Object -Last 1
+  Write-Host $line
+  $ok = $false
+  if ($line -match "x=(-?\d+) y=(-?\d+) w=(\d+) h=(\d+) area=(-?\d+),(-?\d+),(\d+),(\d+) page=(.*)$") {
+    $x, $y, $w, $h = [int]$Matches[1], [int]$Matches[2], [int]$Matches[3], [int]$Matches[4]
+    $ax, $ay, $aw, $ah, $cls = [int]$Matches[5], [int]$Matches[6], [int]$Matches[7], [int]$Matches[8], $Matches[9]
+    $cx = $ax + ($aw - $w) / 2; $cy = $ay + ($ah - $h) / 2
+    $where = switch ($edge) {
+      "top"    { [math]::Abs($x - $cx) -le 2 -and $y -eq $ay }
+      "bottom" { [math]::Abs($x - $cx) -le 2 -and [math]::Abs(($y + $h) - ($ay + $ah)) -le 1 }
+      "left"   { $x -eq $ax -and [math]::Abs($y - $cy) -le 2 } }
+    $ok = $where -and $cls -match "\bbar\b" -and $cls -match "\be-$edge\b"
+  }
+  Check "top bar docks on the $edge edge" $ok ""
+}
+$st3 = Invoke-RestMethod http://127.0.0.1:47777/api/state -Headers @{"X-Void-Token" = $tok}
+Check "the bar is remembered" ($st3.presence -eq "bar" -and $st3.bar_edge -eq "bottom") "($($st3.presence) / $($st3.bar_edge))"
+Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/settings -Headers @{"X-Void-Token" = $tok} -ContentType "application/json" -Body '{"presence":"sideways","bar_edge":"middle"}' | Out-Null
+$st3 = Invoke-RestMethod http://127.0.0.1:47777/api/state -Headers @{"X-Void-Token" = $tok}
+Check "junk bar settings are ignored" ($st3.presence -eq "bar" -and $st3.bar_edge -eq "bottom") ""
+Invoke-RestMethod -Method Post http://127.0.0.1:47777/api/settings -Headers @{"X-Void-Token" = $tok} -ContentType "application/json" -Body '{"presence":"orb"}' | Out-Null
+
 # the push-to-talk hotkey: press and hold Ctrl+Alt+Space (the default) like a person would, then let go
 Add-Type @"
 using System; using System.Runtime.InteropServices;
