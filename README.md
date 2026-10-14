@@ -36,6 +36,7 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 - 👀 **Watch him work.** He holds up a tiny terminal so you see every step.
 - 🔒 **Private.** Your voice never leaves your computer.
 - ✨ **Out of your way.** No app window, no taskbar button. Just him.
+- 🔝 **Or tuck him into your screen's edge.** Push him to any edge and he becomes a MacBook-style notch.
 
 </td>
 </tr>
@@ -92,11 +93,12 @@ Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the sy
 | **1** | Start Void | He appears in the bottom-right corner. Drag him anywhere; he remembers the spot. |
 | **2** | Say **"hey Void"** | His ring lights up and moves with your voice. (Or just **click** him.) |
 | **3** | Ask for something | He works in the current folder. Say "switch to my project" or right-click → *folder* to change it. |
-| **4** | **Right-click** him | His menu: new chat, folder, history, show my screen, settings. |
+| **4** | **Right-click** him | His menu: talk, folder, history, show my screen, hover mode, top bar, settings. |
+| **5** | **Push him into a screen edge** | He merges into it as a notch, with just his eyes. Drag him out again to get the orb back. |
 
 > [!TIP]
 > Say **"stop"** to interrupt him, hold **Space** for push-to-talk, or just start **typing** for a text box. Press
-> **Esc** to back out of anything.
+> **Esc** to back out of anything. **Ctrl+N** (or saying "new chat") starts a fresh conversation.
 
 ## Things to try
 
@@ -129,6 +131,11 @@ Works on **Arch**, **Debian / Ubuntu** and **Fedora**: the installer gets the sy
 <b>Pet him</b><br><sub>Rub the mouse over him and he purrs. Click him too much and he dodges.</sub></td>
 <td align="center"><img src="assets/void.png" width="200" alt="Void"><br>
 <b>He remembers</b><br><sub>Say "remember my blog is in ~/code/blog" and he knows it in every chat.</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="assets/demo/notch.webp" width="300" alt="Void as a notch at the top of the screen: listening, talking, running a command, and his menu"><br>
+<b>He becomes a notch</b><br><sub>Push him into any screen edge. He glows while you talk, and his words and commands drop out of the notch. Clicks go through to what's under it.</sub></td>
+<td align="center" valign="middle"><b>Top, bottom, left or right</b><br><sub>Right-click → <b>top bar</b>, or just drag him into an edge. Drag him out and he's the orb again, back where he was. Works on Windows and on Linux (layer-shell desktops like Hyprland, sway and KDE, and X11 / GNOME).</sub></td>
 </tr>
 </table>
 

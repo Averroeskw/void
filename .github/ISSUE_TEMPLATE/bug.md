@@ -9,6 +9,8 @@ labels: bug
 
 **What did you expect?**
 
+**Was he the orb, or the top bar (which edge)?**
+
 **Diagnostics**
 <!-- In Void: right-click him → Settings → More → "Copy diagnostics", then paste below.
      (Or run `void diagnostics` in a terminal.) Your name and folders are already blanked out. -->

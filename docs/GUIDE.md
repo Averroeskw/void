@@ -16,6 +16,7 @@ New here? Start with the <a href="../README.md">README</a>: it gets you running 
 | [Showing him your screen](#showing-him-your-screen) | [His face and personality](#his-face-and-personality) | [Starting at login](#starting-at-login) |
 | [While he works](#while-he-works) | [Skins and colours](#skins-and-colours) | [Troubleshooting](#troubleshooting) |
 | [Hover mode](#hover-mode) | [Config file](#config-file) | [How it works](#how-it-works) |
+| [Top bar (notch)](#top-bar-notch) | | [Updates](#updates) |
 | [Commands](#commands) | | |
 
 ---
@@ -26,11 +27,13 @@ New here? Start with the <a href="../README.md">README</a>: it gets you running 
 |---|---|
 | say **"hey Void"** | wakes him up (on by default; Settings → Voice). "Hey Void, run the tests" works in one go |
 | **left-click** him | talk; he stops listening when you stop talking |
-| **right-click** him | his sparks swirl out into the menu: talk · new chat · folder · history · show my screen · hover · settings · hide |
+| **right-click** him | his sparks swirl out into the menu: talk · folder · history · show my screen · hover · top bar · settings · hide. Click him (or right-click again) to close it |
+| **Ctrl+N** or say "new chat" | starts a fresh conversation |
 | hold **Space** | push-to-talk |
 | **click** him or tap **Space** while he's working or talking | cuts him off. A click then listens; holding Space lets you talk straight away |
 | just **type** | a box pops up under him; **Enter** sends. 📷 attaches a screenshot (right-click it for your clipboard) |
-| **drag** him | park him anywhere; he remembers the spot (outside hover mode) |
+| **drag** him | park him anywhere; he remembers the spot (outside hover mode). Drop him right at a screen edge and he becomes the [top bar](#top-bar-notch) |
+| **drag a panel's header** | moves Settings or History (and him with it) somewhere handier |
 | **Esc** | close menus → cancel listening → stop Claude → shush → hide |
 
 **Hidden means off.** Once he's hidden (Esc, *hide* in his menu) the mic is closed and he stops talking — he can't hear
@@ -106,7 +109,7 @@ out to a side that has room, so it never runs off the screen when he's parked in
 eyes. Settings → Look → Terminal turns it off, or switches it to **Faces you (readable)** so you can read along.
 
 **Long answers.** When an answer is long or has code, a **↗ full answer** button appears under him. It opens the whole
-thing with proper formatting and a copy button on every code block.
+thing with proper formatting and a copy button on every code block. (Not in the top bar; open History there instead.)
 
 **When a long task finishes** while he's hidden, you get a desktop notification. You can also have him pop back up
 (Settings → More).
@@ -121,6 +124,27 @@ straight through him. On Hyprland the normal pointer is hidden underneath.
 grows back to full size, ready to listen. `void stop` always brings the normal cursor back. Works on Hyprland and X11
 desktops. Other Wayland desktops don't tell apps where the mouse is, so it isn't available on sway or KDE, and on GNOME
 he only keeps up while the mouse is over older (X11) apps.
+
+## Top bar (notch)
+
+Instead of floating, he can **merge into an edge of your screen** as a black notch, like the one on a MacBook, with
+just his eyes showing. Everything else works the same.
+
+- **Turn it on:** right-click → **top bar** (next to hover mode), or just **drag him into a screen edge**: top, bottom,
+  left or right. Let go with the mouse right at the edge and he merges in.
+- **Get the orb back:** drag the notch away from the edge and he pops out under your mouse, or right-click → **blob**.
+  He remembers both where you parked the orb and which edge he likes.
+- **Talking:** the whole notch glows while you talk (brighter the louder you are) and pulses while he speaks. The
+  "hey Void" flash matches the notch.
+- **His words and commands** drop out of the notch itself: it grows to fit the caption, or his terminal while he works
+  (always readable, in the same style as his words), then tucks back in. No status pill.
+- **His menu** fans out around the notch. Settings and History open as usual, and you can drag them by the header; he
+  goes back to his edge when you close them.
+- **Clicks go through** everything except a small area around his eyes, so you can still click and drag things under
+  the notch.
+- **Where it works:** Windows, Linux with layer-shell (Hyprland, sway, KDE Plasma, river, niri…) and X11 or GNOME
+  (through XWayland). On sway there's no global mouse position, so push him past the edge to dock him. Turning on
+  hover mode leaves the top bar.
 
 ## Commands
 
@@ -318,7 +342,10 @@ Code it found. Logs: `void log`.
 
 **Everywhere**
 
-- **He can't hear you:** check the `void doctor` level meter. Pick the right mic in Settings → Voice.
+- **He can't hear you:** check the `void doctor` level meter. Pick the right mic in Settings → Voice. (Since 1.4.3,
+  mics with long names, or two devices with the same name, are found reliably; update if yours wasn't.)
+- **Can't click something under him:** turn on Settings → Look → "Click through around him". In the top bar only the
+  area around his eyes takes clicks anyway.
 - **"I can't find Claude Code":** install [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and run `claude`
   once to sign in.
 - **Speech stutters:** run `void stress`. He says a few sentences four times — on a quiet computer, with every CPU core
