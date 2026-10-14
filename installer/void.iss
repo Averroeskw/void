@@ -68,11 +68,6 @@ Source: "run-install.ps1"; DestDir: "{tmp}\src"
 Source: "..\app\*"; DestDir: "{tmp}\src\app"; Excludes: "__pycache__,*.pyc"; Flags: recursesubdirs createallsubdirs
 Source: "..\LICENSE"; DestDir: "{app}"
 
-[Icons]
-Name: "{userdesktop}\Void"; Filename: "{app}\venv\Scripts\pythonw.exe"; Parameters: """{app}\app\launch_win.py"" show"; \
-  WorkingDir: "{app}\app"; IconFilename: "{app}\app\static\icon.ico"; Comment: "Voice shell for Claude Code"; \
-  Tasks: desktopicon; Check: InstallSucceeded
-
 [Run]
 Filename: "{app}\venv\Scripts\pythonw.exe"; Parameters: """{app}\app\launch_win.py"" show"; WorkingDir: "{app}\app"; \
   Description: "Start Void now"; Flags: postinstall nowait skipifsilent; Check: InstallSucceeded
@@ -87,6 +82,7 @@ Filename: "{app}\venv\Scripts\python.exe"; Parameters: """{app}\app\launch_win.p
 Type: filesandordirs; Name: "{app}"
 Type: files; Name: "{userprograms}\Void.lnk"
 Type: files; Name: "{userstartup}\Void.lnk"
+Type: files; Name: "{userdesktop}\Void.lnk"
 
 [Code]
 const
@@ -227,6 +223,11 @@ begin
 
   InstallOk := RunStep('Setting up Void...', '-File "' + ExpandConstant('{tmp}\src\run-install.ps1') + '" -NoPause');
   WizardForm.ProgressGauge.Style := npbstNormal;
+  { made here, not in [Icons]: those are created before Void is set up, when InstallOk isn't known yet }
+  if InstallOk and WizardIsTaskSelected('desktopicon') then
+    CreateShellLink(ExpandConstant('{userdesktop}\Void.lnk'), 'Voice shell for Claude Code',
+                    ExpandConstant('{app}\venv\Scripts\pythonw.exe'), '"' + ExpandConstant('{app}\app\launch_win.py') + '" show',
+                    ExpandConstant('{app}\app'), ExpandConstant('{app}\app\static\icon.ico'), 0, SW_SHOWNORMAL);
   if not InstallOk then
     SuppressibleMsgBox('Void didn''t finish installing. The last things it said were:' + #13#10#13#10 + LastLines.Text + #13#10 +
                        'The full log is in ' + LogFile + #13#10 + 'Check your internet connection and run this setup again.',

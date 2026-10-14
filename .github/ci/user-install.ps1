@@ -17,7 +17,7 @@ $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 Check "running as a normal user" (-not $admin) "($env:USERNAME)"
 
 foreach ($round in 1, 2, 3) {
-  $tasks = if ($round -eq 1) { "claudecode" } else { "" }       # round 1 also installs Claude Code; later rounds find it
+  $tasks = if ($round -eq 1) { "claudecode,desktopicon" } else { "" }   # round 1 also installs Claude Code + desktop icon
   if ($round -eq 3) {
     # break it the way a real PC did: Void still running from the venv (files locked), its Python's files zero-filled
     # (a half-written download), and the venv's python.exe gone
@@ -40,7 +40,10 @@ foreach ($round in 1, 2, 3) {
   Check "round ${round}: Python is Void's own, exact version" ($home_ -like "$root\python\cpython-3.12.*") "($home_)"
   Check "round ${round}: void command" (Test-Path "$root\bin\void.cmd")
   Copy-Item "$root\install.log" "$Out\user-install-$round.log" -ErrorAction SilentlyContinue
-  if ($round -eq 1) { Check "Claude Code installed" (Test-Path "$env:USERPROFILE\.local\bin\claude.exe") }
+  if ($round -eq 1) {
+    Check "Claude Code installed" (Test-Path "$env:USERPROFILE\.local\bin\claude.exe")
+    Check "desktop shortcut" (Test-Path (Join-Path ([Environment]::GetFolderPath("Desktop")) "Void.lnk"))
+  }
   if ($round -eq 3) {
     Check "round 3: setup stopped the old Void" ($sleeper.HasExited)
     Check "round 3: app files in place despite the busy folder" ((Test-Path "$root\app\server.py") -and -not (Test-Path "$root\app\app"))
