@@ -63,9 +63,7 @@ class Mic:
     def __init__(self, rate, device=None):
         import sounddevice as sd
         self.q = queue.Queue()
-        dev = (device or "").strip() or None
-        if dev and dev.isdigit():
-            dev = int(dev)
+        dev = _mic_index(sd, (device or "").strip())
         self.stream = sd.RawInputStream(samplerate=rate, channels=1, dtype="int16", blocksize=int(rate * 0.02),
                                         device=dev, callback=lambda data, frames, t, status: self.q.put(bytes(data)))
         self.stream.start()
@@ -90,6 +88,22 @@ class Mic:
 
     def err(self):
         return ""
+
+
+def _mic_index(sd, name):
+    """mic_device → one device number. Windows lists each mic once per driver (MME, DirectSound, WASAPI…), so a name
+    alone is ambiguous and sounddevice refuses it; prefer the default driver's copy (the list Settings shows)."""
+    if not name:
+        return None
+    if name.isdigit():
+        return int(name)
+    want = name.lower()
+    api = sd.query_devices(kind="input")["hostapi"]
+    hits = [(i, d) for i, d in enumerate(sd.query_devices()) if d["max_input_channels"] > 0 and want in d["name"].lower()]
+    if not hits:
+        return name                                       # let sounddevice say it can't find it
+    hits.sort(key=lambda h: (h[1]["hostapi"] != api, h[1]["name"].lower() != want))
+    return hits[0][0]
 
 
 def list_mics():
@@ -309,7 +323,11 @@ def _mic_endpoint(hint=""):
     en = comtypes.CoCreateInstance(CLSID_MMDeviceEnumerator, IMMDeviceEnumerator, comtypes.CLSCTX_INPROC_SERVER)
     dev, hint = None, (hint or "").strip().lower()
     if hint and not hint.isdigit():
-        for d in AudioUtilities.GetAllDevices():
+        import warnings
+        with warnings.catch_warnings():                        # pycaw warns for every property some drivers lack
+            warnings.simplefilter("ignore")
+            devices = AudioUtilities.GetAllDevices()
+        for d in devices:
             if (d.id or "").startswith("{0.0.1.") and str(d.state).endswith("Active") and hint in (d.FriendlyName or "").lower():
                 dev = en.GetDevice(d.id)                       # {0.0.1.…} = a recording device
                 break
