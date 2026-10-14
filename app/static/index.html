@@ -76,15 +76,27 @@ body.bar #barPill.pulse{animation:notchPulse .9s var(--ease)}
 body.bar #fxBack,body.bar #flash{display:none}
 /* in the notch: no status line; his words drop out of the notch in a black panel that grows from it */
 body.bar #chip{display:none}
-body.bar #cap{left:40px;right:auto;width:260px;height:auto;max-height:150px;top:52px;padding:9px 14px 11px;background:#000;
-  -webkit-mask-image:none;mask-image:none;text-shadow:none;justify-content:flex-start;overflow:hidden;
-  border-radius:0 0 20px 20px;transition:opacity .35s var(--ease),transform .35s var(--ease)}
-body.bar #cap.off{opacity:0;transform:translateY(-10px)}
-body.e-bottom #cap{top:auto;bottom:52px;border-radius:20px 20px 0 0;justify-content:flex-end}
-body.e-bottom #cap.off{transform:translateY(10px)}
-body.e-left #cap,body.e-right #cap{top:50%;width:240px;max-height:200px;margin-top:-60px;border-radius:20px}
+/* what he says and what he runs show INSIDE the notch: it grows to hold them (dropSync sets its size), one black shape,
+   no separate box. The caption and the terminal share the same spot and the same type. */
+body.bar #barPill{transition:opacity .4s var(--ease),box-shadow .5s var(--ease),height .3s var(--ease),width .3s var(--ease),margin .3s var(--ease)}
+body.bar #cap,body.bar #code{background:none;border:0;box-shadow:none;-webkit-mask-image:none;mask-image:none;text-shadow:none;
+  overflow:hidden;transition:opacity .25s var(--ease)}
+body.bar #cap{left:40px;right:auto;width:260px;height:auto;max-height:150px;top:52px;padding:2px 16px 12px;justify-content:flex-start}
+body.bar #cap.off{opacity:0;transform:none}
+body.e-bottom #cap{top:auto;bottom:52px;padding:12px 16px 2px;justify-content:flex-end}
+body.e-left #cap,body.e-right #cap{top:50%;width:236px;max-height:200px;transform:translateY(-50%);padding:12px 14px}
 body.e-left #cap{left:68px} body.e-right #cap{left:auto;right:68px}
-body.e-left #cap.off{transform:translateX(-10px)} body.e-right #cap.off{transform:translateX(10px)}
+body.e-left #cap.off,body.e-right #cap.off{transform:translateY(-50%)}
+body.bar #code{position:absolute;transform:none!important;scale:1;width:260px;height:auto;padding:2px 16px 12px;left:40px;top:52px;
+  font:12.5px/1.45 "Inter",system-ui,sans-serif;color:#eaeaea}
+body.e-bottom #code{top:auto;bottom:52px;padding:12px 16px 2px}
+body.e-left #code,body.e-right #code{top:50%;width:236px;margin-top:0;translate:0 -50%;padding:12px 14px}
+body.e-left #code{left:68px} body.e-right #code{left:auto;right:68px}
+body.bar #code .tb{height:auto;padding:0 0 3px;border:0;color:var(--dim);font:12px "Inter",system-ui,sans-serif;justify-content:center}
+body.bar #code .tb b{flex:0 1 auto;font-weight:400} body.bar #code .tb span{margin-left:6px}
+body.bar #code .lines{height:auto;padding:0}
+body.bar #code .l{height:auto;white-space:pre-wrap;word-break:break-word;font:12.5px/1.45 var(--mono);text-align:left}
+body.bar #code .l.out{color:#b5b5b5}
 body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,body.bar #shadow,
 body.bar #body>circle,body.bar #body>ellipse,body.bar #accBack,body.bar #accFront,body.bar #liveTag{display:none}
 #guy{width:330px;height:330px;overflow:visible;pointer-events:none}
@@ -1777,9 +1789,19 @@ async function toggleBar(force){
 $('#barPill').addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=[e.clientX,e.clientY]; dragged=false; });
 $('#barPill').addEventListener('click',e=>{ if(!dragged) E.body.dispatchEvent(new MouseEvent('click',{bubbles:true})); });
 $('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
+// the notch grows to hold what's showing in it (the terminal while he works, else his words): one black shape
+function dropSync(){
+  const b=document.body, p=$('#barPill'), code=$('#code'), capEl=$('#cap');
+  const edge=EDGES.find(e=>b.classList.contains('e-'+e)); if(!edge) return;
+  const el=code.classList.contains('on')?code:(!capEl.classList.contains('off')&&capEl.textContent.trim())?capEl:null;
+  if(edge==='top'||edge==='bottom'){ p.style.width=''; p.style.marginTop=''; p.style.height=el?(52+el.offsetHeight)+'px':''; }
+  else{ const h=el?Math.max(210,el.offsetHeight+24):210;
+    p.style.height=h+'px'; p.style.marginTop=(-h/2)+'px'; p.style.width=el?(68+el.offsetWidth)+'px':''; }
+}
 // the notch's halo: hearing you (with your voice level) vs him speaking
 function convoCheck(){
-  if(!document.body.classList.contains('bar')) return;
+  if(!document.body.classList.contains('bar')){ const p=$('#barPill'); p.style.height=p.style.width=p.style.marginTop=''; return; }
+  dropSync();
   const hearing=!!(rec||follow), b=document.body;
   b.classList.toggle('hearing',hearing); b.classList.toggle('speaking',!!playing);
   if(hearing) $('#barPill').style.setProperty('--lv',Math.min(1,Math.max(micRaw||0,hearRaw||0)).toFixed(2));
@@ -2204,10 +2226,7 @@ const CP=(()=>{
     const dt=Math.min(.05,(ts-(last||ts))/1000); last=ts;
     if(!on&&!el.classList.contains('on')) return;
     const edge=EDGES.find(e=>document.body.classList.contains('e-'+e));
-    if(edge){                                               // the notch: it drops straight out of it, facing you
-      const s=1.3, x=edge==='left'?68+W*s/2+8:edge==='right'?340-68-W*s/2-8:170, y=edge==='top'?52+H*s/2+8:edge==='bottom'?460-52-H*s/2-8:230;
-      el.style.transform=`translate(${(x-W/2).toFixed(1)}px,${(y-H/2).toFixed(1)}px) scale(${s})`; pos={x,y,cx:x,cy:y}; return;
-    }
+    if(edge){ pos={x:170,y:230,cx:170,cy:230}; return; }  // the notch: CSS puts it inside the notch (see body.bar #code)
     const {cx,cy,r}=geo();
     // the paper only goes where he's *looking away to* — not with every flick of his eyes
     const gx=glancing?look[0]:0, gy=glancing?look[1]:4.2, half=W/2+14;
