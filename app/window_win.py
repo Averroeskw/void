@@ -75,6 +75,9 @@ def parse_combo(text):
     return mods, vk
 
 
+SELFTEST = False                                                         # --selftest / --selftest-bar run
+
+
 def log(msg):
     print(f"[void] {msg}", file=sys.stderr, flush=True)
 
@@ -452,7 +455,8 @@ class VoidWindow(QWidget):
         srv.bind(("127.0.0.1", 0))
         srv.listen(4)
         DATA.mkdir(parents=True, exist_ok=True)
-        PORT_FILE.write_text(f"{srv.getsockname()[1]} {secret}")
+        if not SELFTEST:                     # (a test window must not take over the real one's address: `void stop`)
+            PORT_FILE.write_text(f"{srv.getsockname()[1]} {secret}")
         while True:
             c, _ = srv.accept()
             try:
@@ -536,6 +540,8 @@ def main():
         print(__doc__)
         sys.exit(2)
     url = sys.argv[1]
+    global SELFTEST
+    SELFTEST = len(sys.argv) > 2 and sys.argv[2].startswith("--selftest")
     if len(sys.argv) > 3 and sys.argv[2] == "--selftest":
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-gpu"
         app = QApplication(sys.argv[:1])

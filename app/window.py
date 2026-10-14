@@ -122,6 +122,7 @@ POS_FILE = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~
 
 
 _logged = set()
+SELFTEST = "--selftest-bar" in sys.argv[2:3]
 
 
 def log(msg):
@@ -326,7 +327,8 @@ class VoidWindow:
         self.last_sent = None
         self.rects = None
         self.region_on = False
-        threading.Thread(target=self._serve, daemon=True).start()
+        if not SELFTEST:                     # (a test window must not take over the real one's socket: `void stop`)
+            threading.Thread(target=self._serve, daemon=True).start()
 
     # ---- where he is (layer mode: margins from the top-left of a monitor)
     @staticmethod
