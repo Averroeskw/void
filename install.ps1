@@ -3,6 +3,13 @@
 # Everything goes in your user folder (%LOCALAPPDATA%\void); no admin rights needed.
 $ErrorActionPreference = "Continue"
 $env:PYTHONUTF8 = "1"                    # Void's files are UTF-8
+# started from PowerShell 7 (pwsh)? Its module paths stop Windows PowerShell loading its own modules (CIM, archives,
+# security...), so use Windows PowerShell's own
+if ($PSVersionTable.PSEdition -eq "Desktop") {
+  $env:PSModulePath = @((Join-Path ([Environment]::GetFolderPath("MyDocuments")) "WindowsPowerShell\Modules"),
+                        (Join-Path $env:ProgramFiles "WindowsPowerShell\Modules"),
+                        (Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\Modules")) -join ";"
+}
 $SRC  = $PSScriptRoot
 $ROOT = Join-Path $env:LOCALAPPDATA "void"
 $BIN  = Join-Path $ROOT "bin"
@@ -33,15 +40,22 @@ function RunUv {
   $exe = Get-Command uv -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($exe) { & $exe.Source @args } elseif ($script:PYUV) { & $script:PYUV -m uv @args } else { $global:LASTEXITCODE = 1 }
 }
-if ($script:UVEXE) {
-  & $script:UVEXE self update 2>$null | Out-Null                 # a working older copy is fine if this fails
-} else {
-  Say "Installing uv (Python environment tool)..."
-  $env:UV_INSTALL_DIR, $env:UV_NO_MODIFY_PATH = $UVDIR, "1"
-  try { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression } catch { Warn "couldn't download uv: $_" }
-  Remove-Item Env:UV_INSTALL_DIR, Env:UV_NO_MODIFY_PATH -ErrorAction SilentlyContinue
-  $script:UVEXE = OwnUv
-}
+# the latest uv straight from its GitHub releases, unpacked with .NET (no installer script, so no execution policy or
+# PowerShell modules involved); if the download fails, a copy from an earlier run is kept
+Say $(if ($script:UVEXE) { "Updating uv (Python environment tool)..." } else { "Installing uv (Python environment tool)..." })
+$zip, $new = (Join-Path $env:TEMP "void-uv.zip"), "$UVDIR.new"
+try {
+  Invoke-WebRequest "https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip" -OutFile $zip -UseBasicParsing
+  Remove-Item -Recurse -Force $new -ErrorAction SilentlyContinue
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  [IO.Compression.ZipFile]::ExtractToDirectory($zip, $new)
+  if (Get-ChildItem $new -Recurse -Filter "uv.exe") {
+    Remove-Item -Recurse -Force $UVDIR -ErrorAction SilentlyContinue
+    if (-not (Test-Path $UVDIR)) { Move-Item $new $UVDIR }     # (if the old one couldn't be removed, keep using it)
+  }
+} catch { Warn "couldn't download uv: $_" }
+Remove-Item -Recurse -Force $zip, $new -ErrorAction SilentlyContinue
+$script:UVEXE = OwnUv
 if (-not $script:UVEXE) {
   Warn "couldn't download Void's own uv - trying the one already on this PC"
   $uvHome = Join-Path $env:USERPROFILE ".local\bin"            # uv's installer puts it here; may not be on PATH yet
