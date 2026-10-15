@@ -288,40 +288,61 @@ class VoidWindow(QWidget):
                  "left": g.left(), "right": g.right() - W + 1}[edge]
             y = {"top": g.top(), "bottom": g.bottom() - H + 1,
                  "left": g.center().y() - H // 2, "right": g.center().y() - H // 2}[edge]
-            # glide into place while the page morphs; once there, grow the window round the notch for its glow
-            self._glide_to(x - self.wide_shift, y, lambda: self.set_wide(edge in ("top", "bottom"), "bar"))
+            # glide into place while the page morphs, growing the window round the notch for its glow on the way
+            room = edge in ("top", "bottom")
+            self._glide_to(x, y, room=BAR_SIDE if room else 0, done=lambda: self.set_wide(room, "bar"))
         else:
             was, self.bar = self.bar, None
-            self.set_wide(False, "bar")
             if to:                                                       # pulled out by the mouse: right under it
+                self.set_wide(False, "bar")
                 self.glide_n += 1
                 self.move(int(to[0]), int(to[1]))
                 self._save_pos()
             elif was and self.bar_home:                                  # back to his spot, gliding while he pops out
                 if glide:
-                    self._glide_to(self.bar_home[0] - self.wide_shift, self.bar_home[1], self._save_pos)
+                    self._glide_to(self.bar_home[0], self.bar_home[1], room=0,
+                                   done=lambda: (self.set_wide(False, "bar"), self._save_pos()))
                 else:
+                    self.set_wide(False, "bar")
                     self.glide_n += 1
                     self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
                     self._save_pos()
+            else:
+                self.set_wide(False, "bar")
         # (pulled out by the mouse: the page just pops him out — the notch's melt happens on the wall, in a Ghost)
         self._js("window.voidDock&&voidDock(%s,%s)" % (json.dumps(edge or ""), json.dumps("pull" if to and not edge else "")))
 
-    def _glide_to(self, x, y, done=None):
-        """Move the window to (x, y) over GLIDE seconds, easing out; a newer glide (or move) cancels this one."""
+    def _glide_to(self, bx, by, done=None, room=None):
+        """Glide his own 340px strip to (bx, by) over GLIDE seconds, easing out; a newer glide (or move) cancels this.
+        room: grow or shrink the window to this many px either side of the strip on the way, a little every frame —
+        in one jump the page lags a frame behind the window and he shows in the wrong place (a flicker)."""
         self.glide_n += 1
-        n, (sx, sy), t0 = self.glide_n, (self.x(), self.y()), time.monotonic()
+        n, t0 = self.glide_n, time.monotonic()
+        sbx, sby = self.x() + self.wide_shift, self.y()
+        manage = room is not None and not (self.want_panel or self.want_code)
+        L0 = self.wide_shift
+        L1 = room if manage else L0
 
         def step():
             if n != self.glide_n:
                 return
             k = min(1.0, (time.monotonic() - t0) / GLIDE)
             e = 1 - (1 - k) ** 3
-            self.move(int(round(sx + (x - sx) * e)), int(round(sy + (y - sy) * e)))
+            x, y = int(round(sbx + (bx - sbx) * e)), int(round(sby + (by - sby) * e))
+            L = int(round(L0 + (L1 - L0) * e)) if manage else self.wide_shift
+            if L != self.wide_shift:
+                self.wide_shift, self.cur_w = L, W + 2 * L
+                self.setGeometry(x - L, y, self.cur_w, H)
+                self._js(f"window.voidLayout&&voidLayout({L})")
+            else:
+                self.move(x - L, y)
             if k < 1:
                 QTimer.singleShot(8, step)
-            elif done:
-                done()
+            else:
+                if manage:
+                    self.want_bar = L1 > 0
+                if done:
+                    done()
         step()
 
     def _drag_done(self):
