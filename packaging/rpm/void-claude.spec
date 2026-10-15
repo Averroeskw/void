@@ -2,6 +2,7 @@
 #   rpmbuild -bb --define "ver 1.2.3" packaging/rpm/void-claude.spec   (with void-1.2.3.tar.gz in SOURCES)
 # After installing, each user runs `void setup` once (their voice + speech models).
 %global __brp_python_bytecompile %{nil}
+%global source_date_epoch_from_changelog 0
 %global debug_package %{nil}
 
 Name:           void-claude

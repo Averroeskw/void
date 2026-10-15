@@ -138,6 +138,7 @@ jobs:
       - name: Build void-claude.deb
         run: |
           sudo apt-get update -qq
+          bash -n get.sh && bash -n install.sh && echo "PASS  get.sh and install.sh parse"
           sudo apt-get install -y -qq meson ninja-build
           if [ "$GITHUB_REF_TYPE" = tag ]; then printf '%s' "${GITHUB_REF_NAME#v}" > app/VERSION; fi
           bash packaging/deb/build.sh dist
@@ -227,7 +228,7 @@ jobs:
           mkdir -p /home/builder/rel dist
           cp packaging/arch/void-claude/* /home/builder/rel/
           sed -i "s/^pkgver=.*/pkgver=$VER/" /home/builder/rel/PKGBUILD
-          tar --exclude=.git --exclude=./dist --transform="s|^\.|void-$VER|" -czf "/home/builder/rel/void-$VER.tar.gz" .
+          tar --exclude=.git --exclude=./dist --mtime=@946684800 --transform="s|^\.|void-$VER|" -czf "/home/builder/rel/void-$VER.tar.gz" .
           chown -R builder /home/builder/rel
           su builder -c "cd ~/rel && makepkg --nodeps --noconfirm"     # (uses the tarball above, not GitHub's)
           cp /home/builder/rel/void-claude-$VER-*.pkg.tar.zst dist/ && ls -l dist
@@ -257,7 +258,7 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = tag ]; then printf '%s' "${GITHUB_REF_NAME#v}" > app/VERSION; fi
           VER="$(tr -d '[:space:]' < app/VERSION)"
           mkdir -p ~/rpmbuild/SOURCES dist
-          tar --exclude=.git --exclude=./dist --transform="s|^\.|void-$VER|" -czf ~/rpmbuild/SOURCES/void-$VER.tar.gz .
+          tar --exclude=.git --exclude=./dist --mtime=@946684800 --transform="s|^\.|void-$VER|" -czf ~/rpmbuild/SOURCES/void-$VER.tar.gz .
           rpmbuild -bb --define "ver $VER" packaging/rpm/void-claude.spec
           cp ~/rpmbuild/RPMS/noarch/void-claude-$VER-*.noarch.rpm dist/ && ls -l dist
       - name: Install it (with its dependencies), run "void setup", and start Void's server from the package
