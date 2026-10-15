@@ -34,16 +34,10 @@ body.hover #shadow{display:none}
    The edge class stays a moment after .bar goes (setBarClass), so the notch can fold back into the edge it came from. */
 :root{--apple:cubic-bezier(.32,.72,0,1);--pop:cubic-bezier(.34,1.56,.64,1)}
 #barPill{position:absolute;background:#000;pointer-events:none;z-index:0;opacity:0;--r:18px;
-  transition:opacity .16s linear .12s,transform .3s var(--apple),box-shadow .5s var(--ease),height .5s var(--apple),
+  transition:opacity .12s linear,box-shadow .5s var(--ease),height .5s var(--apple),
              width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple)}
-/* folded into the screen edge (before he docks / after he leaves): it grows out of the edge, and shrinks back into it */
-body.e-top #barPill{transform-origin:50% 0;transform:scale(.35,0)}
-body.e-bottom #barPill{transform-origin:50% 100%;transform:scale(.35,0)}
-body.e-left #barPill{transform-origin:0 50%;transform:scale(0,.35)}
-body.e-right #barPill{transform-origin:100% 50%;transform:scale(0,.35)}
-body.bar #barPill{opacity:1;transform:none;pointer-events:auto;cursor:pointer;
-  transition:opacity .04s linear .1s,transform .56s var(--apple) .1s,box-shadow .5s var(--ease),height .5s var(--apple),
-             width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple)}
+body.bar #barPill{opacity:1;pointer-events:auto;cursor:pointer}
+body.goohide #barPill{opacity:0!important;transition:none!important}   /* the liquid stands in for it while it flows */
 body.bar #barPill.big{--r:26px}                                  /* opened up for his words: rounder, like a Dynamic Island */
 #barPill::before,#barPill::after{content:"";position:absolute;width:10px;height:10px}
 body.e-top #barPill,body.e-bottom #barPill{left:50%;width:260px;height:52px;margin-left:-130px}
@@ -71,21 +65,17 @@ body.bar.e-top #stage{transform:translateY(-136px) scale(.46)}
 body.bar.e-bottom #stage{transform:translateY(272px) scale(.46)}
 body.bar.e-left #stage{transform:translate(-136px,68px) scale(.46)}
 body.bar.e-right #stage{transform:translate(136px,68px) scale(.46)}
-/* the morph: his ball melts into the notch (squashed toward the edge, gone) and pops back out of it with a little
-   overshoot. Only the ball and its rim are scaled — the rest fades (their transforms belong to the animation loop). */
-/* the ball becomes the notch: while his eyes slide up into it, the black ball stretches into the notch's own shape
-   (scaleX ≈ notch width ÷ ball width at the notch's scale, scaleY ≈ its height) as the notch grows behind it, and only
-   then fades — black into black, one shape. Back out it's the reverse: the notch drops into a stretched ball that snaps
-   round with a little overshoot. Glows and sparkles just switch off and on (they'd only blur the shape change). */
-#body>circle{transform-box:fill-box;transform-origin:center}
-body.bar #body>circle{transform:scale(3.4,.72);opacity:0;transition:transform .46s var(--apple),opacity .16s linear .34s}
-body.bar #rim{opacity:0;transition:opacity .1s linear}
-body.bar.e-left #body>circle,body.bar.e-right #body>circle{transform:scale(.95,2.9)}
-body.bar #body>ellipse,body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,
-body.bar #shadow,body.bar #accBack,body.bar #accFront,body.bar #liveTag{opacity:0;transition:none}
-body.unfold #body>circle{transition:transform .52s var(--pop) .04s,opacity .1s linear}
-body.unfold #rim,body.unfold #body>ellipse,body.unfold #shadow,body.unfold #accBack,body.unfold #accFront{transition:opacity .3s linear .3s}
-body.unfold #orbBack,body.unfold #orbFront,body.unfold #haloW{transition:opacity .4s linear .4s}
+/* the morph is liquid (melt()): while his eyes glide up, his ball flows into the screen edge like a drop of liquid
+   glass — the edge swells toward it, a neck forms, the ball is drawn in and absorbed — and back out a drop swells out
+   of the notch, its neck stretches thin and snaps, and it wobbles round. The real ball parts are hidden meanwhile. */
+body.bar #body>circle,body.bar #body>ellipse,body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,
+body.bar #vring,body.bar #shadow,body.bar #accBack,body.bar #accFront,body.bar #liveTag,
+body.goohide #body>circle,body.goohide #body>ellipse,body.goohide #orbBack,body.goohide #orbFront,body.goohide #haloW,
+body.goohide #shadow,body.goohide #accBack,body.goohide #accFront{opacity:0;transition:none}
+body.unfold #body>circle,body.unfold #body>ellipse,body.unfold #shadow,body.unfold #accBack,body.unfold #accFront{transition:opacity .22s linear}
+body.unfold #orbBack,body.unfold #orbFront,body.unfold #haloW{transition:opacity .4s linear .15s}
+#goo{position:absolute;left:0;top:0;width:340px;height:460px;overflow:visible;pointer-events:none;z-index:0;display:none}
+body.gooing #goo{display:block}
 body.bar.bar-done #orbBack,body.bar.bar-done #orbFront,body.bar.bar-done #workW,body.bar.bar-done #haloW,body.bar.bar-done #raysW,
 body.bar.bar-done #vring,body.bar.bar-done #shadow,body.bar.bar-done #body>circle,body.bar.bar-done #body>ellipse,
 body.bar.bar-done #accBack,body.bar.bar-done #accFront,body.bar.bar-done #liveTag{display:none}
@@ -434,6 +424,20 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
 <body class="m-idle">
 <div id="flash"></div><div id="paint"></div>
 <div id="barPill"></div>
+<!-- the liquid for the blob ↔ notch morph: shapes blurred together and sharpened again ("goo") so they flow into one
+     another, lit along the top like glass -->
+<svg id="goo" viewBox="0 0 340 460">
+  <defs><filter id="gooF" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b"/>
+    <feColorMatrix in="b" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -11" result="g"/>
+    <feGaussianBlur in="g" stdDeviation="2.2" result="gb"/>
+    <feSpecularLighting in="gb" surfaceScale="4" specularConstant=".75" specularExponent="22" lighting-color="#ffffff" result="sp">
+      <feDistantLight azimuth="250" elevation="48"/></feSpecularLighting>
+    <feComposite in="sp" in2="g" operator="in" result="spIn"/>
+    <feComposite in="g" in2="spIn" operator="arithmetic" k2="1" k3=".55"/>
+  </filter></defs>
+  <g filter="url(#gooF)" fill="#000"><rect id="gooBar" rx="18"/><ellipse id="gooBall"/><circle id="gooDrop"/><circle class="gooN"/><circle class="gooN"/><circle class="gooN"/></g>
+</svg>
 <div id="stage">
   <svg id="guy" viewBox="-150 -150 300 300">
     <defs>
@@ -1822,18 +1826,64 @@ const barEdge=()=>document.body.classList.contains('bar')?(EDGES.find(e=>documen
 // the morph between blob and notch. In: the notch grows out of the edge while his ball melts into it and his eyes
 // spring up into it; once he's landed the folded-away parts are hidden for good (bar-done). Out: the notch folds back
 // into the same edge (its e-* class stays until then) while the ball pops out of his eyes with a little overshoot.
-let morphT=null;
+let morphT=null, meltN=0;
+const smooth=x=>x<=0?0:x>=1?1:x*x*(3-2*x), easeOutC=x=>1-Math.pow(1-Math.min(1,Math.max(0,x)),3),
+      easeInC=x=>Math.pow(Math.min(1,Math.max(0,x)),2.2);
+// where his ball is drawn right now (it rides #stage, which springs between blob and notch): centre and scale
+function ballNow(){ const t=getComputedStyle($('#stage')).transform, m=t&&t!=='none'?new DOMMatrix(t):new DOMMatrix();
+  return {x:170+m.e, y:165+m.f, s:Math.hypot(m.a,m.b)}; }
+// the screen edge's liquid at k (0 = flat in the edge … 1 = the whole notch), as x,y,w,h (it runs off the edge a bit
+// so only its open side is rounded)
+const SWk=k=>68*k;                                                // how far a side notch reaches out at k
+function barShape(edge,k){ const W=260,H=52,SW=68,SH=210, o=24;
+  if(edge==='top'||edge==='bottom'){ const w=W*(.55+.45*k), h=H*k;
+    return [170-w/2, edge==='top'?-o:460-h, w, h+o]; }
+  const h=SH*(.55+.45*k), w=SW*k; return [edge==='left'?-o:340-w, 230-h/2, w+o, h]; }
+// dir 1: the ball flows into the edge and becomes the notch · dir -1: a drop swells out of the notch and becomes him
+function melt(edge,dir,done){
+  const n=++meltN, t0=performance.now(), dur=dir>0?760:820, R=84;            // R: his ball's radius on the page
+  const bar=$('#gooBar'), ball=$('#gooBall'), drop=$('#gooDrop'), vert=edge==='left'||edge==='right';
+  let dx=null, dy=null;
+  (function frame(now){
+    if(n!==meltN) return;
+    const t=Math.min(1,(now-t0)/dur), b=ballNow();
+    let k, r;
+    if(dir>0){ k=easeOutC((t-.12)/.6); r=R*b.s*(1-easeInC((t-.42)/.55)); }   // the edge swells, then drinks him in
+    else { k=1-easeInC((t-.22)/.62); r=R*b.s*easeOutC(t/.5); }             // the drop swells out, the notch lets go
+    const [x,y,w,h]=barShape(edge,k);
+    bar.setAttribute('x',x.toFixed(1)); bar.setAttribute('y',y.toFixed(1));
+    bar.setAttribute('width',Math.max(0,w).toFixed(1)); bar.setAttribute('height',Math.max(0,h).toFixed(1));
+    const pull=Math.sin(Math.PI*t)*.22;                                        // drawn toward the edge as it flows
+    ball.setAttribute('cx',b.x.toFixed(1)); ball.setAttribute('cy',b.y.toFixed(1));
+    ball.setAttribute('rx',Math.max(0,r*(vert?1+pull:1-pull*.5)).toFixed(1));
+    ball.setAttribute('ry',Math.max(0,r*(vert?1-pull*.5:1+pull)).toFixed(1));
+    // a little drop trailing behind, a beat late: liquid, not a solid ball
+    if(dx===null){ dx=b.x; dy=b.y; } dx+=(b.x-dx)*.35; dy+=(b.y-dy)*.35;
+    drop.setAttribute('cx',dx.toFixed(1)); drop.setAttribute('cy',dy.toFixed(1));
+    drop.setAttribute('r',Math.max(0,r*.42*Math.sin(Math.PI*t)).toFixed(1));
+    // the liquid string between the edge and the drop: it draws him in, or stretches thin and snaps as he leaves
+    const ax=vert?(edge==='left'?SWk(k):340-SWk(k)):170, ay=vert?230:(edge==='top'?52*k:460-52*k);
+    const nr=r*.36*(dir>0?smooth((t-.04)/.28)*(1-smooth((t-.72)/.24)):smooth(t/.14)*(1-smooth((t-.36)/.16)));
+    $$('.gooN').forEach((c,i)=>{ const f=(i+1)/4;
+      c.setAttribute('cx',(ax+(b.x-ax)*f).toFixed(1)); c.setAttribute('cy',(ay+(b.y-ay)*f).toFixed(1));
+      c.setAttribute('r',Math.max(0,nr*(.6+.8*Math.abs(f-.5))).toFixed(1)); });
+    if(t<1) requestAnimationFrame(frame); else done&&done();
+  })(t0);
+}
 function setBarClass(edge){
   const b=document.body; clearTimeout(morphT);
   if(edge){
     b.classList.remove('unfold','bar-done');
-    if(!b.classList.contains('e-'+edge)){ EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e)); void $('#barPill').offsetWidth; }
-    b.classList.add('bar');                                      // (the notch starts folded at this edge, then grows)
-    morphT=setTimeout(()=>b.classList.add('bar-done'),700);
+    EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e));
+    b.classList.add('gooing','goohide','bar');                  // eyes glide up; the liquid does the rest
+    // at the end the real notch fades in over the liquid, and only then does the liquid go
+    melt(edge,1,()=>{ b.classList.remove('goohide');
+      morphT=setTimeout(()=>{ b.classList.remove('gooing'); b.classList.add('bar-done'); },220); });
   } else if(b.classList.contains('bar')){
-    if(b.classList.contains('bar-done')){ b.classList.remove('bar-done'); void $('#barPill').offsetWidth; }
-    b.classList.add('unfold'); b.classList.remove('bar'); G.jelly.kick(.6);
-    morphT=setTimeout(()=>{ b.classList.remove('unfold'); EDGES.forEach(e=>b.classList.remove('e-'+e)); },700);
+    const from=barEdge();
+    b.classList.remove('bar-done'); b.classList.add('gooing','goohide','unfold'); b.classList.remove('bar'); G.jelly.kick(.6);
+    melt(from,-1,()=>{ b.classList.remove('goohide');                   // his real ball fades in over the drop…
+      morphT=setTimeout(()=>{ b.classList.remove('gooing','unfold'); EDGES.forEach(e=>b.classList.remove('e-'+e)); },320); });
   } else EDGES.forEach(e=>b.classList.remove('e-'+e));
   const l=$('[data-a="bar"] span'); if(l) l.textContent=edge?'blob':'top bar'; sendRegion(true);
 }
