@@ -28,32 +28,67 @@ body.hover #stage{transform:scale(.17)}
 body.hover #orbBack,body.hover #orbFront,body.hover #workW,body.hover #haloW,body.hover #vring,body.hover #raysW,body.hover #fx,body.hover #fxBack,
 body.hover #think,body.hover #anger,body.hover #sweat,body.hover #zz,body.hover #qmark,body.hover #tears,body.hover #cap,body.hover #chip,body.hover #atts{display:none}
 body.hover #shadow{display:none}
-/* top bar: the very same eyes (#face is untouched), his ball folded away, merged into a screen edge as a notch.
-   MacBook-notch look: pure black, flush with the edge, rounded on the open side, little inward curves where it meets
-   the edge. Docks on any edge: body.bar + .e-top / .e-bottom / .e-left / .e-right */
-#barPill{position:absolute;background:#000;pointer-events:none;z-index:0;opacity:0;
-  box-shadow:0 0 14px -6px var(--glow);transition:opacity .4s var(--ease),box-shadow .5s var(--ease)}
-body.bar #barPill{opacity:1;pointer-events:auto;cursor:pointer}
-#barPill::before,#barPill::after{content:"";position:absolute;width:12px;height:12px}
+/* top bar: the very same eyes (#face is untouched), his ball folded away, merged into a screen edge as a notch, the
+   macOS way: pure black, flush with the edge, small inward curves where it meets the edge, no glow at rest, and every
+   change of size on Apple's spring-like curve. Docks on any edge: body.bar + .e-top / .e-bottom / .e-left / .e-right.
+   The edge class stays a moment after .bar goes (setBarClass), so the notch can fold back into the edge it came from. */
+:root{--apple:cubic-bezier(.32,.72,0,1);--pop:cubic-bezier(.34,1.56,.64,1)}
+#barPill{position:absolute;background:#000;pointer-events:none;z-index:0;opacity:0;--r:18px;
+  transition:opacity .16s linear .12s,transform .3s var(--apple),box-shadow .5s var(--ease),height .5s var(--apple),
+             width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple)}
+/* folded into the screen edge (before he docks / after he leaves): it grows out of the edge, and shrinks back into it */
+body.e-top #barPill{transform-origin:50% 0;transform:scale(.35,0)}
+body.e-bottom #barPill{transform-origin:50% 100%;transform:scale(.35,0)}
+body.e-left #barPill{transform-origin:0 50%;transform:scale(0,.35)}
+body.e-right #barPill{transform-origin:100% 50%;transform:scale(0,.35)}
+body.bar #barPill{opacity:1;transform:none;pointer-events:auto;cursor:pointer;
+  transition:opacity .04s linear .1s,transform .56s var(--apple) .1s,box-shadow .5s var(--ease),height .5s var(--apple),
+             width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple)}
+body.bar #barPill.big{--r:26px}                                  /* opened up for his words: rounder, like a Dynamic Island */
+#barPill::before,#barPill::after{content:"";position:absolute;width:10px;height:10px}
 body.e-top #barPill,body.e-bottom #barPill{left:50%;width:260px;height:52px;margin-left:-130px}
 body.e-left #barPill,body.e-right #barPill{top:50%;width:68px;height:210px;margin-top:-105px}
-body.e-top #barPill{top:0;border-radius:0 0 22px 22px}
-body.e-top #barPill::before{top:0;left:-12px;background:radial-gradient(circle at 0 100%,transparent 11.5px,#000 12px)}
-body.e-top #barPill::after{top:0;right:-12px;background:radial-gradient(circle at 100% 100%,transparent 11.5px,#000 12px)}
-body.e-bottom #barPill{bottom:0;border-radius:22px 22px 0 0}
-body.e-bottom #barPill::before{bottom:0;left:-12px;background:radial-gradient(circle at 0 0,transparent 11.5px,#000 12px)}
-body.e-bottom #barPill::after{bottom:0;right:-12px;background:radial-gradient(circle at 100% 0,transparent 11.5px,#000 12px)}
-body.e-left #barPill{left:0;border-radius:0 22px 22px 0}
-body.e-left #barPill::before{left:0;top:-12px;background:radial-gradient(circle at 100% 0,transparent 11.5px,#000 12px)}
-body.e-left #barPill::after{left:0;bottom:-12px;background:radial-gradient(circle at 100% 100%,transparent 11.5px,#000 12px)}
-body.e-right #barPill{right:0;border-radius:22px 0 0 22px}
-body.e-right #barPill::before{right:0;top:-12px;background:radial-gradient(circle at 0 0,transparent 11.5px,#000 12px)}
-body.e-right #barPill::after{right:0;bottom:-12px;background:radial-gradient(circle at 0 100%,transparent 11.5px,#000 12px)}
+/* the mouse over the resting notch: it leans out a little, like macOS notch apps */
+body.bar.e-top #barPill:not(.big):hover,body.bar.e-bottom #barPill:not(.big):hover{width:272px;height:56px;margin-left:-136px}
+body.bar.e-left #barPill:not(.big):hover,body.bar.e-right #barPill:not(.big):hover{width:72px;height:222px;margin-top:-111px}
+body.e-top #barPill{top:0;border-radius:0 0 var(--r) var(--r)}
+body.e-top #barPill::before{top:0;left:-10px;background:radial-gradient(circle at 0 100%,transparent 9.5px,#000 10px)}
+body.e-top #barPill::after{top:0;right:-10px;background:radial-gradient(circle at 100% 100%,transparent 9.5px,#000 10px)}
+body.e-bottom #barPill{bottom:0;border-radius:var(--r) var(--r) 0 0}
+body.e-bottom #barPill::before{bottom:0;left:-10px;background:radial-gradient(circle at 0 0,transparent 9.5px,#000 10px)}
+body.e-bottom #barPill::after{bottom:0;right:-10px;background:radial-gradient(circle at 100% 0,transparent 9.5px,#000 10px)}
+body.e-left #barPill{left:0;border-radius:0 var(--r) var(--r) 0}
+body.e-left #barPill::before{left:0;top:-10px;background:radial-gradient(circle at 100% 0,transparent 9.5px,#000 10px)}
+body.e-left #barPill::after{left:0;bottom:-10px;background:radial-gradient(circle at 100% 100%,transparent 9.5px,#000 10px)}
+body.e-right #barPill{right:0;border-radius:var(--r) 0 0 var(--r)}
+body.e-right #barPill::before{right:0;top:-10px;background:radial-gradient(circle at 0 0,transparent 9.5px,#000 10px)}
+body.e-right #barPill::after{right:0;bottom:-10px;background:radial-gradient(circle at 0 100%,transparent 9.5px,#000 10px)}
+/* in the notch his glow may reach past his 340px strip: the window grows around the notch to make room for it
+   (set_wide "bar"), and nothing here may cut it off */
+body.bar{overflow:visible}
 /* his eyes, bigger than before, centred in the notch (the eyes sit a touch above the ball's centre: +2.5px) */
-body.e-top #stage{transform:translateY(-136px) scale(.46)}
-body.e-bottom #stage{transform:translateY(272px) scale(.46)}
-body.e-left #stage{transform:translate(-136px,68px) scale(.46)}
-body.e-right #stage{transform:translate(136px,68px) scale(.46)}
+body.bar.e-top #stage{transform:translateY(-136px) scale(.46)}
+body.bar.e-bottom #stage{transform:translateY(272px) scale(.46)}
+body.bar.e-left #stage{transform:translate(-136px,68px) scale(.46)}
+body.bar.e-right #stage{transform:translate(136px,68px) scale(.46)}
+/* the morph: his ball melts into the notch (squashed toward the edge, gone) and pops back out of it with a little
+   overshoot. Only the ball and its rim are scaled — the rest fades (their transforms belong to the animation loop). */
+/* the ball becomes the notch: while his eyes slide up into it, the black ball stretches into the notch's own shape
+   (scaleX ≈ notch width ÷ ball width at the notch's scale, scaleY ≈ its height) as the notch grows behind it, and only
+   then fades — black into black, one shape. Back out it's the reverse: the notch drops into a stretched ball that snaps
+   round with a little overshoot. Glows and sparkles just switch off and on (they'd only blur the shape change). */
+#body>circle{transform-box:fill-box;transform-origin:center}
+body.bar #body>circle{transform:scale(3.4,.72);opacity:0;transition:transform .46s var(--apple),opacity .16s linear .34s}
+body.bar #rim{opacity:0;transition:opacity .1s linear}
+body.bar.e-left #body>circle,body.bar.e-right #body>circle{transform:scale(.95,2.9)}
+body.bar #body>ellipse,body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,
+body.bar #shadow,body.bar #accBack,body.bar #accFront,body.bar #liveTag{opacity:0;transition:none}
+body.unfold #body>circle{transition:transform .52s var(--pop) .04s,opacity .1s linear}
+body.unfold #rim,body.unfold #body>ellipse,body.unfold #shadow,body.unfold #accBack,body.unfold #accFront{transition:opacity .3s linear .3s}
+body.unfold #orbBack,body.unfold #orbFront,body.unfold #haloW{transition:opacity .4s linear .4s}
+body.bar.bar-done #orbBack,body.bar.bar-done #orbFront,body.bar.bar-done #workW,body.bar.bar-done #haloW,body.bar.bar-done #raysW,
+body.bar.bar-done #vring,body.bar.bar-done #shadow,body.bar.bar-done #body>circle,body.bar.bar-done #body>ellipse,
+body.bar.bar-done #accBack,body.bar.bar-done #accFront,body.bar.bar-done #liveTag{display:none}
 /* talking with him: the whole notch wears his halo, bright and unmistakable.
    .hearing = he's listening to you: a thick ring that swells with your voice (--lv, 0–1, from the mic level)
    .speaking = he's answering: a strong steady pulse */
@@ -62,7 +97,7 @@ body.e-right #stage{transform:translate(136px,68px) scale(.46)}
    glow thrown out from the edge (--gx/--gy: away from the screen edge), where there's room. */
 body.bar #barPill{--lv:0;--gx:0px;--gy:16px}
 body.e-bottom #barPill{--gx:0px;--gy:-16px} body.e-left #barPill{--gx:16px;--gy:0px} body.e-right #barPill{--gx:-16px;--gy:0px}
-body.bar.hearing #barPill{transition:box-shadow .08s linear;
+body.bar.hearing #barPill{transition:box-shadow .08s linear,height .5s var(--apple),width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple);
   box-shadow:0 0 0 calc(2.5px + var(--lv) * 2.5px) var(--glow),0 0 calc(14px + var(--lv) * 8px) calc(3px + var(--lv) * 4px) var(--glow),
              calc(var(--gx) * (1 + var(--lv))) calc(var(--gy) * (1 + var(--lv))) calc(30px + var(--lv) * 10px) -6px var(--glow)}
 body.bar.speaking:not(.hearing) #barPill{animation:speakGlow 1.1s ease-in-out infinite}
@@ -72,34 +107,27 @@ body.bar.speaking:not(.hearing) #barPill{animation:speakGlow 1.1s ease-in-out in
 body.bar #barPill.pulse{animation:notchPulse .9s var(--ease)}
 @keyframes notchPulse{0%{box-shadow:0 0 0 2px var(--pulse,var(--glow)),0 0 6px 2px var(--pulse,var(--glow))}
   35%{box-shadow:0 0 0 3px var(--pulse,var(--glow)),0 0 18px 6px var(--pulse,var(--glow)),var(--gx) var(--gy) 34px -6px var(--pulse,var(--glow))}
-  100%{box-shadow:0 0 14px -6px var(--glow)}}
-body.bar #fxBack,body.bar #flash{display:none}
+  100%{box-shadow:0 0 0 0 transparent}}
+body.bar #fxBack,body.bar #flash,body.bar #think,body.bar #zz,body.bar #qmark{display:none}   /* (they'd sit on his words) */
 /* in the notch: no status line; his words drop out of the notch in a black panel that grows from it */
 body.bar #chip,body.bar #moreB{display:none}
 .pn .hd{cursor:grab} .pn .hd button,.pn .hd input{cursor:pointer}   /* grab the header to move the panel (and him) */
-/* what he says and what he runs show INSIDE the notch: it grows to hold them (dropSync sets its size), one black shape,
-   no separate box. The caption and the terminal share the same spot and the same type. */
-body.bar #barPill{transition:opacity .4s var(--ease),box-shadow .5s var(--ease),height .3s var(--ease),width .3s var(--ease),margin .3s var(--ease)}
-body.bar #cap,body.bar #code{background:none;border:0;box-shadow:none;-webkit-mask-image:none;mask-image:none;text-shadow:none;
-  overflow:hidden;transition:opacity .25s var(--ease)}
-body.bar #cap{left:40px;right:auto;width:260px;height:auto;max-height:150px;top:52px;padding:2px 16px 12px;justify-content:flex-start}
-body.bar #cap.off{opacity:0;transform:none}
-body.e-bottom #cap{top:auto;bottom:52px;padding:12px 16px 2px;justify-content:flex-end}
-body.e-left #cap,body.e-right #cap{top:50%;width:236px;max-height:200px;transform:translateY(-50%);padding:12px 14px}
-body.e-left #cap{left:68px} body.e-right #cap{left:auto;right:68px}
-body.e-left #cap.off,body.e-right #cap.off{transform:translateY(-50%)}
-body.bar #code{position:absolute;transform:none!important;scale:1;width:260px;height:auto;padding:2px 16px 12px;left:40px;top:52px;
-  font:12.5px/1.45 "Inter",system-ui,sans-serif;color:#eaeaea}
-body.e-bottom #code{top:auto;bottom:52px;padding:12px 16px 2px}
-body.e-left #code,body.e-right #code{top:50%;width:236px;margin-top:0;translate:0 -50%;padding:12px 14px}
-body.e-left #code{left:68px} body.e-right #code{left:auto;right:68px}
+/* what he says and what he runs show INSIDE the notch: it opens up to hold them, one black shape, no separate box.
+   When both are out they stack — his terminal next to his eyes, his words after it — and dropSync() places them and
+   sizes the notch to fit both. They fade in just after the notch starts to open, out just before it closes. */
+body.bar #cap,body.bar #code{position:absolute;right:auto;bottom:auto;margin:0;background:none;border:0;box-shadow:none;
+  -webkit-mask-image:none;mask-image:none;text-shadow:none;overflow:hidden;transform:none!important;translate:none;
+  transition:opacity .26s var(--apple) .08s,filter .32s var(--apple) .08s,scale .32s var(--apple) .08s,top .5s var(--apple),left .5s var(--apple)}
+body.bar #cap{height:auto;max-height:150px;padding:0 12px;justify-content:flex-start;scale:1;font-family:system-ui,"Inter",sans-serif}
+body.bar #cap.off,body.bar.pnl #cap,body.bar.appr #cap,body.bar #code:not(.on){opacity:0;filter:blur(6px);scale:.96;
+  transition:opacity .15s linear,filter .15s linear,scale .15s linear,top .5s var(--apple),left .5s var(--apple)}
+body.bar.e-left #cap,body.bar.e-right #cap{max-height:200px}
+body.bar #code{height:auto;padding:0 12px;font:12.5px/1.45 system-ui,"Inter",sans-serif;color:#eaeaea;filter:none}
 body.bar #code .tb{height:auto;padding:0 0 3px;border:0;color:var(--dim);font:12px "Inter",system-ui,sans-serif;justify-content:center}
 body.bar #code .tb b{flex:0 1 auto;font-weight:400} body.bar #code .tb span{margin-left:6px}
 body.bar #code .lines{height:auto;padding:0}
 body.bar #code .l{height:auto;white-space:pre-wrap;word-break:break-word;font:12.5px/1.45 var(--mono);text-align:left}
 body.bar #code .l.out{color:#b5b5b5}
-body.bar #orbBack,body.bar #orbFront,body.bar #workW,body.bar #haloW,body.bar #raysW,body.bar #vring,body.bar #shadow,
-body.bar #body>circle,body.bar #body>ellipse,body.bar #accBack,body.bar #accFront,body.bar #liveTag{display:none}
 #guy{width:330px;height:330px;overflow:visible;pointer-events:none}
 #body{pointer-events:visiblePainted;cursor:pointer}
 #pL{fill:var(--whiteL);stroke:var(--lineL,none)} #pR{fill:var(--whiteR);stroke:var(--lineR,none)}
@@ -736,7 +764,7 @@ const PUP={
   peek:   {w:3.05, h:12,   r:.14, dx:14, dy:2},     // half-lidded: slits tucked up under the lid
   joy:    {w:11,   h:11,   dx:8,  dy:-6},           // happy squint: big circles peeking over the lower lid
   heart:  {w:11,   h:11,   dx:7,  dy:1,  hr:1},
-  star:   {w:13,   h:13,   dx:6,  dy:1,  st:1},
+  star:   {w:15,   h:15,   dx:6,  dy:1,  st:1},          // (big enough to read at a glance, in the notch too)
   plead:  {w:12,   h:13,   dx:6,  dy:3},            // big, a little low: puppy eyes
   odd:    {w:[3,6],h:[3,6],dx:11, dy:0},            // confused: one small, one bigger
 };
@@ -1084,7 +1112,7 @@ function frame(ts){
     let ux=qx*rc+qy*rs, uy=-qx*rs+qy*rc;
     const ax=Math.max(1,EYE.rx*z-pw-1.5), ay=Math.max(1,EYE.ry*z*sq-ph-1.5), k=Math.hypot(ux/ax,uy/ay);
     if(k>1){ ux/=k; uy/=k; } qx=ux*rc-uy*rs; qy=ux*rs+uy*rc;
-    const hr=clamp(pc.hr.x,0,1), st=clamp(pc.st.x,0,1-hr), spin=st*t*1.6;          // star pupils slowly spin
+    const hr=clamp(pc.hr.x,0,1), st=clamp(pc.st.x,0,1-hr), spin=st*t*1.1;          // star pupils slowly spin
     hl.setAttribute('d',toD(pupilPts(pw,ph,-side*pc.r.x+spin,hr,st).map(([x,y])=>P(cx+qx+x,cy+qy+y))));
   }
 
@@ -1634,13 +1662,20 @@ async function send(text,opts={}){
     if(info.notify_done) post('/api/notify',{title:failed?'Void hit a problem':'Void is done',body:plain(answerText).slice(0,240)||text});
     if(info.popup_done) native('show');
   }
-  if(failed){ poke('sad',2800); return; }
+  if(failed){ poke('sad',2800); if(barEdge()) notchPulse('#ff2a2a'); return; }
   if(buf&&!kv) showHim(buf,true);
   if(!stopped){ flush(true);
-    const big=tools>=3||/\b(all (tests )?pass(ed)?|passing|success(fully)?|fixed|done!|works now|nailed)\b/i.test(answerText);
-    if(!playing) poke(big?(Math.random()<.5?'excited':'joy'):['happy','happy','wink','joy'][Math.random()*4|0],1700); }
+    // how it went, at a glance: a real task (he used tools) that finished well always ends in starry eyes (and a green
+    // flash of the notch); a plain answer gets a lighter smile. If he's still saying it, the face waits for the end.
+    const task=tools>=1, big=tools>=3||/\b(all (tests )?pass(ed)?|passing|success(fully)?|fixed|done!|works now|nailed)\b/i.test(answerText);
+    const m=task||big?'excited':['happy','wink','joy'][Math.random()*3|0];
+    whenQuiet(()=>{ poke(m,m==='excited'?2600:1700); if(m==='excited'&&barEdge()) notchPulse('#3ddc84'); }); }
   refresh();
 }
+
+// run fn once he has finished talking (right away if he isn't): faces that sum something up belong after his words
+function whenQuiet(fn){ const t0=performance.now();
+  (function wait(){ if(!playing||performance.now()-t0>60000) fn(); else setTimeout(wait,120); })(); }
 
 /* ================= panels: history, memory, quick actions ================= */
 const panelEl=$('#panel'); let panelKind=null;
@@ -1649,7 +1684,7 @@ let pnMoved=false;
 function closePanels(){ const was=panelEl.classList.contains('on')||setEl.classList.contains('on'); panelEl.classList.remove('on'); panelKind=null; setEl.classList.remove('on'); document.body.classList.remove('pnl'); if(was) native('wide:off');
   reDock(); }
 function reDock(){ if(!pnMoved) return; pnMoved=false;      // a panel dragged the notch away: back to its edge
-  const edge=EDGES.find(e=>document.body.classList.contains('e-'+e)); if(edge) native('bar:'+edge); }
+  const edge=barEdge(); if(edge) native('bar:'+edge); }
 // a panel's header is a handle: drag it to move the window (in the notch, he goes back to his edge when it closes)
 $$('.pn .hd').forEach(h=>h.addEventListener('mousedown',e=>{ if(e.button!==0||e.target.closest('button,input,select')) return;
   e.preventDefault(); pnMoved=true; dragNative=true; native('pmove'); }));   // (mouseup sends dragend)
@@ -1752,7 +1787,7 @@ let menuOn=false;
 // in the notch his sparks fan out from it, away from the screen edge (an arc around his eyes), instead of over the ball
 const NOTCH_MENU={top:[170,26,15,165], bottom:[170,434,-165,-15], left:[34,230,-75,75], right:[306,230,105,255]};   // eye centre x,y + arc from/to (deg)
 function layoutMenu(){
-  const edge=EDGES.find(e=>document.body.classList.contains('e-'+e)), bs=$$('#menu .mb');
+  const edge=barEdge(), bs=$$('#menu .mb');
   bs.forEach(b=>{ if(!b.dataset.ox){ b.dataset.ox=b.style.getPropertyValue('--x'); b.dataset.oy=b.style.getPropertyValue('--y'); } });
   if(!edge){ menuEl.style.left=''; menuEl.style.top=''; bs.forEach(b=>{ b.style.setProperty('--x',b.dataset.ox); b.style.setProperty('--y',b.dataset.oy); }); return; }
   const [cx,cy,a0,a1]=NOTCH_MENU[edge], r=edge==='top'||edge==='bottom'?118:132;
@@ -1782,12 +1817,29 @@ window.voidHover=on=>setHoverClass(on);
 // the bar: the same eyes merged into a screen edge as a notch. The window docks and undocks itself (drag him onto an
 // edge / pull the bar away) and tells the page with voidDock(edge|''); the menu switch docks him at the top.
 const EDGES=['top','bottom','left','right'];
+// the edge he's docked on, or '' (the e-* class alone isn't enough: it stays a moment after he leaves, for the morph)
+const barEdge=()=>document.body.classList.contains('bar')?(EDGES.find(e=>document.body.classList.contains('e-'+e))||''):'';
+// the morph between blob and notch. In: the notch grows out of the edge while his ball melts into it and his eyes
+// spring up into it; once he's landed the folded-away parts are hidden for good (bar-done). Out: the notch folds back
+// into the same edge (its e-* class stays until then) while the ball pops out of his eyes with a little overshoot.
+let morphT=null;
 function setBarClass(edge){
-  const b=document.body; b.classList.toggle('bar',!!edge); EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e));
+  const b=document.body; clearTimeout(morphT);
+  if(edge){
+    b.classList.remove('unfold','bar-done');
+    if(!b.classList.contains('e-'+edge)){ EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e)); void $('#barPill').offsetWidth; }
+    b.classList.add('bar');                                      // (the notch starts folded at this edge, then grows)
+    morphT=setTimeout(()=>b.classList.add('bar-done'),700);
+  } else if(b.classList.contains('bar')){
+    if(b.classList.contains('bar-done')){ b.classList.remove('bar-done'); void $('#barPill').offsetWidth; }
+    b.classList.add('unfold'); b.classList.remove('bar'); G.jelly.kick(.6);
+    morphT=setTimeout(()=>{ b.classList.remove('unfold'); EDGES.forEach(e=>b.classList.remove('e-'+e)); },700);
+  } else EDGES.forEach(e=>b.classList.remove('e-'+e));
   const l=$('[data-a="bar"] span'); if(l) l.textContent=edge?'blob':'top bar'; sendRegion(true);
 }
 window.voidDock=edge=>{ edge=EDGES.includes(edge)?edge:''; setBarClass(edge); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
-  setSetting(edge?{presence:'bar',bar_edge:edge}:{presence:'orb'}); poke(edge?'wink':'happy',900); };
+  setSetting(edge?{presence:'bar',bar_edge:edge}:{presence:'orb'});
+  if(edge) poke('wink',900); };                 // (back out: the pop of his ball is reaction enough — no confetti)
 async function toggleBar(force){
   const on=typeof force==='boolean'?force:info.presence!=='bar';
   if(!NATIVE){ tick('the top bar works in the Void window (not the browser fallback)',true); return; }
@@ -1800,18 +1852,39 @@ $('#barPill').addEventListener('mousedown',e=>{ if(e.button!==0) return; downAt=
 $('#barPill').addEventListener('click',e=>{ if(dragged){ dragged=false; return; } downAt=null;
   const was=menuOn; hideAsk(); closePanels(); G.jelly.kick(.4); menu(!was); });
 $('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
-// the notch grows to hold what's showing in it (the terminal while he works, else his words): one black shape
+// the notch opens up to hold what's showing in it — his terminal while he works, his words, or both stacked (terminal
+// next to his eyes, words after it) — and lays them out inside: one black shape that always fits everything
+const NOTCH={w:260,h:52,wide:296,sw:68,sh:210,pad:12,gap:8};
 function dropSync(){
-  const b=document.body, p=$('#barPill'), code=$('#code'), capEl=$('#cap');
-  const edge=EDGES.find(e=>b.classList.contains('e-'+e)); if(!edge) return;
-  const el=code.classList.contains('on')?code:(!capEl.classList.contains('off')&&capEl.textContent.trim())?capEl:null;
-  if(edge==='top'||edge==='bottom'){ p.style.width=''; p.style.marginTop=''; p.style.height=el?(52+el.offsetHeight)+'px':''; }
-  else{ const h=el?Math.max(210,el.offsetHeight+24):210;
-    p.style.height=h+'px'; p.style.marginTop=(-h/2)+'px'; p.style.width=el?(68+el.offsetWidth)+'px':''; }
+  const p=$('#barPill'), code=$('#code'), capEl=$('#cap'), edge=barEdge(); if(!edge) return;
+  const showCode=code.classList.contains('on'), showCap=!capEl.classList.contains('off')&&!!capEl.textContent.trim();
+  const any=showCode||showCap, horiz=edge==='top'||edge==='bottom';
+  const cw=horiz?NOTCH.wide-16:236;                               // the content column
+  code.style.width=capEl.style.width=cw+'px';
+  const ch=showCode?code.offsetHeight:0, ph=showCap?capEl.offsetHeight:0, gap=showCode&&showCap?NOTCH.gap:0, tot=ch+gap+ph;
+  p.classList.toggle('big',any);
+  let codeY, capY, x;
+  if(horiz){
+    x=170-cw/2;
+    p.style.width=any?NOTCH.wide+'px':''; p.style.marginLeft=any?(-NOTCH.wide/2)+'px':''; p.style.marginTop='';
+    p.style.height=any?(NOTCH.h+tot+NOTCH.pad)+'px':'';
+    if(edge==='top'){ codeY=NOTCH.h; capY=NOTCH.h+ch+gap; }       // under his eyes: terminal, then words
+    else{ capY=460-NOTCH.h-tot; codeY=capY+ph+gap; }              // above them: words, then terminal
+  } else {
+    const h=any?Math.max(NOTCH.sh,tot+2*NOTCH.pad+8):NOTCH.sh;
+    p.style.height=h+'px'; p.style.marginTop=(-h/2)+'px'; p.style.marginLeft='';
+    p.style.width=any?(NOTCH.sw+cw+8)+'px':'';
+    x=edge==='left'?NOTCH.sw:340-NOTCH.sw-cw;
+    codeY=230-tot/2; capY=codeY+ch+gap;                           // beside his eyes, centred
+  }
+  code.style.left=capEl.style.left=x+'px'; code.style.top=codeY+'px'; capEl.style.top=capY+'px';
 }
 // the notch's halo: hearing you (with your voice level) vs him speaking
 function convoCheck(){
-  if(!document.body.classList.contains('bar')){ const p=$('#barPill'); p.style.height=p.style.width=p.style.marginTop=''; return; }
+  if(!document.body.classList.contains('bar')){ const p=$('#barPill');
+    if(p.style.height||p.style.width||p.classList.contains('big')){ p.style.height=p.style.width=p.style.marginTop=p.style.marginLeft=''; p.classList.remove('big');
+      for(const el of [$('#code'),$('#cap')]) el.style.width=el.style.left=el.style.top=''; }
+    return; }
   dropSync();
   const hearing=!!(rec||follow), b=document.body;
   b.classList.toggle('hearing',hearing); b.classList.toggle('speaking',!!playing);
@@ -2124,7 +2197,7 @@ function sendRegion(force){
   const rs=[], add=(el,pad=0)=>{ if(!el) return; const r=el.getBoundingClientRect(); if(!(r.width&&r.height)) return; const g=16, x0=Math.floor((r.left-pad)/g)*g, y0=Math.floor((r.top-pad)/g)*g, x1=Math.ceil((r.right+pad)/g)*g, y1=Math.ceil((r.bottom+pad)/g)*g;
     rs.push([x0,y0,x1-x0,y1-y0]); };   // coarse grid: the region only changes when something opens/closes, not as he sways
   if(inBar){   // the notch: only a tight box round his eyes takes clicks; the rest of it (and what drops out of it) lets clicks through
-    const edge=EDGES.find(e=>document.body.classList.contains('e-'+e))||'top', r=$('#barPill').getBoundingClientRect(), R=Math.round;
+    const edge=barEdge()||'top', r=$('#barPill').getBoundingClientRect(), R=Math.round;
     if(edge==='top') rs.push([R(r.left+r.width/2-75),R(r.top),150,52]);
     else if(edge==='bottom') rs.push([R(r.left+r.width/2-75),R(r.bottom-52),150,52]);
     else rs.push([edge==='left'?R(r.left):R(r.right-68),R(r.top+r.height/2-65),68,130]);
@@ -2247,7 +2320,7 @@ const CP=(()=>{
     requestAnimationFrame(tick);
     const dt=Math.min(.05,(ts-(last||ts))/1000); last=ts;
     if(!on&&!el.classList.contains('on')) return;
-    const edge=EDGES.find(e=>document.body.classList.contains('e-'+e));
+    const edge=barEdge();
     if(edge){ pos={x:170,y:230,cx:170,cy:230}; return; }  // the notch: CSS puts it inside the notch (see body.bar #code)
     const {cx,cy,r}=geo();
     // the paper only goes where he's *looking away to* — not with every flick of his eyes

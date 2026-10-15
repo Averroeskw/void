@@ -37,6 +37,8 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget  # noqa: E402
 W, H = 340, 460
 WIDE = 470                   # while settings / history / memory are open the window widens to this
 CODE_SIDE = 100              # room either side for his terminal
+BAR_SIDE = 70                # docked at the top / bottom: room either side of the notch, so his glow fades out in it
+GLIDE = 0.42                 # seconds the window takes to glide into the notch and back (the page's morph matches it)
 BALL = (170, 165)            # where the ball's centre sits inside the window
 DATA = winsys.data_dir()
 POS_FILE, PORT_FILE = DATA / "pos.json", DATA / "window.port"
@@ -117,6 +119,7 @@ class VoidWindow(QWidget):
         self.cur_w, self.wide_shift, self.want_panel, self.want_code = W, 0, False, False
         self.hover, self.hpos, self.home, self.rects, self.through = False, None, None, None, None
         self.bar, self.bar_home = False, None                                # top bar: his eyes in a notch up top
+        self.want_bar, self.glide_n = False, 0                               # (room for the notch's glow; current glide)
         self.shown = True
         self.save_t = QTimer(self, singleShot=True, interval=700, timeout=self._save_pos)   # save after you stop moving him
 
@@ -231,7 +234,7 @@ class VoidWindow(QWidget):
          "peek:hide": self.hide, "peek:show": self.show_me}.get(msg, lambda: None)()
 
     # ---- the bar: merged into a screen edge as a notch (the page draws it on the matching side of the window)
-    def set_bar(self, edge, to=None):
+    def set_bar(self, edge, to=None, glide=True):
         """Dock on `edge` (top / bottom / left / right) of the screen he's on, or undock (None): back to the blob's
         own spot, or to `to` when he's pulled out by the mouse. Tells the page with voidDock()."""
         edge = edge if edge in ("top", "bottom", "left", "right") else None
@@ -245,16 +248,40 @@ class VoidWindow(QWidget):
                  "left": g.left(), "right": g.right() - W + 1}[edge]
             y = {"top": g.top(), "bottom": g.bottom() - H + 1,
                  "left": g.center().y() - H // 2, "right": g.center().y() - H // 2}[edge]
-            self.move(x - self.wide_shift, y)
+            # glide into place while the page morphs; once there, grow the window round the notch for its glow
+            self._glide_to(x - self.wide_shift, y, lambda: self.set_wide(edge in ("top", "bottom"), "bar"))
         else:
             was, self.bar = self.bar, None
-            if to:
+            self.set_wide(False, "bar")
+            if to:                                                       # pulled out by the mouse: right under it
+                self.glide_n += 1
                 self.move(int(to[0]), int(to[1]))
                 self._save_pos()
-            elif was and self.bar_home:
-                self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
-                self._save_pos()
+            elif was and self.bar_home:                                  # back to his spot, gliding while he pops out
+                if glide:
+                    self._glide_to(self.bar_home[0] - self.wide_shift, self.bar_home[1], self._save_pos)
+                else:
+                    self.glide_n += 1
+                    self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
+                    self._save_pos()
         self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
+
+    def _glide_to(self, x, y, done=None):
+        """Move the window to (x, y) over GLIDE seconds, easing out; a newer glide (or move) cancels this one."""
+        self.glide_n += 1
+        n, (sx, sy), t0 = self.glide_n, (self.x(), self.y()), time.monotonic()
+
+        def step():
+            if n != self.glide_n:
+                return
+            k = min(1.0, (time.monotonic() - t0) / GLIDE)
+            e = 1 - (1 - k) ** 3
+            self.move(int(round(sx + (x - sx) * e)), int(round(sy + (y - sy) * e)))
+            if k < 1:
+                QTimer.singleShot(8, step)
+            elif done:
+                done()
+        step()
 
     def _drag_done(self):
         """After you drop the blob: pushed into a screen edge? He merges into it as the bar. Judged by the mouse, not
@@ -279,6 +306,7 @@ class VoidWindow(QWidget):
     def _drag(self):
         if self.bar:                                                     # pulling the bar away: out pops the blob,
             c = QCursor.pos()                                            # under your mouse, still being dragged
+            self.set_wide(False, "bar")                                  # (first: it changes wide_shift)
             self.set_bar(None, to=(c.x() - BALL[0] - self.wide_shift, c.y() - BALL[1]))
         if not self.hover and self.windowHandle():
             self._set_through(False)
@@ -470,10 +498,12 @@ class VoidWindow(QWidget):
     def set_wide(self, on, kind="panel"):
         if kind == "panel":
             self.want_panel = on
+        elif kind == "bar":
+            self.want_bar = on
         else:
             self.want_code = on
-        L = max(WIDE - W if self.want_panel else 0, CODE_SIDE if self.want_code else 0)
-        R = CODE_SIDE if self.want_code else 0
+        L = max(WIDE - W if self.want_panel else 0, CODE_SIDE if self.want_code else 0, BAR_SIDE if self.want_bar else 0)
+        R = max(CODE_SIDE if self.want_code else 0, BAR_SIDE if self.want_bar else 0)
         if self.hover:
             L = R = 0
         base = self.x() + self.wide_shift                                 # where his own 340px strip starts
@@ -490,7 +520,7 @@ class VoidWindow(QWidget):
         if self.hover == on:
             return
         if on and self.bar:                                              # out of the notch first (it mustn't fly around)
-            self.set_bar(None)
+            self.set_bar(None, glide=False)                              # (at once: the cursor-following starts here)
         if on and self.cur_w > W:
             self.want_code = False
             self.set_wide(False)

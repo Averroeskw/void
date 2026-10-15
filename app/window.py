@@ -116,6 +116,8 @@ except (ImportError, Exception):  # noqa: BLE001
 W, H = 340, 460
 WIDE = 470                   # while settings / history / memory are open the window widens to this
 CODE_SIDE = 100              # room on each side for the code panel when he swings it out to his side
+BAR_SIDE = 70                # docked at the top / bottom: room either side of the notch, so his glow fades out in it
+GLIDE = 0.42                 # seconds the window takes to glide into the notch and back (the page's morph matches it)
 SOCK = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", f"void-{os.getuid()}.sock")
 BALL = (170, 165)            # where the ball's centre sits inside the window (CSS px)
 POS_FILE = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), "void", "pos.json")
@@ -249,7 +251,8 @@ class VoidWindow:
         # (no draw handler that clears the window: with GPU rendering WebKit only repaints what changed,
         #  so clearing here made everything outside the animating ball vanish until the mouse moved)
         self.cur_w, self.wide_shift = W, 0
-        self.want_panel = self.want_code = False
+        self.want_panel = self.want_code = self.want_bar = False
+        self.glide_n = 0                        # the current window glide (a newer one cancels it)
         self.dragging = False                   # (set before _place() can run — it checks this)
         self.hover = False
         self.bar, self.bar_home = None, None    # top bar: merged into a screen edge as a notch (None = the blob)
@@ -439,26 +442,31 @@ class VoidWindow:
         The page is told how far he moved inside the window so he stays exactly where he was on screen."""
         if kind == "panel":
             self.want_panel = on
+        elif kind == "bar":
+            self.want_bar = on
         else:
             self.want_code = on
-        L = max(WIDE - W if self.want_panel else 0, CODE_SIDE if self.want_code else 0)
-        R = CODE_SIDE if self.want_code else 0
+        L = max(WIDE - W if self.want_panel else 0, CODE_SIDE if self.want_code else 0, BAR_SIDE if self.want_bar else 0)
+        R = max(CODE_SIDE if self.want_code else 0, BAR_SIDE if self.want_bar else 0)
         if self.hover:
             L = R = 0
         base = self.mx + self.wide_shift                 # where his own 340px strip starts on the monitor
         if self.layer:
             gw = self._geom()[1].width
             L, R = min(L, max(0, base)), min(R, max(0, gw - base - W))
-        else:
-            L, R = 0, L + R                              # a normal window can only grow to the right
+        elif not (self.want_bar and not (self.want_panel or self.want_code)):
+            L, R = 0, L + R                              # a normal window only grows to the right (it isn't moved)…
         if W + L + R == self.cur_w and L == self.wide_shift:
             return
+        old = self.wide_shift
         self.wide_shift, self.cur_w = L, W + L + R
         self.win.set_size_request(self.cur_w, H)
         self.win.resize(self.cur_w, H)
         if self.layer:
             self._place(base - L, self.my)
-        elif self.hypr.ok() and self.hypr.addr:
+        elif L != old:                                   # …except round the notch, where we place it ourselves
+            self._xmove(base - L, self.my)
+        if not self.layer and self.hypr.ok() and self.hypr.addr:
             try:
                 self.hypr.dispatch(f"resizewindowpixel exact {self.cur_w} {H},address:{self.hypr.addr}")
             except Exception:  # noqa: BLE001
@@ -608,9 +616,33 @@ class VoidWindow:
         else:
             self.win.move(int(x), int(y))
 
-    def set_bar(self, edge, to=None):
+    def _glide_to(self, x, y, done=None):
+        """Move him to (x, y) over GLIDE seconds, easing out: layer-shell margins on his monitor, or a window's screen
+        position. A newer glide (or move) cancels this one."""
+        self.glide_n += 1
+        n, sx, sy, t0 = self.glide_n, self.mx, self.my, time.monotonic()
+
+        def step():
+            if n != self.glide_n:
+                return False
+            k = min(1.0, (time.monotonic() - t0) / GLIDE)
+            e = 1 - (1 - k) ** 3
+            nx, ny = sx + (x - sx) * e, sy + (y - sy) * e
+            if self.layer:
+                self._place(nx, ny)
+            else:
+                self._xmove(nx, ny)
+            if k >= 1:
+                if done:
+                    done()
+                return False
+            return True
+        GLib.timeout_add(10, step)
+
+    def set_bar(self, edge, to=None, glide=True):
         """Dock on `edge` (top / bottom / left / right) of the monitor he's on, or undock (None): back to the blob's
-        own spot, to `to` (global x, y: he's pulled out by the mouse) or "here" (stay put). Tells the page."""
+        own spot, to `to` (global x, y: he's pulled out by the mouse) or "here" (stay put). Tells the page.
+        The window glides while the page morphs; docked at the top or bottom it grows round the notch for its glow."""
         edge = edge if edge in ("top", "bottom", "left", "right") else None
         if edge and not (self.layer or self._x11() or self.hypr.ok()):
             log("top bar: needs layer-shell or X11/XWayland — this desktop doesn't let apps place their window")
@@ -630,15 +662,18 @@ class VoidWindow:
                 ox, oy, gw_, gh_ = wa.x, wa.y, wa.width, wa.height
             x = {"top": (gw_ - W) // 2, "bottom": (gw_ - W) // 2, "left": 0, "right": gw_ - W}[edge]
             y = {"top": 0, "bottom": gh_ - H, "left": (gh_ - H) // 2, "right": (gh_ - H) // 2}[edge]
+            room = (lambda: self.set_wide(edge in ("top", "bottom"), "bar"))
             if self.layer:
-                self._place(x - self.wide_shift, y)
+                self._glide_to(x - self.wide_shift, y, room)
             else:
-                self._xmove(ox + x - self.wide_shift, oy + y)
+                self._glide_to(ox + x - self.wide_shift, oy + y, room)
         else:
             was, self.bar = self.bar, None
+            self.set_wide(False, "bar")
             if to == "here":
                 pass
             elif to:
+                self.glide_n += 1
                 if self.layer:
                     i, g = self._mon_at(*to)
                     self._place(to[0] - g.x, to[1] - g.y, True, i)
@@ -646,12 +681,16 @@ class VoidWindow:
                     self._xmove(*to)
             elif was and self.bar_home:
                 m, hx, hy = self.bar_home
-                if self.layer:
-                    self._place(hx - self.wide_shift, hy, True, m)
+                if self.layer and m != self.mon_i or not glide:      # (another monitor, or right now: no glide)
+                    self.glide_n += 1
+                    if self.layer:
+                        self._place(hx - self.wide_shift, hy, True, m)
+                    else:
+                        self._xmove(hx - self.wide_shift, hy)
                 else:
-                    self._xmove(hx - self.wide_shift, hy)
+                    self._glide_to(hx - self.wide_shift, hy)
             if was:
-                GLib.timeout_add(300, lambda: (self._save_pos() if self.layer else self._save_xpos(), False)[1])
+                GLib.timeout_add(int(GLIDE * 1000) + 150, lambda: (self._save_pos() if self.layer else self._save_xpos(), False)[1])
         self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
 
     def _drag_loop(self):
@@ -751,7 +790,7 @@ class VoidWindow:
         if self.hover == on:
             return
         if on and self.bar:                                        # hover mode is the blob: leave the edge first
-            self.set_bar(None)
+            self.set_bar(None, glide=False)                        # (at once: the cursor-following starts here)
         if on and self.cur_w > W:
             self.want_code = False
             self.set_wide(False)
