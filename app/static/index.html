@@ -42,7 +42,7 @@ body.hover #shadow{display:none}
 body.bar #barPill{opacity:1;pointer-events:auto;cursor:pointer;transition:opacity .08s linear,box-shadow .5s var(--ease),
   height .5s var(--apple),width .5s var(--apple),margin .5s var(--apple),border-radius .5s var(--apple)}
 body.goohide #barPill{opacity:0!important;transition:none!important}   /* the liquid stands in for it while it flows */
-body.bar #barPill.big{--r:26px}                                  /* opened up for his words: rounder, like a Dynamic Island */
+body.bar #barPill.big{--r:26px;--gx:0px!important;--gy:0px!important}   /* open: no long throw, so the glow stays inside the window */                                  /* opened up for his words: rounder, like a Dynamic Island */
 #barPill::before,#barPill::after{content:"";position:absolute;width:10px;height:10px}
 body.e-top #barPill,body.e-bottom #barPill{left:50%;width:260px;height:52px;margin-left:-130px}
 body.e-left #barPill,body.e-right #barPill{top:50%;width:68px;height:210px;margin-top:-105px}
@@ -1925,12 +1925,12 @@ $('#barPill').addEventListener('click',e=>{ if(dragged){ dragged=false; return; 
 $('#barPill').addEventListener('contextmenu',e=>{ e.preventDefault(); E.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true})); });
 // the notch opens up to hold what's showing in it — his terminal while he works, his words, or both stacked (terminal
 // next to his eyes, words after it) — and lays them out inside: one black shape that always fits everything
-const NOTCH={w:260,h:52,wide:296,sw:68,sh:210,pad:12,gap:8};
+const NOTCH={w:260,h:52,wide:260,sw:68,sh:210,pad:12,gap:8};   // (wide = w: its glow must fit the window)
 function dropSync(){
   const p=$('#barPill'), code=$('#code'), capEl=$('#cap'), edge=barEdge(); if(!edge) return;
   const showCode=code.classList.contains('on'), showCap=!capEl.classList.contains('off')&&!!capEl.textContent.trim();
   const any=showCode||showCap, horiz=edge==='top'||edge==='bottom';
-  const cw=horiz?NOTCH.wide-16:236;                               // the content column
+  const cw=horiz?NOTCH.wide-16:220;                               // the content column
   code.style.width=capEl.style.width=cw+'px';
   const ch=showCode?code.offsetHeight:0, ph=showCap?capEl.offsetHeight:0, gap=showCode&&showCap?NOTCH.gap:0, tot=ch+gap+ph;
   p.classList.toggle('big',any);

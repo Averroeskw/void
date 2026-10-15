@@ -663,7 +663,7 @@ class VoidWindow:
                 ox, oy, gw_, gh_ = wa.x, wa.y, wa.width, wa.height
             x = {"top": (gw_ - W) // 2, "bottom": (gw_ - W) // 2, "left": 0, "right": gw_ - W}[edge]
             y = {"top": 0, "bottom": gh_ - H, "left": (gh_ - H) // 2, "right": (gh_ - H) // 2}[edge]
-            room = (lambda: self.set_wide(edge in ("top", "bottom"), "bar"))
+            room = None                                           # (no growing round the notch: it flickered)
             if self.layer:
                 self._glide_to(x - self.wide_shift, y, room)
             else:

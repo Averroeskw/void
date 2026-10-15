@@ -289,8 +289,8 @@ class VoidWindow(QWidget):
             y = {"top": g.top(), "bottom": g.bottom() - H + 1,
                  "left": g.center().y() - H // 2, "right": g.center().y() - H // 2}[edge]
             # glide into place while the page morphs, growing the window round the notch for its glow on the way
-            room = edge in ("top", "bottom")
-            self._glide_to(x, y, room=BAR_SIDE if room else 0, done=lambda: self.set_wide(room, "bar"))
+            # (no growing the window round the notch: it flickered; the notch's glow is sized to fit the window)
+            self._glide_to(x, y)
         else:
             was, self.bar = self.bar, None
             if to:                                                       # pulled out by the mouse: right under it
@@ -300,8 +300,8 @@ class VoidWindow(QWidget):
                 self._save_pos()
             elif was and self.bar_home:                                  # back to his spot, gliding while he pops out
                 if glide:
-                    self._glide_to(self.bar_home[0], self.bar_home[1], room=0,
-                                   done=lambda: (self.set_wide(False, "bar"), self._save_pos()))
+                    self.set_wide(False, "bar")
+                    self._glide_to(self.bar_home[0], self.bar_home[1], done=self._save_pos)
                 else:
                     self.set_wide(False, "bar")
                     self.glide_n += 1
@@ -353,17 +353,32 @@ class VoidWindow(QWidget):
         g = scr.availableGeometry()
         dist = {"top": c.y() - g.top(), "bottom": g.bottom() - c.y(), "left": c.x() - g.left(), "right": g.right() - c.x()}
         edge = min(dist, key=dist.get)
+        fx, fy = getattr(self, "drag_from", (self.x(), self.y()))
+        if abs(self.x() - fx) + abs(self.y() - fy) < 12:                 # he didn't actually move: don't jump anywhere
+            return
         if dist[edge] < 40:                                              # dropped right at the edge
             self.set_bar(edge)
 
     def _watch_drag(self):
-        """Windows moves the window itself while you drag (startSystemMove); watch for the mouse button coming up."""
+        """Windows moves the window itself while you drag (startSystemMove); watch for the mouse button coming up.
+        Exactly one watcher, and it stops itself: a stray one kept docking him wherever the mouse went near an edge."""
+        old = getattr(self, "_drag_t", None)
+        if old:
+            old.stop()
+            old.deleteLater()
+        t = QTimer(self, interval=50)
+        t0 = time.monotonic()
+
         def check():
-            if not (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000):   # VK_LBUTTON released
-                self._drag_t.stop()
-                self._drag_done()
-        self._drag_t = QTimer(self, interval=50, timeout=check)
-        self._drag_t.start()
+            if not (ctypes.windll.user32.GetAsyncKeyState(0x01) & 0x8000) or time.monotonic() - t0 > 60:
+                t.stop()
+                if self._drag_t is t:
+                    self._drag_t = None
+                    self._drag_done()
+                t.deleteLater()
+        t.timeout.connect(check)
+        self._drag_t = t
+        t.start()
 
     def _drag(self):
         self.glide_n += 1                                                # grabbed: any glide stops right here
@@ -372,11 +387,13 @@ class VoidWindow(QWidget):
             bx, e = self.x() + self.wide_shift, self.bar                 # the notch stays on the wall and melts away
             nx, ny, nw, nh = {"top": (bx + 170 - 140, self.y(), 280, 52), "bottom": (bx + 170 - 140, self.y() + H - 52, 280, 52),
                               "left": (bx, self.y() + 230 - 115, 68, 230), "right": (bx + W - 68, self.y() + 230 - 115, 68, 230)}[e]
-            self.ghost = Ghost(nx, ny, nw, nh, e)
             self.set_wide(False, "bar")                                  # (first: it changes wide_shift)
             self.set_bar(None, to=(c.x() - BALL[0] - self.wide_shift, c.y() - BALL[1]))
+            # (a moment later: a new window appearing right as the drag starts can upset the drag)
+            QTimer.singleShot(30, lambda: setattr(self, "ghost", Ghost(nx, ny, nw, nh, e)))
         if not self.hover and self.windowHandle():
             self._set_through(False)
+            self.drag_from = (self.x(), self.y())
             self.windowHandle().startSystemMove()
             self._watch_drag()
 
