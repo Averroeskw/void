@@ -28,7 +28,7 @@ for _s in (sys.stdout, sys.stderr):               # logs go to a file: write UTF
 
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--autoplay-policy=no-user-gesture-required")
 from PySide6.QtCore import QFile, QIODevice, QObject, Qt, QTimer, QUrl, Signal, Slot  # noqa: E402
-from PySide6.QtGui import QColor, QCursor, QGuiApplication, QIcon  # noqa: E402
+from PySide6.QtGui import QColor, QCursor, QGuiApplication, QIcon, QPainter  # noqa: E402
 from PySide6.QtWebChannel import QWebChannel  # noqa: E402
 from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineScript, QWebEngineSettings  # noqa: E402
 from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: E402
@@ -106,6 +106,46 @@ class Bridge(QObject):
 class Remote(QObject):
     """Commands arriving on the socket thread → the UI thread."""
     cmd = Signal(str)
+
+
+class Ghost(QWidget):
+    """The notch left on the wall when he's pulled out of it: it melts back into the screen edge on its own (black,
+    shrinking into the edge) while he goes wherever you take him. Click-through, never takes focus, gone in 0.3 s."""
+    def __init__(self, x, y, w, h, edge):
+        super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.edge, self.k, self.t0 = edge, 1.0, time.monotonic()
+        self.setGeometry(int(x), int(y), int(w), int(h))
+        self.timer = QTimer(self, interval=10, timeout=self._step)
+        self.timer.start()
+        self.show()
+
+    def _step(self):
+        p = min(1.0, (time.monotonic() - self.t0) / 0.3)
+        self.k = 1 - p * p                                            # eases in: it lets go, then is drawn away
+        self.update()
+        if p >= 1:
+            self.timer.stop()
+            self.close()
+            self.deleteLater()
+
+    def paintEvent(self, _ev):
+        qp = QPainter(self)
+        qp.setRenderHint(QPainter.Antialiasing)
+        qp.setPen(Qt.NoPen)
+        qp.setBrush(QColor(0, 0, 0))
+        w, h, k, o = self.width(), self.height(), self.k, 24          # o: runs off the edge, so only its open side is round
+        if self.edge in ("top", "bottom"):
+            rw, rh = w * (0.55 + 0.45 * k), h * k
+            x, y = (w - rw) / 2, (-o if self.edge == "top" else h - rh)
+            qp.drawRoundedRect(int(x), int(y), int(rw), int(rh + o), min(18, rh), min(18, rh))
+        else:
+            rw, rh = w * k, h * (0.55 + 0.45 * k)
+            x, y = (-o if self.edge == "left" else w - rw), (h - rh) / 2
+            qp.drawRoundedRect(int(x), int(y), int(rw + o), int(rh), min(18, rw), min(18, rw))
+        qp.end()
 
 
 class VoidWindow(QWidget):
@@ -264,7 +304,8 @@ class VoidWindow(QWidget):
                     self.glide_n += 1
                     self.move(self.bar_home[0] - self.wide_shift, self.bar_home[1])
                     self._save_pos()
-        self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
+        # (pulled out by the mouse: the page just pops him out — the notch's melt happens on the wall, in a Ghost)
+        self._js("window.voidDock&&voidDock(%s,%s)" % (json.dumps(edge or ""), json.dumps("pull" if to and not edge else "")))
 
     def _glide_to(self, x, y, done=None):
         """Move the window to (x, y) over GLIDE seconds, easing out; a newer glide (or move) cancels this one."""
@@ -307,6 +348,10 @@ class VoidWindow(QWidget):
         self.glide_n += 1                                                # grabbed: any glide stops right here
         if self.bar:                                                     # pulling the bar away: out pops the blob,
             c = QCursor.pos()                                            # under your mouse, still being dragged
+            bx, e = self.x() + self.wide_shift, self.bar                 # the notch stays on the wall and melts away
+            nx, ny, nw, nh = {"top": (bx + 170 - 140, self.y(), 280, 52), "bottom": (bx + 170 - 140, self.y() + H - 52, 280, 52),
+                              "left": (bx, self.y() + 230 - 115, 68, 230), "right": (bx + W - 68, self.y() + 230 - 115, 68, 230)}[e]
+            self.ghost = Ghost(nx, ny, nw, nh, e)
             self.set_wide(False, "bar")                                  # (first: it changes wide_shift)
             self.set_bar(None, to=(c.x() - BALL[0] - self.wide_shift, c.y() - BALL[1]))
         if not self.hover and self.windowHandle():

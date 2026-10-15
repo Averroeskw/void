@@ -692,7 +692,9 @@ class VoidWindow:
                     self._glide_to(hx - self.wide_shift, hy)
             if was:
                 GLib.timeout_add(int(GLIDE * 1000) + 150, lambda: (self._save_pos() if self.layer else self._save_xpos(), False)[1])
-        self._js("window.voidDock&&voidDock(%s)" % json.dumps(edge or ""))
+        # (pulled out by the mouse: the page just pops him out under it, nothing trailing behind)
+        pulled = bool(to) and to != "here" and not edge
+        self._js("window.voidDock&&voidDock(%s,%s)" % (json.dumps(edge or ""), json.dumps("pull" if pulled else "")))
 
     def _drag_loop(self):
         try:

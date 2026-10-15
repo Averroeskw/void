@@ -78,6 +78,10 @@ body.goohide #body>circle,body.goohide #body>ellipse,body.goohide #orbBack,body.
 body.goohide #shadow,body.goohide #accBack,body.goohide #accFront{opacity:0;transition:none}
 body.unfold #body>circle,body.unfold #body>ellipse,body.unfold #shadow,body.unfold #accBack,body.unfold #accFront{transition:opacity .12s linear}
 body.unfold #orbBack,body.unfold #orbFront,body.unfold #haloW{transition:opacity .25s linear .08s}
+/* pulled out of the notch by the mouse: the ball pops in where he is (the notch melts on the wall, not here) */
+#body>circle{transform-box:fill-box;transform-origin:center}
+body.popout #body>circle{animation:popOut .34s var(--pop)}
+@keyframes popOut{from{transform:scale(.55);opacity:.4}to{transform:none;opacity:1}}
 #goo{position:absolute;left:0;top:0;width:340px;height:460px;overflow:visible;pointer-events:none;z-index:0;display:none}
 body.gooing #goo{display:block}
 body.bar.bar-done #orbBack,body.bar.bar-done #orbFront,body.bar.bar-done #workW,body.bar.bar-done #haloW,body.bar.bar-done #raysW,
@@ -446,7 +450,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
       </radialGradient>
       <radialGradient id="rayG" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="160"><stop offset=".45" class="rs"/><stop offset="1" class="rs" stop-opacity="0"/></radialGradient>
       <radialGradient id="shG"><stop offset="0" stop-color="#000" stop-opacity=".75"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
-      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="glow" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <radialGradient id="ballG" cx="-24" cy="-30" r="112" gradientUnits="userSpaceOnUse"><stop offset="0" class="b0"/><stop offset=".55" class="b1"/><stop offset="1" class="b2"/></radialGradient>
       <radialGradient id="glossG"><stop offset="0" stop-color="#fff" stop-opacity=".17"/><stop offset=".6" stop-color="#fff" stop-opacity=".05"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
       <clipPath id="clipL"><path id="cpL"/></clipPath>
@@ -1880,9 +1884,16 @@ function melt(edge,dir,done){
     if(t<1) requestAnimationFrame(frame); else { const d=meltDone; meltDone=null; d&&d(false); }
   })(t0);
 }
-function setBarClass(edge){
+function setBarClass(edge,pulled){
   const b=document.body; snapMorph(); clearTimeout(morphT);
-  if(edge){
+  if(!edge&&pulled&&b.classList.contains('bar')){
+    // pulled out by the mouse: the notch melts away on the wall by itself (the window leaves a ghost of it there);
+    // here he just pops straight out as the blob under your hand — eyes in place at once, ball bouncing in
+    b.classList.add('snap'); b.classList.remove('bar','bar-done','gooing','goohide');
+    EDGES.forEach(e=>b.classList.remove('e-'+e)); b.classList.add('popout'); G.jelly.kick(.9);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.remove('snap')));
+    morphT=setTimeout(()=>b.classList.remove('popout'),360);
+  } else if(edge){
     b.classList.remove('unfold','bar-done','gooing','goohide');
     EDGES.forEach(e=>b.classList.toggle('e-'+e,edge===e));
     b.classList.add('gooing','goohide','bar');                  // eyes glide up; the liquid does the rest
@@ -1899,7 +1910,7 @@ function setBarClass(edge){
   } else EDGES.forEach(e=>b.classList.remove('e-'+e));
   const l=$('[data-a="bar"] span'); if(l) l.textContent=edge?'blob':'top bar'; sendRegion(true);
 }
-window.voidDock=edge=>{ edge=EDGES.includes(edge)?edge:''; setBarClass(edge); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
+window.voidDock=(edge,how)=>{ edge=EDGES.includes(edge)?edge:''; setBarClass(edge,how==='pull'); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
   setSetting(edge?{presence:'bar',bar_edge:edge}:{presence:'orb'});
   if(edge) poke('wink',900); };                 // (back out: the pop of his ball is reaction enough — no confetti)
 async function toggleBar(force){
