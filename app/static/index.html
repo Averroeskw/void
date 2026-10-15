@@ -46,9 +46,6 @@ body.bar #barPill.big{--r:26px}                                  /* opened up fo
 #barPill::before,#barPill::after{content:"";position:absolute;width:10px;height:10px}
 body.e-top #barPill,body.e-bottom #barPill{left:50%;width:260px;height:52px;margin-left:-130px}
 body.e-left #barPill,body.e-right #barPill{top:50%;width:68px;height:210px;margin-top:-105px}
-/* the mouse over the resting notch: it leans out a little, like macOS notch apps */
-body.bar.e-top #barPill:not(.big):hover,body.bar.e-bottom #barPill:not(.big):hover{width:272px;height:56px;margin-left:-136px}
-body.bar.e-left #barPill:not(.big):hover,body.bar.e-right #barPill:not(.big):hover{width:72px;height:222px;margin-top:-111px}
 body.e-top #barPill{top:0;border-radius:0 0 var(--r) var(--r)}
 body.e-top #barPill::before{top:0;left:-10px;background:radial-gradient(circle at 0 100%,transparent 9.5px,#000 10px)}
 body.e-top #barPill::after{top:0;right:-10px;background:radial-gradient(circle at 100% 100%,transparent 9.5px,#000 10px)}
