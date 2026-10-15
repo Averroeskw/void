@@ -325,8 +325,15 @@ plain browser app window instead (handy if WebKitGTK misbehaves).
 Settings → More shows which version you have and whether a newer one is out (Void asks GitHub's public release list
 when he starts, every 6 hours and when you open Settings; **Check now** asks straight away, and **Check for updates**
 turns it off). **Update now** installs it: on Windows it runs the new
-VoidSetup.exe quietly and Void comes back by himself; on Linux, if you installed from a `git clone`, it runs
-`git pull` and `install.sh` for you. Installed from a package? Update with your package manager.
+VoidSetup.exe quietly and Void comes back by himself. On Linux:
+
+| installed with | **Update now** |
+|---|---|
+| the `.deb` (Ubuntu / Debian), `.rpm` (Fedora) or Arch package from a release | downloads the new package from the release and installs it with `pkexec` (your desktop asks for your password), then restarts him |
+| `git clone` + `install.sh` | runs `git pull` and `install.sh` for you |
+| anything else (Gentoo, a system-wide `ninja install`) | tells you a new version is out; update the way you installed |
+
+If an update can't finish (you cancelled the password prompt, say), Settings → More shows the exact command to run.
 
 ## Starting at login
 

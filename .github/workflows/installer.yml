@@ -159,6 +159,7 @@ jobs:
           print(("PASS" if ok else "FAIL") + f"  server answers: version {s.get('version')}, updates via {s['update']['how']}")
           sys.exit(0 if ok else 1)
           PY
+          python3 .github/ci/pkgcheck.py deb
       - name: His window on X11 (Xvfb) — the top bar docks on each edge
         env:
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"   # (test machine: no user namespaces for WebKit's sandbox)
@@ -208,7 +209,7 @@ jobs:
   arch:
     runs-on: ubuntu-latest
     container: archlinux:latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
       - name: Build the AUR package (void-claude-git)
@@ -219,10 +220,63 @@ jobs:
           su builder -c "cd ~/pkg && makepkg --nodeps --noconfirm"
           ls /home/builder/pkg/*.pkg.tar.zst
           pacman -Qlp /home/builder/pkg/*.pkg.tar.zst | grep -E "usr/bin/void$|usr/share/void/app/server.py$"
+      - name: Build the release package (void-claude) from this checkout
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then printf '%s' "${GITHUB_REF_NAME#v}" > app/VERSION; fi
+          VER="$(tr -d '[:space:]' < app/VERSION)"
+          mkdir -p /home/builder/rel dist
+          cp packaging/arch/void-claude/* /home/builder/rel/
+          sed -i "s/^pkgver=.*/pkgver=$VER/" /home/builder/rel/PKGBUILD
+          tar --exclude=.git --exclude=./dist --transform="s|^\.|void-$VER|" -czf "/home/builder/rel/void-$VER.tar.gz" .
+          chown -R builder /home/builder/rel
+          su builder -c "cd ~/rel && makepkg --nodeps --noconfirm"     # (uses the tarball above, not GitHub's)
+          cp /home/builder/rel/void-claude-$VER-*.pkg.tar.zst dist/ && ls -l dist
+      - name: Install it (with its dependencies), run "void setup", and start Void's server from the package
+        run: |
+          pacman -U --noconfirm dist/void-claude-*.pkg.tar.zst
+          test -x /usr/bin/void && test -f /usr/share/void/app/server.py && echo "PASS  files in place"
+          void setup
+          test -x ~/.local/share/void/venv/bin/python && echo "PASS  void setup made the Python environment"
+          ~/.local/share/void/venv/bin/python /usr/share/void/app/server.py > server.log 2>&1 &
+          python3 .github/ci/pkgcheck.py arch || { tail -n 30 server.log; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arch
+          retention-days: 14
+          path: dist/*.pkg.tar.zst
+
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build void-claude.rpm
+        run: |
+          dnf install -y -q rpm-build meson tar
+          if [ "$GITHUB_REF_TYPE" = tag ]; then printf '%s' "${GITHUB_REF_NAME#v}" > app/VERSION; fi
+          VER="$(tr -d '[:space:]' < app/VERSION)"
+          mkdir -p ~/rpmbuild/SOURCES dist
+          tar --exclude=.git --exclude=./dist --transform="s|^\.|void-$VER|" -czf ~/rpmbuild/SOURCES/void-$VER.tar.gz .
+          rpmbuild -bb --define "ver $VER" packaging/rpm/void-claude.spec
+          cp ~/rpmbuild/RPMS/noarch/void-claude-$VER-*.noarch.rpm dist/ && ls -l dist
+      - name: Install it (with its dependencies), run "void setup", and start Void's server from the package
+        run: |
+          dnf install -y dist/void-claude-*.noarch.rpm
+          test -x /usr/bin/void && test -f /usr/share/void/app/server.py && echo "PASS  files in place"
+          void setup
+          test -x ~/.local/share/void/venv/bin/python && echo "PASS  void setup made the Python environment"
+          ~/.local/share/void/venv/bin/python /usr/share/void/app/server.py > server.log 2>&1 &
+          python3 .github/ci/pkgcheck.py rpm || { tail -n 30 server.log; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rpm
+          retention-days: 14
+          path: dist/*.rpm
 
   publish:
     if: github.ref_type == 'tag'
-    needs: [build, deb, arch]
+    needs: [build, deb, arch, rpm]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -234,4 +288,6 @@ jobs:
           files: |
             art/VoidSetup/dist/VoidSetup.exe
             art/deb/*.deb
+            art/rpm/*.rpm
+            art/arch/*.pkg.tar.zst
           generate_release_notes: true

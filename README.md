@@ -67,26 +67,30 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 </td>
 <td valign="top">
 
-<p align="center"><a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/badge/Download-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Download the .deb for Ubuntu and Debian"></a></p>
-
 <p align="center">
-<img src="https://img.shields.io/badge/Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white" alt="Arch Linux">
-<img src="https://img.shields.io/badge/Fedora-51A2DA?style=flat-square&logo=fedora&logoColor=white" alt="Fedora">
-<img src="https://img.shields.io/badge/Ubuntu-E95420?style=flat-square&logo=ubuntu&logoColor=white" alt="Ubuntu">
-<img src="https://img.shields.io/badge/Debian-A81D33?style=flat-square&logo=debian&logoColor=white" alt="Debian">
+<a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/badge/Ubuntu_%2F_Debian-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Download the .deb for Ubuntu and Debian"></a><br>
+<a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/badge/Fedora-.rpm-51A2DA?style=for-the-badge&logo=fedora&logoColor=white" alt="Download the .rpm for Fedora"></a><br>
+<a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/badge/Arch_Linux-.pkg.tar.zst-1793D1?style=for-the-badge&logo=archlinux&logoColor=white" alt="Download the package for Arch Linux"></a>
 </p>
 
-**Any of these:** the installer gets the system packages for you, and **Update now** in his settings keeps him current.
+Download the one for your distro from the [latest release](https://github.com/PLAYER99-void/void/releases/latest), then:
+
+| | |
+|---|---|
+| <img src="https://img.shields.io/badge/-Ubuntu_%2F_Debian-E95420?style=flat-square&logo=ubuntu&logoColor=white" alt="Ubuntu / Debian"> | `sudo apt install ./void-claude_*_all.deb` |
+| <img src="https://img.shields.io/badge/-Fedora-51A2DA?style=flat-square&logo=fedora&logoColor=white" alt="Fedora"> | `sudo dnf install ./void-claude-*.noarch.rpm` |
+| <img src="https://img.shields.io/badge/-Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white" alt="Arch Linux"> | `sudo pacman -U ./void-claude-*.pkg.tar.zst` |
+
+Then `void setup` once (his voice and hearing) and `void`. **Update now** in his settings installs new versions for
+you (your system asks for your password).
+
+**Or from source**, on any of them: it gets the system packages for you and updates itself the same way.
 
 ```bash
 git clone https://github.com/PLAYER99-void/void.git
 cd void && ./install.sh
 void
 ```
-
-**Ubuntu / Debian package:** download `void-claude_…_all.deb` from the
-[latest release](https://github.com/PLAYER99-void/void/releases/latest), then
-`sudo apt install ./void-claude_*_all.deb` and `void setup`.
 
 <sub>Gentoo or system-wide? See the <a href="docs/GUIDE.md#install-from-source">guide</a>.</sub>
 

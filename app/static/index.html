@@ -1962,10 +1962,11 @@ addEventListener('keydown',e=>{ if(!pttCapture) return; e.preventDefault(); e.st
 function renderUpdate(){
   const u=info.update||{}, now=$('#updNow'), txt=$('#updTxt');
   $('#verTxt').textContent=info.version&&info.version!=='0.0.0'?'v'+info.version:'';
-  now.hidden=!(u.newer&&(u.how==='setup'||u.how==='git')&&u.state!=='updating');
-  txt.textContent=u.state==='updating'?'Updating… he’ll be back in a minute or two.'
+  const can=u.can_install!==undefined?u.can_install:(u.how==='setup'||u.how==='git');
+  now.hidden=!(u.newer&&can&&u.state!=='updating');
+  txt.textContent=u.state==='updating'?(u.how==='package'?'Updating… your system may ask for your password.':'Updating… he’ll be back in a minute or two.')
     :u.state==='failed'?'Update failed: '+(u.error||'see the log')
-    :u.newer?(u.how==='package'?`v${u.latest} is out — update with your package manager.`:u.how==='manual'?`v${u.latest} is out — run install.sh from the folder you installed from.`:`v${u.latest} is out.`)
+    :u.newer?(can?`v${u.latest} is out.`:u.how==='package'?`v${u.latest} is out — update with your package manager.`:u.how==='manual'?`v${u.latest} is out — run install.sh from the folder you installed from.`:`v${u.latest} is out.`)
     :u.latest?'You have the latest version.':(info.update_check===false?'Update checks are off.':'Not checked yet.');
 }
 async function copyDiagnostics(){

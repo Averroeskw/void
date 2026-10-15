@@ -2359,7 +2359,11 @@ class Updates:
             res = (DATA_DIR / "update.result").read_text().strip()
             (DATA_DIR / "update.result").unlink()
             if res != "0":
-                cls.state, cls.error = "failed", "the update didn't finish — run ./install.sh in a terminal to see why"
+                try:
+                    hint = (DATA_DIR / "update.hint").read_text().strip()
+                except OSError:
+                    hint = "run ./install.sh in a terminal to see why"
+                cls.state, cls.error = "failed", f"the update didn't finish — {hint}"
         except OSError:
             pass
         threading.Thread(target=cls.loop, daemon=True).start()
@@ -2387,9 +2391,16 @@ class Updates:
         except Exception as e:  # noqa: BLE001
             print(f"[void] update check: {e}", file=sys.stderr)
             return False
+        assets = {a.get("name") or "": a.get("browser_download_url") or "" for a in rel.get("assets") or []}
+
+        def pick(test):
+            return next((u for n, u in assets.items() if test(n)), "")
         cls.info = {"latest": str(rel.get("tag_name") or "").lstrip("v"), "url": rel.get("html_url") or "",
-                    "setup": next((a.get("browser_download_url") for a in rel.get("assets") or []
-                                   if a.get("name") == "VoidSetup.exe"), ""), "checked": time.time()}
+                    "setup": assets.get("VoidSetup.exe", ""),
+                    "deb": pick(lambda n: n.startswith("void-claude_") and n.endswith(".deb")),
+                    "rpm": pick(lambda n: n.startswith("void-claude-") and n.endswith(".noarch.rpm")),
+                    "arch": pick(lambda n: n.startswith("void-claude-") and n.endswith(".pkg.tar.zst")),
+                    "checked": time.time()}
         try:
             cls.cache().write_text(json.dumps(cls.info))
         except OSError:
@@ -2409,11 +2420,45 @@ class Updates:
             return "package"
         return "git" if (Path(src) / ".git").exists() and (Path(src) / "install.sh").exists() else "manual"
 
+    _kind = None
+
+    @classmethod
+    def pkg_kind(cls):
+        """Which package manager owns this install: deb | rpm | arch | "" (asked once)."""
+        if cls._kind is None:
+            cls._kind = ""
+            f = str(APP_DIR / "server.py")
+            for kind, cmd in (("deb", ["dpkg", "-S", f]), ("rpm", ["rpm", "-qf", f]), ("arch", ["pacman", "-Qo", f])):
+                if shutil.which(cmd[0]):
+                    try:
+                        if subprocess.run(cmd, capture_output=True, timeout=10).returncode == 0:
+                            cls._kind = kind
+                            break
+                    except (OSError, subprocess.SubprocessError):
+                        pass
+        return cls._kind
+
+    @classmethod
+    def pkg_command(cls, path):
+        """How to install a downloaded package file, as root."""
+        return {"deb": ["apt-get", "install", "-y", str(path)], "rpm": ["dnf", "install", "-y", str(path)],
+                "arch": ["pacman", "-U", "--noconfirm", str(path)]}.get(cls.pkg_kind())
+
+    @classmethod
+    def can_install(cls):
+        how = cls.how()
+        if WIN:
+            return bool(cls.info.get("setup"))
+        if how == "git":
+            return True
+        return how == "package" and bool(cls.pkg_kind() and cls.info.get(cls.pkg_kind()) and shutil.which("pkexec"))
+
     @classmethod
     def status(cls):
         latest = cls.info.get("latest") or ""
         return {"current": VERSION, "latest": latest, "newer": bool(latest) and vtuple(latest) > vtuple(VERSION),
-                "url": cls.info.get("url") or "", "how": cls.how(), "state": cls.state, "error": cls.error}
+                "url": cls.info.get("url") or "", "how": cls.how(), "pkg": "" if WIN else cls.pkg_kind(),
+                "can_install": cls.can_install(), "state": cls.state, "error": cls.error}
 
     @classmethod
     def install(cls):
@@ -2452,9 +2497,10 @@ class Updates:
                 print(f"[void] update: running {exe}", flush=True)
                 return                                 # setup stops us and updates Void; the helper starts him again
             how = cls.how()
+            if how == "package":
+                return cls._install_package()
             if how != "git":
-                raise RuntimeError("update Void with your package manager" if how == "package"
-                                   else "update by running install.sh from the folder you installed from")
+                raise RuntimeError("update by running install.sh from the folder you installed from")
             src = (DATA_DIR / "source").read_text().strip()
             void_bin = Path.home() / ".local" / "bin" / "void"
             res = DATA_DIR / "update.result"
@@ -2469,6 +2515,31 @@ class Updates:
         except Exception as e:  # noqa: BLE001
             cls.state, cls.error = "failed", str(e)
             print(f"[void] update failed: {e}", file=sys.stderr)
+
+    @classmethod
+    def _install_package(cls):
+        """A .deb / .rpm / Arch package install: download the new package from the release and install it as root
+        (pkexec: your desktop asks for your password), then start Void again. Runs on its own, like the git path."""
+        import urllib.request
+        kind, url = cls.pkg_kind(), cls.info.get(cls.pkg_kind() or "-")
+        if not kind or not url:
+            raise RuntimeError("this release has no package for your system — update with your package manager")
+        d = DATA_DIR / "update-pkg"
+        shutil.rmtree(d, ignore_errors=True)
+        d.mkdir(parents=True)
+        f = d / url.rsplit("/", 1)[-1]
+        urllib.request.urlretrieve(url, f)
+        cmd = " ".join(shlex.quote(c) for c in cls.pkg_command(f))
+        (DATA_DIR / "update.hint").write_text(f"install it by hand: sudo {cmd}")
+        if not shutil.which("pkexec"):
+            raise RuntimeError(f"no pkexec here — run: sudo {cmd}")
+        res, void_bin = DATA_DIR / "update.result", shutil.which("void") or "/usr/bin/void"
+        script = (f'pkexec {cmd}; echo $? > {shlex.quote(str(res))}; '
+                  f'{shlex.quote(void_bin)} restart')
+        with open(DATA_DIR / "update.log", "ab") as log:
+            subprocess.Popen(["bash", "-c", script], stdout=log, stderr=subprocess.STDOUT,
+                             stdin=subprocess.DEVNULL, start_new_session=True)
+        print(f"[void] update: installing {f.name} with pkexec (log: update.log)", flush=True)
 
 
 # ---------------------------------------------------------------- diagnostics ("Copy diagnostics", `void diagnostics`)
