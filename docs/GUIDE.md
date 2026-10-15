@@ -27,7 +27,7 @@ New here? Start with the <a href="../README.md">README</a>: it gets you running 
 |---|---|
 | say **"hey Void"** | wakes him up (on by default; Settings → Voice). "Hey Void, run the tests" works in one go |
 | **left-click** him | talk; he stops listening when you stop talking |
-| **right-click** him | his sparks swirl out into the menu: talk · folder · history · show my screen · hover · top bar · settings · hide. Click him (or right-click again) to close it |
+| **right-click** him | his sparks swirl out into the menu: talk · folder · history · show my screen · hover · settings · hide. Click him (or right-click again) to close it |
 | **Ctrl+N** or say "new chat" | starts a fresh conversation |
 | hold **Space** | push-to-talk |
 | **click** him or tap **Space** while he's working or talking | cuts him off. A click then listens; holding Space lets you talk straight away |
@@ -130,9 +130,9 @@ he only keeps up while the mouse is over older (X11) apps.
 Instead of floating, he can **merge into an edge of your screen** as a black notch, like the one on a MacBook, with
 just his eyes showing. Everything else works the same.
 
-- **Turn it on:** right-click → **top bar** (next to hover mode), or just **drag him into a screen edge**: top, bottom,
+- **Turn it on:** **drag him into a screen edge**: top, bottom,
   left or right. Let go with the mouse right at the edge and he merges in.
-- **Get the orb back:** drag the notch away from the edge and he pops out under your mouse, or right-click → **blob**.
+- **Get the orb back:** drag the notch away from the edge and he pops out under your mouse (the notch melts back into the wall).
   He remembers both where you parked the orb and which edge he likes.
 - **Talking:** the whole notch glows while you talk (brighter the louder you are) and pulses while he speaks. The
   "hey Void" flash matches the notch.

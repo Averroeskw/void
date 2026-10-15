@@ -131,7 +131,7 @@ It gets the system packages for you (pacman, apt or dnf) and updates itself with
 | **1** | Start Void | He appears in the bottom-right corner. Drag him anywhere; he remembers the spot. |
 | **2** | Say **"hey Void"** | His ring lights up and moves with your voice. (Or just **click** him.) |
 | **3** | Ask for something | He works in the current folder. Say "switch to my project" or right-click → *folder* to change it. |
-| **4** | **Right-click** him | His menu: talk, folder, history, show my screen, hover mode, top bar, settings. |
+| **4** | **Right-click** him | His menu: talk, folder, history, show my screen, hover mode, settings. |
 | **5** | **Push him into a screen edge** | He merges into it as a notch, with just his eyes. Click the notch for his menu (click again to close it). Drag him out to get the orb back. |
 
 > [!TIP]
@@ -174,7 +174,7 @@ It gets the system packages for you (pacman, apt or dnf) and updates itself with
 <td align="center"><img src="assets/demo/notch.webp" width="300" alt="Void as a notch at the top of the screen: listening, talking, running a command, and his menu"><br>
 <b>He becomes a notch</b><br><sub>He glows while you talk, and his words and commands drop out of the notch. Clicks go through to what's under it.</sub></td>
 <td align="center"><img src="assets/demo/edges.webp" width="300" alt="Void merging into the top, right, bottom and left edges of the screen"><br>
-<b>Top, bottom, left or right</b><br><sub>Drag him into any edge (or right-click → <b>top bar</b>). Drag him out and he's the orb again. Windows and Linux.</sub></td>
+<b>Top, bottom, left or right</b><br><sub>Drag him into any edge and he melts into it. Drag him out and he's the orb again. Windows and Linux.</sub></td>
 </tr>
 </table>
 
