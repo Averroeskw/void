@@ -117,7 +117,7 @@ W, H = 340, 460
 WIDE = 470                   # while settings / history / memory are open the window widens to this
 CODE_SIDE = 100              # room on each side for the code panel when he swings it out to his side
 BAR_SIDE = 70                # docked at the top / bottom: room either side of the notch, so his glow fades out in it
-GLIDE = 0.42                 # seconds the window takes to glide into the notch and back (the page's morph matches it)
+GLIDE = 0.26                 # seconds the window takes to glide into the notch and back (quick: it should feel snappy)
 SOCK = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or "/tmp", f"void-{os.getuid()}.sock")
 BALL = (170, 165)            # where the ball's centre sits inside the window (CSS px)
 POS_FILE = os.path.join(os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share"), "void", "pos.json")
@@ -546,6 +546,7 @@ class VoidWindow:
         screen edge docks him there. panel=True: a panel's header is being dragged, so neither happens."""
         if self.hover:
             return
+        self.glide_n += 1                               # grabbed: any glide stops right here
         self.pmoving = panel
         if self.bar and not panel:
             c = self._cursor_or_none()

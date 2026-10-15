@@ -38,7 +38,7 @@ W, H = 340, 460
 WIDE = 470                   # while settings / history / memory are open the window widens to this
 CODE_SIDE = 100              # room either side for his terminal
 BAR_SIDE = 70                # docked at the top / bottom: room either side of the notch, so his glow fades out in it
-GLIDE = 0.42                 # seconds the window takes to glide into the notch and back (the page's morph matches it)
+GLIDE = 0.26                 # seconds the window takes to glide into the notch and back (quick: it should feel snappy)
 BALL = (170, 165)            # where the ball's centre sits inside the window
 DATA = winsys.data_dir()
 POS_FILE, PORT_FILE = DATA / "pos.json", DATA / "window.port"
@@ -304,6 +304,7 @@ class VoidWindow(QWidget):
         self._drag_t.start()
 
     def _drag(self):
+        self.glide_n += 1                                                # grabbed: any glide stops right here
         if self.bar:                                                     # pulling the bar away: out pops the blob,
             c = QCursor.pos()                                            # under your mouse, still being dragged
             self.set_wide(False, "bar")                                  # (first: it changes wide_shift)
@@ -316,6 +317,7 @@ class VoidWindow(QWidget):
     def _pmove(self):
         """Dragging a panel's header: move the window as it is (no undocking, no docking on drop; in the bar the
         page sends bar:<edge> when the panel closes, which puts the notch back)."""
+        self.glide_n += 1
         if not self.hover and self.windowHandle():
             self._set_through(False)
             self.windowHandle().startSystemMove()
