@@ -58,9 +58,21 @@ from_package(){
     *)    return 1 ;;
   esac
   say "Finding the latest release…"
-  url="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
+  url=""
+  [ -n "${VOID_NO_API:-}" ] || url="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
          | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*"\(http[^"]*\)"/\1/' | grep -E -e "$pat" | head -n 1)" || true   # (-e: Arch's starts with "-")
-  [ -n "$url" ] || { warn "the latest release has no $KIND package"; return 1; }
+  if [ -z "$url" ]; then
+    # GitHub's API limits anonymous requests (shared networks hit it): read the normal release page instead
+    local tag
+    tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/$REPO/releases/latest" 2>/dev/null)" || true
+    tag="${tag##*/}"
+    if [ -n "$tag" ] && [ "$tag" != latest ]; then
+      url="$(curl -fsSL "https://github.com/$REPO/releases/expanded_assets/$tag" 2>/dev/null \
+             | grep -o 'href="[^"]*/releases/download/[^"]*"' | sed 's/^href="//; s/"$//' | grep -E -e "$pat" | head -n 1)" || true
+      [ -n "$url" ] && url="https://github.com$url"
+    fi
+  fi
+  [ -n "$url" ] || { warn "couldn't find a $KIND package in the latest release"; return 1; }
   f="$TMP/${url##*/}"
   say "Downloading ${url##*/}…"
   curl -fL --progress-bar -o "$f" "$url" || { warn "download failed"; return 1; }
