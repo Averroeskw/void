@@ -1908,7 +1908,7 @@ function setBarClass(edge,pulled){
   } else EDGES.forEach(e=>b.classList.remove('e-'+e));
   const l=$('[data-a="bar"] span'); if(l) l.textContent=edge?'blob':'top bar'; sendRegion(true);
 }
-window.voidDock=(edge,how)=>{ edge=EDGES.includes(edge)?edge:''; setBarClass(edge,how==='pull'); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
+window.voidDock=(edge,how)=>{ edge=EDGES.includes(edge)?edge:''; if(menuOn) menu(false); setBarClass(edge,how==='pull'); info.presence=edge?'bar':'orb'; info.bar_edge=edge||info.bar_edge;
   setSetting(edge?{presence:'bar',bar_edge:edge}:{presence:'orb'});
   if(edge) poke('wink',900); };                 // (back out: the pop of his ball is reaction enough — no confetti)
 async function toggleBar(force){
