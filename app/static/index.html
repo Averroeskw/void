@@ -203,7 +203,7 @@ body.gooing #menu:not(.on) .mb{transform:translate(0,0) scale(.1);transition:tra
 
 /* panels (settings, history, memory, actions) */
 .pn{position:fixed;left:12px;right:12px;top:34px;max-height:calc(100vh - 46px);display:flex;flex-direction:column;border-radius:18px;
-  background:var(--panel);border:1px solid var(--edge);box-shadow:0 6px 20px #000a,0 0 18px var(--accA);font-size:12.5px;z-index:6;
+  background:var(--panel);border:1px solid var(--edge);box-shadow:0 0 9px var(--accA);   /* small: a big dark shadow got cut by the window edge and left dim pixels */font-size:12.5px;z-index:6;
   opacity:0;transform:translateY(-10px) scale(.96);pointer-events:none;transition:opacity .4s var(--ease),transform .6s var(--ease)}
 .pn.on{opacity:1;transform:none;pointer-events:auto}
 .pn .hd{display:flex;align-items:center;gap:8px;padding:11px 12px 6px 15px}
