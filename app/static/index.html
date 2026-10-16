@@ -192,6 +192,7 @@ body.bar #code .l.out{color:#b5b5b5}
   display:grid;place-items:center;cursor:pointer;opacity:0;transform:translate(var(--x),var(--y)) scale(.15);box-shadow:0 8px 22px #000b;
   transition:transform .25s ease-in,opacity .18s linear,background .2s}
 #menu.on{pointer-events:auto}
+body.gooing #menu:not(.on) .mb{transform:translate(0,0) scale(.1);transition:transform .16s ease-in,opacity .12s linear}  /* docking: sucked into him as he melts */
 #menu.on .mb{opacity:1;transform:translate(var(--x),var(--y)) scale(1);transition:transform .5s var(--ease) var(--d,.3s),opacity .3s linear var(--d,.3s),background .2s}
 .mb:hover,.mb.on{background:var(--deep);border-color:var(--edge2)}
 .mb svg{width:18px;height:18px}
