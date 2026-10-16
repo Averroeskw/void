@@ -233,6 +233,74 @@ class Hypr:
                 self.addr = None
 
 
+class Ghost:
+    """The notch left on the wall when he's pulled out of it: it melts back into the screen edge on its own (black,
+    shrinking into the edge) while he goes wherever you take him. Click-through, never takes focus, gone in 0.3 s.
+    x, y: margins on monitor `mon` (layer-shell) or screen coordinates (X11)."""
+    def __init__(self, x, y, w, h, edge, mon=None):
+        self.edge, self.k, self.t0 = edge, 1.0, time.monotonic()
+        g = self.win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL if mon is not None else Gtk.WindowType.POPUP)
+        g.set_decorated(False)
+        g.set_app_paintable(True)
+        g.set_accept_focus(False)
+        g.set_default_size(w, h)
+        g.set_size_request(w, h)
+        visual = g.get_screen().get_rgba_visual()
+        if visual is not None:
+            g.set_visual(visual)
+        if mon is not None:
+            L = GtkLayerShell
+            L.init_for_window(g)
+            L.set_layer(g, L.Layer.OVERLAY)
+            L.set_namespace(g, "void-ghost")
+            L.set_monitor(g, mon)
+            L.set_anchor(g, L.Edge.TOP, True)
+            L.set_anchor(g, L.Edge.LEFT, True)
+            L.set_margin(g, L.Edge.LEFT, int(x))
+            L.set_margin(g, L.Edge.TOP, int(y))
+            L.set_exclusive_zone(g, -1)
+        else:
+            g.set_keep_above(True)
+            g.move(int(x), int(y))
+        g.connect("draw", self._draw)
+        g.show_all()
+        g.get_window().input_shape_combine_region(cairo.Region(), 0, 0)   # clicks go straight through it
+        GLib.timeout_add(10, self._step)
+
+    def _step(self):
+        p = min(1.0, (time.monotonic() - self.t0) / 0.3)
+        self.k = 1 - p * p                                 # eases in: it lets go, then is drawn away
+        if p >= 1:
+            self.win.destroy()
+            return False
+        self.win.queue_draw()
+        return True
+
+    def _draw(self, win, cr):
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+        w, h, k, o = win.get_allocated_width(), win.get_allocated_height(), self.k, 24   # o: runs off the edge
+        if self.edge in ("top", "bottom"):
+            rw, rh = w * (0.55 + 0.45 * k), h * k
+            x, y, bw, bh, r = (w - rw) / 2, (-o if self.edge == "top" else h - rh), rw, rh + o, min(18, rh)
+        else:
+            rw, rh = w * k, h * (0.55 + 0.45 * k)
+            x, y, bw, bh, r = (-o if self.edge == "left" else w - rw), (h - rh) / 2, rw + o, rh, min(18, rw)
+        if bw > 0 and bh > 0:
+            r = max(0.0, min(r, bw / 2, bh / 2))
+            cr.new_sub_path()
+            cr.arc(x + bw - r, y + r, r, -math.pi / 2, 0)
+            cr.arc(x + bw - r, y + bh - r, r, 0, math.pi / 2)
+            cr.arc(x + r, y + bh - r, r, math.pi / 2, math.pi)
+            cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
+            cr.close_path()
+            cr.set_source_rgb(0, 0, 0)
+            cr.fill()
+        return True
+
+
 class VoidWindow:
     def __init__(self, url):
         w = self.win = Gtk.Window(title="Void")
@@ -550,6 +618,22 @@ class VoidWindow:
         self.pmoving = panel
         if self.bar and not panel:
             c = self._cursor_or_none()
+            # the notch stays on the wall and melts away (not on Hyprland without layer-shell: a new window gets tiled)
+            if c and cairo is not None and (self.layer or not self.hypr.ok()):
+                bx, e = self.mx + self.wide_shift, self.bar
+                nx, ny, nw, nh = {"top": (bx + 170 - 140, self.my, 280, 52),
+                                  "bottom": (bx + 170 - 140, self.my + H - 52, 280, 52),
+                                  "left": (bx, self.my + 230 - 115, 68, 230),
+                                  "right": (bx + W - 68, self.my + 230 - 115, 68, 230)}[e]
+                mon = self._geom()[0] if self.layer else None
+
+                def ghost():
+                    try:
+                        self.ghost = Ghost(nx, ny, nw, nh, e, mon)
+                    except Exception as ex:  # noqa: BLE001
+                        log(f"ghost notch: {ex}")
+                    return False
+                GLib.timeout_add(30, ghost)          # (a moment later: a new window right as the drag starts can upset it)
             self.set_bar(None, to=(c[0] - BALL[0], c[1] - BALL[1]) if c else "here")
         if not self.layer:
             seat = Gdk.Display.get_default().get_default_seat()
