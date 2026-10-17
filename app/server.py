@@ -3006,9 +3006,13 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/resume":
                 b = json.loads(self._body() or b"{}")
                 d = b.get("cwd") or ST.cwd
-                if not os.path.isdir(d):
+                try:
+                    d_path = Path(d).expanduser().resolve()
+                except Exception:
                     return self._json({"error": f"that folder is gone: {pretty_path(d)}"}, 400)
-                ST.cwd, ST.session = d, b.get("session") or None
+                if not d_path.is_dir():
+                    return self._json({"error": f"that folder is gone: {pretty_path(str(d_path))}"}, 400)
+                ST.cwd, ST.session = str(d_path), b.get("session") or None
                 ST.save()
                 APPROVALS.reset()
                 return self._json(state_info())
