@@ -98,6 +98,8 @@ DEFAULTS = {
     # (old setting, still honoured if you set it by hand and "trust" is missing)
     "permission_mode": "acceptEdits",
     "model": "",
+    # how hard Claude thinks (claude --effort): low | medium | high | xhigh | max
+    "effort": "high",
     "extra_args": [],
     "partial_messages": True,
     "voice_prompt": VOICE_PROMPT,
@@ -1199,7 +1201,7 @@ class Listen:
                                 vad_last = now - (len(tail) / (RATE * 2) - e)
                             elif e is False:
                                 vad_last = now
-                        if spoke and (now - last_voice > 1.2 or now - vad_last > 1.0):
+                        if spoke and (now - last_voice > 1.2 or now - vad_last > 1.6):
                             reason = "done"
                         elif not spoke and now - t0 > 8:
                             reason, self.cancel = "nospeech", True
@@ -1356,7 +1358,7 @@ class Wake:
         pre, n, vad_at, vad_last = bytearray(), 0, 0.0, 0.0
         cls.cut = None
         try:
-            while cls.should_run():
+            while cls.should_run() or (in_speech and not cls.asleep and not Listen.lock.locked()):   # (finish what you started saying)
                 try:
                     buf += mic.read(0.2)
                 except EOFError:
@@ -1395,7 +1397,7 @@ class Wake:
                                 vad_last = now - (len(tail) / (RATE * 2) - e)
                             elif e is False:
                                 vad_last = now
-                        if now - last_voice > 0.7 or now - vad_last > 0.9 or len(seg) > RATE * 2 * 12:
+                        if now - last_voice > 0.7 or now - vad_last > 1.3 or len(seg) > RATE * 2 * 12:
                             in_speech = False
                             if len(seg) > RATE * 2 * 0.35:
                                 cls.check(bytes(seg), started)
@@ -1418,6 +1420,9 @@ class Wake:
         if not cls.speaking():                   # (while he talks the mic also hears him: don't tune to his voice)
             MicAuto.learn(pcm)
         try:
+            ss = speech_seconds(pcm)
+            if ss < 0.25 or ss < len(pcm) / (RATE * 2) * 0.2:    # music or noise, not talking: don't let Whisper dream up words
+                return
             text = transcribe_pcm(pcm) if follow else transcribe_pcm(pcm, beam=1, hint="Hey Void.")
         except Exception as e:  # noqa: BLE001
             print(f"[void] wake word stt: {e}", file=sys.stderr)
@@ -2328,6 +2333,9 @@ def hooks_file():
     return str(HOOKS_PATH)
 
 
+EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+
 def build_cmd(binary, partial):
     c = [binary, "-p", "--output-format", "stream-json", "--verbose"]
     if partial:
@@ -2344,6 +2352,8 @@ def build_cmd(binary, partial):
         mdl = ST.auto_pick or ""
     if mdl:
         c += ["--model", mdl]
+    if CFG.get("effort") in EFFORTS:
+        c += ["--effort", CFG["effort"]]
     sp = CFG["voice_prompt"] or ""
     if CFG.get("root_mode"):
         sp += ("\n\nRoot mode is ON: the user allows you to run any command, including ones that need root. "
@@ -2839,7 +2849,7 @@ def state_info():
         "bar_edge": CFG.get("bar_edge") if CFG.get("bar_edge") in ("top", "bottom", "left", "right") else "top",
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
-        "trust": trust(), "model": CFG["model"] or "default", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
+        "trust": trust(), "model": CFG["model"] or "default", "effort": CFG.get("effort") or "", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
 
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),
         "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "live_minutes": int(CFG.get("live_minutes") or 10), "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
@@ -3002,6 +3012,8 @@ class Handler(BaseHTTPRequestHandler):
                 if "model" in b:
                     m = str(b["model"] or "").strip()
                     upd["model"] = "" if m in ("", "default") else m
+                if b.get("effort") in EFFORTS or b.get("effort") == "":
+                    upd["effort"] = b["effort"]
                 if "voice" in b and b["voice"] in VOICES:
                     upd["voice"] = b["voice"]
                     if VOICES[b["voice"]].get("piper"):

@@ -148,7 +148,7 @@ body.bar #code .l.out{color:#b5b5b5}
 #you{font-size:12px;color:var(--dim);text-shadow:0 1px 2px #000,0 0 5px #0009;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 #you.pop{animation:wIn .7s var(--ease) both}
 /* "Show everything I said": the last few lines of it, wrapped, instead of one cut-off line */
-body.fulltext #cap{top:236px;height:160px}
+body.fulltext #cap{height:150px}
 body.fulltext #you{white-space:normal;max-height:4.2em;line-height:1.4;display:flex;flex-direction:column;justify-content:flex-end;text-overflow:clip}
 .ctxbar{height:6px;border-radius:3px;background:#ffffff1a;overflow:hidden;margin:2px 0 8px}
 .ctxbar i{display:block;height:100%;width:0;background:#3d9b74;transition:width .6s var(--ease),background .6s}
@@ -555,6 +555,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
     <div class="tab" data-tab="brain">
       <div class="row"><div class="t">How much can he do on his own?</div><div class="opts" id="trustOpts"></div></div>
       <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div></div>
+      <div class="row"><div class="t">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan.</div><div class="seg" id="effortChips"></div></div>
       <div class="row"><div class="t">His memory of this chat</div><div class="h" id="ctxTxt"></div>
         <div class="ctxbar" id="ctxBar"><i></i></div>
         <label class="tg"><input type="checkbox" id="compactSw"><span class="sw"></span><span class="l">Tidy up automatically<small>When it's about 70% full he writes himself a short note and carries on in a fresh chat, so a long session can't quietly eat your usage.</small></span></label>
@@ -2001,6 +2002,7 @@ window.voidLook=(dx,dy)=>{ lastMouse=performance.now(); const m=mood(lastMouse);
   if(['idle','listening','talking','curious','surprised','wink','love'].includes(m)||isTalk(m)){ tx=clamp(dx*6,-7,7); ty=clamp(dy*5,-6,6); } };
 
 /* ================= settings ================= */
+const EFFORTS=['low','medium','high','xhigh','max'];
 const MODELS=[['auto','Auto'],['default','Default'],['opus','Opus'],['sonnet','Sonnet'],['haiku','Haiku']];
 const STT=[['tiny.en','Fastest'],['base.en','Fast'],['auto','Balanced'],['medium.en','Best']];
 const TRUST=[['ask','✋','Ask me first','Edits files on his own; asks you (out loud) before running commands or going online.'],
@@ -2084,6 +2086,7 @@ $('#pkAll').addEventListener('click',()=>{ const L=curLook(), R=randomLook(L); O
 function renderSettings(){
   { const rr=$('#rootSw').closest('.row'); if(rr) rr.style.display=info.root_ok===false?'none':''; }   // no sudo on Windows
   const cur=(info.model||'default');
+  $('#effortChips').innerHTML=EFFORTS.map(e=>`<button data-eff="${e}" class="${(info.effort||'')===e?'on':''}">${e}</button>`).join('');
   $('#modelChips').innerHTML=MODELS.map(([id,l])=>`<button data-m="${id}" class="${cur===id?'on':''}">${l}</button>`).join('');
   $('#voiceChips').innerHTML=(info.voices||[]).map(v=>`<button data-v="${v.id}" class="${info.voice===v.id?'on':''}">${v.label}${v.downloading?'<i>⇣</i>':''}</button>`).join('');
   const sw={rootSw:info.root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
@@ -2173,6 +2176,7 @@ function setLook(patch){ clearTimeout(saveT); const L={...curLook(),...patch}; i
 setEl.addEventListener('click',e=>{
   if(e.target.closest('[data-close]')) return settings(false);
   const g=k=>e.target.closest(`[data-${k}]`);
+  const be=g('eff'); if(be) return setSetting({effort:be.dataset.eff}).then(()=>tick('effort → '+be.dataset.eff));
   const bm=g('m'), bv=g('v'), bp=g('ps'), bs=g('stt'), bt=g('trust'), bo=g('open'), bk=g('skin'), bsw=g('sw'), bpd=g('pdel');
   const part=e.target.closest('#lookPrev [data-part], #partChips [data-part]');
   if(part&&part.dataset.part) return selectPart(part.dataset.part);
@@ -2244,6 +2248,7 @@ async function slash(cmd){
   if(c==='clip'||c==='clipboard') return shoot('clipboard');
   if(c==='remember') return send('remember '+arg);
   if(c==='forget') return send('forget '+arg);
+  if(c==='effort'){ if(!EFFORTS.includes(arg)) return tick('/effort <'+EFFORTS.join('|')+'>',true); await setSetting({effort:arg}); return tick('effort → '+arg); }
   if(c==='model'){ await setSetting({model:arg||'default'}); tick('model → '+(info.model||'default')); return; }
   if(c==='voice'){ if(arg) await setSetting({voice:arg}); else settings(true,'voice'); return; }
   if(c==='settings') return settings(true);
@@ -2445,10 +2450,9 @@ const CP=(()=>{
     sp.x=clamp(sp.x,half-6,innerWidth-half+6);              // a springy overshoot mustn't poke out of the window
     sp.r+=(clamp(sp.vx*.02,-6,6)-sp.r)*Math.min(1,dt*8);   // tips a little only while it's moving
     pos={x:sp.x,y:sp.y,cx,cy};
-    const turn=clamp((sp.x-cx)/(r+W/2),-1,1);
-    // facing him: flipped, swung toward his middle at the sides, leaning back toward his eyes (top wider from your side)
-    // facing you: readable, just angled a little toward him, leaning back slightly like a page he's holding up for you
-    const yaw=faceYou()?turn*-22:180+turn*45, lean=faceYou()?-8:22-clamp((cy-sp.y)/r,0,1)*14;
+    // flat to you, never turned sideways (that made one edge taller than the other). Facing him: flipped and leaning
+    // back toward his eyes; facing you: straight on, readable
+    const yaw=faceYou()?0:180, lean=faceYou()?0:22-clamp((cy-sp.y)/r,0,1)*14;
     el.style.transform=`translate(${(sp.x-W/2).toFixed(1)}px,${(sp.y-H/2).toFixed(1)}px) rotate(${sp.r.toFixed(2)}deg) perspective(420px) rotateY(${yaw.toFixed(1)}deg) rotateX(${lean.toFixed(1)}deg)`;
   }
   requestAnimationFrame(tick);
