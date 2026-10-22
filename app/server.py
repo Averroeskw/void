@@ -154,7 +154,7 @@ DEFAULTS = {
     "auto_compact": True,
     "compact_at": 0.7,
     # show everything you said in the caption (the end of it, wrapped) instead of one cut-off line
-    "full_text": False,
+    "full_text": True,
     # live view ("watch my screen"): turns itself off after this many minutes without you saying anything
     "live_minutes": 10,
     # little sound effects
