@@ -10,6 +10,7 @@ Local server (127.0.0.1 only) that:
 """
 import argparse
 import array
+import collections
 import io
 import json
 import math
@@ -146,6 +147,12 @@ DEFAULTS = {
     "barge_in": True,
     # for this many seconds after he stops talking, just talk — no "hey Void" needed (0 = off)
     "follow_up": 4,
+    # context: he tracks how full Claude's memory of the chat is; past `compact_at` he writes himself a short note and
+    # starts a fresh chat from it (so a long session can't quietly eat your usage). Off = only warn.
+    "auto_compact": True,
+    "compact_at": 0.7,
+    # show everything you said in the caption (the end of it, wrapped) instead of one cut-off line
+    "full_text": False,
     # live view ("watch my screen"): turns itself off after this many minutes without you saying anything
     "live_minutes": 10,
     # little sound effects
@@ -234,11 +241,19 @@ class State:
         if not os.path.isdir(self.cwd):
             self.cwd = str(Path.home())
         self.session = s.get("session")
+        self.notes = s.get("notes") or ""          # the handoff note written when the context was compacted
+        self.ctx_used, self.ctx_max = int(s.get("ctx_used") or 0), int(s.get("ctx_max") or 200000)
+        self.compacting = False
         self.auto_pick = ""
 
     def save(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        STATE_PATH.write_text(json.dumps({"cwd": self.cwd, "session": self.session}))
+        STATE_PATH.write_text(json.dumps({"cwd": self.cwd, "session": self.session, "notes": self.notes,
+                                          "ctx_used": self.ctx_used, "ctx_max": self.ctx_max}))
+
+    def fresh(self, session=None):
+        """A different chat: no old context, no old handoff note."""
+        self.session, self.notes, self.ctx_used = session, "", 0
 
 
 ST = State()
@@ -319,6 +334,9 @@ def memory_prompt(fresh):
     if notes:
         parts.append("Things the user asked you to remember (keep using them):\n" +
                      "\n".join(f"- {n['text']}" for n in notes[-60:]))
+    if ST.notes:                                # the chat was compacted: this is what happened so far
+        parts.append("Notes you wrote when this chat got long (what's done and what's open — carry on from here):\n"
+                     + ST.notes)
     if fresh:                                   # a new conversation: give him a sense of what happened lately
         recent = [h for h in hist_load(8) if h.get("you")][:6]
         if recent:
@@ -971,6 +989,33 @@ RATE = 16000
 FRAME = RATE * 2 * 40 // 1000               # 40 ms of s16le mono = 1280 bytes
 
 
+class Floor:
+    """The room's noise level: the quiet end (20th percentile) of the last ~3 s. Steady background (music, a fan) lifts
+    it within seconds, and the pauses between words still count as quiet. `hold` skips a frame (you're talking)."""
+
+    def __init__(self):
+        self.h = collections.deque(maxlen=75)
+        self.v = 0.0
+
+    def update(self, rms, hold=False):
+        if not hold or not self.h:
+            self.h.append(rms)
+            self.v = sorted(self.h)[len(self.h) // 5]
+        return self.v
+
+
+def last_speech_end(pcm: bytes):
+    """Where, in seconds into `pcm`, someone is last heard talking (the speech detector, so music doesn't count).
+    None: nobody. False: no detector available."""
+    try:
+        from faster_whisper.vad import VadOptions, get_speech_timestamps
+        ts = get_speech_timestamps(pcm_audio(pcm), VadOptions(min_speech_duration_ms=120, min_silence_duration_ms=300,
+                                                              speech_pad_ms=0))
+    except Exception:  # noqa: BLE001
+        return False
+    return ts[-1]["end"] / RATE if ts else None
+
+
 class MicAuto:
     """Keeps your voice at a level he hears well. After you speak: if it came in quiet, turn the mic's Windows level up;
     if it clipped, turn it down. Once Windows is at 100% and you're still quiet, `soft` boosts what the speech detector
@@ -1119,7 +1164,9 @@ class Listen:
         emit(t="open", rec=name)
         pcm = bytearray()
         t0 = time.monotonic()
+        fl = Floor()
         floor, spoke, voiced, last_voice, peak, clipped = None, False, 0, t0, 0.0, 0
+        vad_at = vad_last = 0.0
         reason = "stop"
         try:
             while True:
@@ -1132,24 +1179,27 @@ class Listen:
                     peak = max(peak, rms)
                     clipped += sum(1 for x in s if x > 32500 or x < -32500)
                     now = time.monotonic()
-                    # noise floor: settles over the first ~quarter second, then drifts slowly toward quiet
-                    if floor is None:
-                        floor = rms
-                    elif now - t0 < 0.3 or rms < floor:
-                        floor = floor * 0.8 + rms * 0.2
-                    else:
-                        floor = floor * 0.998 + rms * 0.002
+                    floor = fl.update(rms, hold=voiced >= 3)
                     thr = max(0.012, floor * 3.0)
                     voiced = min(4, voiced + 1) if rms > thr else max(0, voiced - 1)
                     if voiced >= 3:
                         if not spoke:
                             emit(t="speech")
+                            vad_last = now
                         spoke, last_voice = True, now
                     elif spoke and rms > thr * 0.6:
                         last_voice = now
                     emit(t="lvl", v=round(min(1.0, max(0.0, (rms - floor) * 12)), 3))
                     if self.mode == "auto":
-                        if spoke and now - last_voice > 1.2:
+                        if spoke and now - vad_at > 0.4:
+                            vad_at = now                # loud music keeps the level up: ask the speech detector too
+                            tail = bytes(pcm[-RATE * 2:])
+                            e = last_speech_end(tail)
+                            if e:
+                                vad_last = now - (len(tail) / (RATE * 2) - e)
+                            elif e is False:
+                                vad_last = now
+                        if spoke and (now - last_voice > 1.2 or now - vad_last > 1.0):
                             reason = "done"
                         elif not spoke and now - t0 > 8:
                             reason, self.cancel = "nospeech", True
@@ -1175,6 +1225,12 @@ class Listen:
             return
         if spoke or (floor is not None and peak > max(0.001, floor * 2.5)):   # you said something, maybe too quietly
             MicAuto.learn(bytes(pcm))
+        if spoke and self.mode == "auto" and not self.cancel and reason == "done":
+            try:
+                if speech_seconds(bytes(pcm)) < 0.25:     # it was the music, not you
+                    self.cancel, reason = True, "nospeech"
+            except Exception:  # noqa: BLE001
+                pass
         if self.cancel:
             emit(t="cancel", why=reason)
             return
@@ -1235,12 +1291,19 @@ class Wake:
 
     @classmethod
     def speaking(cls):
-        return time.monotonic() < cls.speaking_until
+        """Talking, or about to: more sentences are waiting (his voice must never count as yours)."""
+        return time.monotonic() < cls.speaking_until or not Speaker.idle()
+
+    @classmethod
+    def window_open(cls):
+        """The "just talk" window: after he's done, and not while Claude is still working on the answer."""
+        return not cls.speaking() and cls.follow_from <= time.monotonic() < cls.follow_until and not ST.lock.locked()
 
     @classmethod
     def talking_until(cls, end):
-        """He's talking until `end`; the follow-up window opens then."""
-        cls.speaking_until = cls.follow_from = end
+        """He's talking until `end`; the follow-up window opens just before that, so a quick answer isn't lost."""
+        cls.speaking_until = end
+        cls.follow_from = end - 0.15
         cls.follow_until = end + float(CFG.get("follow_up") or 0)
 
     @classmethod
@@ -1288,8 +1351,9 @@ class Wake:
     @classmethod
     def session(cls):
         mic, _name, buf = open_mic()
+        fl = Floor()
         floor, voiced, seg, in_speech, last_voice, started = None, 0, bytearray(), False, 0.0, 0.0
-        pre, n = bytearray(), 0
+        pre, n, vad_at, vad_last = bytearray(), 0, 0.0, 0.0
         cls.cut = None
         try:
             while cls.should_run():
@@ -1301,7 +1365,8 @@ class Wake:
                     fr, buf = buf[:FRAME], buf[FRAME:]
                     s = memoryview(fr).cast("h")
                     rms = (sum(x * x for x in s) / (len(fr) // 2)) ** 0.5 / 32768.0 * MicAuto.soft
-                    floor = rms if floor is None else (floor * 0.9 + rms * 0.1 if rms < floor else floor * 0.999 + rms * 0.001)
+                    # (his own voice, and the first seconds of yours, don't count as background)
+                    floor = fl.update(rms, hold=cls.speaking() or (in_speech and len(seg) < RATE * 2 * 4))
                     thr = max(0.015, floor * 3.2)
                     voiced = min(4, voiced + 1) if rms > thr else max(0, voiced - 1)
                     now = time.monotonic()
@@ -1311,7 +1376,7 @@ class Wake:
                             cls.check(bytes(seg), started)
                         in_speech, seg, cls.follow_until = False, bytearray(), 0.0
                     # you started talking inside the follow-up window: show him hearing you, ring/eyes move with your voice
-                    fol = in_speech and not cls.speaking() and cls.follow_from <= started < cls.follow_until
+                    fol = cls.window_open()               # shown the moment the window opens, so you know when to talk
                     if fol != cls.follow_on:
                         cls.follow_on = fol
                         BUS.pub(t="follow", on=fol)
@@ -1322,7 +1387,15 @@ class Wake:
                         seg += fr
                         if rms > thr * 0.6:
                             last_voice = now
-                        if now - last_voice > 0.7 or len(seg) > RATE * 2 * 12:
+                        if now - vad_at > 0.4:
+                            vad_at = now                      # music keeps the level up: ask the speech detector too
+                            tail = bytes(seg[-RATE * 2:])
+                            e = last_speech_end(tail)
+                            if e:
+                                vad_last = now - (len(tail) / (RATE * 2) - e)
+                            elif e is False:
+                                vad_last = now
+                        if now - last_voice > 0.7 or now - vad_last > 0.9 or len(seg) > RATE * 2 * 12:
                             in_speech = False
                             if len(seg) > RATE * 2 * 0.35:
                                 cls.check(bytes(seg), started)
@@ -1331,6 +1404,7 @@ class Wake:
                         pre = (pre + fr)[-FRAME * 8:]
                         if voiced >= 3:
                             in_speech, last_voice, seg, started = True, now, bytearray(pre), now
+                            vad_last = now
         finally:
             if cls.follow_on:
                 cls.follow_on = False
@@ -1340,7 +1414,7 @@ class Wake:
     @classmethod
     def check(cls, pcm, started):
         # started after he finished talking, inside the follow-up window → it's a request, no "hey Void" needed
-        follow = not cls.speaking() and cls.follow_from <= started < cls.follow_until
+        follow = not cls.speaking() and cls.follow_from <= started < cls.follow_until and not ST.lock.locked()
         if not cls.speaking():                   # (while he talks the mic also hears him: don't tune to his voice)
             MicAuto.learn(pcm)
         try:
@@ -1834,6 +1908,7 @@ class Speaker:
     ready = []           # (gen, id, text, pcm, prate, words, level) waiting to be played
     making = False
     gen = 0
+    epoch = 0            # the page's "he was cut off" count: sentences it sent before the cut-off are never played
     proc = None
     prate = None
     t0 = 0.0
@@ -1863,8 +1938,10 @@ class Speaker:
                 t.start()
 
     @classmethod
-    def say(cls, text, sid):
+    def say(cls, text, sid, epoch=None):
         with cls.cv:
+            if epoch is not None and epoch < cls.epoch:      # sent before you cut him off, arrived after
+                return
             cls.todo.append((cls.gen, sid, text))
             if all(isinstance(x[1], int) for x in cls.todo):     # sentences can arrive out of order: play them in order
                 cls.todo.sort(key=lambda x: (x[0], x[1]))
@@ -1877,8 +1954,9 @@ class Speaker:
             return not cls.todo and not cls.ready and not cls.making and cls.written / (cls.prate or 1) < time.monotonic() - cls.t0
 
     @classmethod
-    def stop(cls):
+    def stop(cls, epoch=None):
         with cls.cv:
+            cls.epoch = max(cls.epoch, epoch or 0)
             cls.gen += 1
             cls.todo.clear()
             cls.ready.clear()
@@ -2005,7 +2083,7 @@ class Speaker:
             start = cls.t0 + cls.written / cls.prate
             dur = len(pcm) / 2 / prate
             if g == cls.gen:                                     # (not if he was cut off meanwhile)
-                Wake.talking_until(start + dur + 0.8)
+                Wake.talking_until(start + dur + 0.45)
             cls.stats["sentences"] = cls.stats.get("sentences", 0) + 1
             cls.stats["audio_s"] = round(cls.stats.get("audio_s", 0) + dur, 2)
             BUS.pub(t="spk", id=sid, at=round((start - now + cls.LAT) * 1000), dur=round(dur, 3), words=words,
@@ -2286,6 +2364,62 @@ def build_cmd(binary, partial):
     return c
 
 
+def track_context(usage):
+    """How full Claude's memory of this chat is: what the last request read (new + cached input) out of the window."""
+    if isinstance(usage, dict):
+        ST.ctx_used = sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens",
+                                                            "cache_creation_input_tokens"))
+    BUS.pub(t="ctx", **context_info())
+
+
+def context_info():
+    mx = max(ST.ctx_max, 1)
+    return {"used": ST.ctx_used, "max": mx, "pct": round(ST.ctx_used / mx, 3), "notes": bool(ST.notes),
+            "compacting": ST.compacting}
+
+
+COMPACT_PROMPT = ("This chat is getting long, so you're about to start over from a note you write now. Write that note "
+                  "for yourself: plain text, under 350 words, no preamble. Cover the user's goal, what's done (files "
+                  "changed, decisions and why), what's still open or broken, and anything the user asked you to "
+                  "remember.")
+
+
+def compact_session():
+    """Ask Claude for a handoff note, then start a fresh chat that carries it. Returns True on success."""
+    binary = claude_bin()
+    if not (binary and ST.session):
+        return False
+    ask = (f"Earlier notes:\n{ST.notes}\n\n" if ST.notes else "") + COMPACT_PROMPT
+    ST.compacting = True
+    BUS.pub(t="ctx", **context_info())
+    try:
+        out = subprocess.run([binary, "-p", "--resume", ST.session, "--tools", "", "--output-format", "json"],
+                             input=ask, capture_output=True, text=True, timeout=180, cwd=ST.cwd).stdout
+        note = (json.loads(out).get("result") or "").strip()
+    except (OSError, subprocess.SubprocessError, ValueError):
+        note = ""
+    finally:
+        ST.compacting = False
+    if len(note) < 40:
+        BUS.pub(t="ctx", **context_info())
+        return False
+    ST.session, ST.notes, ST.ctx_used = None, note[:4000], 0
+    ST.save()
+    APPROVALS.reset()
+    BUS.pub(t="ctx", compacted=True, **context_info())
+    return True
+
+
+def auto_compact():
+    """After an answer: if the chat is past `compact_at` of the window, compact it (waits for any run in progress)."""
+    if not ST.lock.acquire(blocking=False):
+        return
+    try:
+        compact_session()
+    finally:
+        ST.lock.release()
+
+
 def run_claude(prompt, emit, partial):
     binary = claude_bin()
     if not binary:
@@ -2334,6 +2468,7 @@ def run_claude(prompt, emit, partial):
             elif ev.get("type") == "message_start":
                 emit(t="break")
         elif ty == "assistant":
+            track_context((o.get("message") or {}).get("usage"))
             for b in (o.get("message") or {}).get("content") or []:
                 if b.get("type") == "text" and not streamed and b.get("text"):
                     emitted = True
@@ -2359,6 +2494,11 @@ def run_claude(prompt, emit, partial):
             if o.get("session_id"):
                 ST.session = o["session_id"]
                 ST.save()
+            win = max([int(m.get("contextWindow") or 0) for m in (o.get("modelUsage") or {}).values()
+                       if isinstance(m, dict)] or [0])
+            if win:
+                ST.ctx_max = win
+                track_context(None)
             denied = o.get("permission_denials") or []
             if denied:
                 emit(t="denied", tools=sorted({d.get("tool_name", "?") for d in denied}))
@@ -2720,6 +2860,7 @@ def state_info():
                    for k, v in VOICES.items()],
         "voice_engine": tts_engine() or "none",
         "claude": bool(claude_bin()), "busy": ST.lock.locked(), "config": str(CONF_PATH),
+        "context": context_info(), "auto_compact": bool(CFG.get("auto_compact", True)), "full_text": bool(CFG.get("full_text")),
     }
 
 
@@ -2814,10 +2955,10 @@ class Handler(BaseHTTPRequestHandler):
                 if not text or not tts_engine():
                     BUS.pub(t="spk_skip", id=b.get("id"))
                 else:
-                    Speaker.say(text, b.get("id"))
+                    Speaker.say(text, b.get("id"), b.get("epoch"))
                 return self._json({"ok": True})
             if p == "/api/say/stop":
-                Speaker.stop()
+                Speaker.stop(json.loads(self._body() or b"{}").get("epoch"))
                 return self._json({"ok": True})
             if p == "/api/listen":
                 Wake.end_follow("cancel")                # a normal recording takes over from the follow-up window
@@ -2888,7 +3029,7 @@ class Handler(BaseHTTPRequestHandler):
                 if "follow_up" in b:
                     upd["follow_up"] = max(0, min(60, int(b.get("follow_up") or 0)))
                 for key in ("wake_word", "notify_done", "popup_done", "code_panel", "hover", "click_through", "autostart", "listen_on_show",
-                            "barge_in", "sfx", "update_check"):
+                            "barge_in", "sfx", "update_check", "auto_compact", "full_text"):
                     if key in b:
                         upd[key] = bool(b[key])
                 if "ptt_hotkey" in b:
@@ -2927,7 +3068,8 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/quick":
                 r = quick.handle(json.loads(self._body() or b"{}").get("text", ""))
                 if r and r.get("cd"):
-                    ST.cwd, ST.session = r["cd"], None
+                    ST.cwd = r["cd"]
+                    ST.fresh()
                     ST.save()
                     APPROVALS.reset()
                     r["state"] = state_info()
@@ -3012,14 +3154,24 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"error": f"that folder is gone: {pretty_path(d)}"}, 400)
                 if not d_path.is_dir():
                     return self._json({"error": f"that folder is gone: {pretty_path(str(d_path))}"}, 400)
-                ST.cwd, ST.session = str(d_path), b.get("session") or None
+                ST.cwd = str(d_path)
+                ST.fresh(b.get("session") or None)
                 ST.save()
                 APPROVALS.reset()
                 return self._json(state_info())
             if p == "/api/devices":
                 return self._json({"mics": list_mics()})
+            if p == "/api/compact":                   # "tidy up now"
+                if not ST.lock.acquire(blocking=False):
+                    return self._json({"error": "still working on the last one"}, 409)
+                try:
+                    if not ST.session:
+                        return self._json({"error": "nothing to tidy — this chat is empty"}, 400)
+                    return self._json({"ok": compact_session(), "context": context_info()})
+                finally:
+                    ST.lock.release()
             if p == "/api/new":
-                ST.session = None
+                ST.fresh()
                 ST.save()
                 APPROVALS.reset()
                 return self._json(state_info())
@@ -3028,7 +3180,8 @@ class Handler(BaseHTTPRequestHandler):
                 path = os.path.abspath(os.path.join(ST.cwd, os.path.expanduser(raw.strip() or "~")))
                 if not os.path.isdir(path):
                     return self._json({"error": f"not a directory: {pretty_path(path)}"}, 400)
-                ST.cwd, ST.session = path, None
+                ST.cwd = path
+                ST.fresh()
                 ST.save()
                 APPROVALS.reset()
                 return self._json(state_info())
@@ -3109,7 +3262,7 @@ class Handler(BaseHTTPRequestHandler):
                             r"error|script|function|write|edit|create|make|deploy|server|repo|update|delete|rename|"
                             r"search|find|install|package|config)\b", said, re.I)
         ST.auto_pick = "haiku" if (len(said) < 160 and not extra and not workish) else ""
-        if not ST.lock.acquire(blocking=False):
+        if not ST.lock.acquire(timeout=180 if ST.compacting else 0):    # (tidying its notes: wait, don't refuse)
             return self._json({"error": "still working on the last one"}, 409)
         try:
             self.send_response(200)
@@ -3188,7 +3341,7 @@ class Handler(BaseHTTPRequestHandler):
                     partial = False
                     continue
                 if r == "retry_fresh":
-                    ST.session = None
+                    ST.session, ST.ctx_used = None, 0
                     ST.save()
                     APPROVALS.reset()
                     emit(t="note", text="previous session couldn't be resumed — started fresh")
@@ -3205,6 +3358,8 @@ class Handler(BaseHTTPRequestHandler):
             emit(t="done")
         finally:
             ST.lock.release()
+        if CFG.get("auto_compact", True) and ST.ctx_used >= ST.ctx_max * float(CFG.get("compact_at") or 0.7):
+            threading.Thread(target=auto_compact, daemon=True).start()
         return None
 
 
