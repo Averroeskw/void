@@ -1675,9 +1675,11 @@ async function send(text,opts={}){
   const attach=atts; atts=[]; renderAtts();
   busy=true; toolMood=null; workWhat='thinking'; workT0=performance.now(); document.body.classList.add('busy');
   const kv=voiced(); let fresh=true;        // kv: the caption follows his voice instead of racing ahead of it
+  const ep0=sayEpoch;
   let buf='', spoken=0, all='', failed=false, stopped=false, ignored=false, tools=0; const t0=performance.now();
   const flush=end=>{ const rest=buf.slice(spoken); if((buf.match(/```/g)||[]).length%2 && !end) return;
-    const m2=end?[rest]:(rest.match(/^[\s\S]*[.!?:](?=\s)/)||(spoken===0?rest.match(/^[\s\S]{70,}?[,;—–](?=\s)/):null)); if(m2&&m2[0].trim()){ const raw=plain(m2[0]); if(kv){ enqueue(untag(raw),{cap:raw,fresh}); fresh=false; } else enqueue(untag(raw)); spoken+=m2[0].length; } };
+    const m2=end?[rest]:(rest.match(/^[\s\S]*[.!?:](?=\s)/)||(spoken===0?rest.match(/^[\s\S]{70,}?[,;—–](?=\s)/):null)); if(m2&&m2[0].trim()){ const raw=plain(m2[0]); const cut=sayEpoch!==ep0;      // you cut him off: the rest of this answer is written, never spoken
+      if(kv){ if(cut) karaNow(raw,fresh); else enqueue(untag(raw),{cap:raw,fresh}); fresh=false; } else if(!cut) enqueue(untag(raw)); spoken+=m2[0].length; } };
   const handle=ev=>{ switch(ev.t){
     case 'break': flush(true); if(buf.trim()) fresh=true; buf=''; spoken=0; break;
     case 'delta': CP.answer(); toolMood=null; workWhat='answering'; buf+=ev.text; all+=ev.text; if(!kv) showHim(buf); flush(false); break;
