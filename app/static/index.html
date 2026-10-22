@@ -150,7 +150,9 @@ body.bar #code .l.out{color:#b5b5b5}
 /* "Show everything I said": the last few lines of it, wrapped, instead of one cut-off line */
 body.fulltext #cap{height:150px}
 body.fulltext #you{white-space:normal;max-height:4.2em;line-height:1.4;display:flex;flex-direction:column;justify-content:flex-end;text-overflow:clip}
-.ctxbar{height:6px;border-radius:3px;background:#ffffff1a;overflow:hidden;margin:2px 0 8px}
+.row .t.sub{margin-top:14px;padding-top:12px;border-top:1px solid #1c1c1c}
+.row .t .pct{margin-left:auto;font:600 11.5px var(--mono);color:#aaa}
+.ctxbar{height:6px;border-radius:3px;background:#ffffff1a;overflow:hidden;margin:6px 0 7px}
 .ctxbar i{display:block;height:100%;width:0;background:#3d9b74;transition:width .6s var(--ease),background .6s}
 .ctxbar.warn i{background:#e89a2c} .ctxbar.full i{background:#d8453a}
 #him{font-size:14.5px;font-weight:500;max-height:4.5em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;width:100%}
@@ -544,6 +546,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <label class="tg"><input type="checkbox" id="wakeSw"><span class="sw"></span><span class="l">“Hey Void” wake word<small>Listens for his name. Nothing leaves your computer.</small></span></label>
         <label class="tg"><input type="checkbox" id="bargeSw"><span class="sw"></span><span class="l">Interrupt him by voice<small>Say “stop” (or “hey Void”) while he's talking.</small></span></label>
         <label class="tg"><input type="checkbox" id="listenShowSw"><span class="sw"></span><span class="l">Listen as soon as he pops up</span></label>
+        <label class="tg"><input type="checkbox" id="fullSw"><span class="sw"></span><span class="l">Show everything I said<small>The end of your words, wrapped over a few lines, instead of one cut-off line.</small></span></label>
         <label class="tg"><input type="checkbox" id="sfxSw"><span class="sw"></span><span class="l">Sound effects<small>Little blips when he wakes, opens his menu or finishes.</small></span></label>
       </div>
       <div class="row"><div class="t">Push-to-talk hotkey</div><div class="h" id="pttHelp">Hold it anywhere, even in another app, to talk. Let go to send.</div>
@@ -554,12 +557,13 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
     <!-- ================= BRAIN ================= -->
     <div class="tab" data-tab="brain">
       <div class="row"><div class="t">How much can he do on his own?</div><div class="opts" id="trustOpts"></div></div>
-      <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div></div>
-      <div class="row"><div class="t">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan.</div><div class="seg" id="effortChips"></div></div>
-      <div class="row"><div class="t">His memory of this chat</div><div class="h" id="ctxTxt"></div>
+      <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div>
+        <div class="t sub">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan.</div><div class="seg" id="effortChips"></div></div>
+      <div class="row"><div class="t">His memory of this chat<span class="pct" id="ctxPct"></span></div>
         <div class="ctxbar" id="ctxBar"><i></i></div>
-        <label class="tg"><input type="checkbox" id="compactSw"><span class="sw"></span><span class="l">Tidy up automatically<small>When it's about 70% full he writes himself a short note and carries on in a fresh chat, so a long session can't quietly eat your usage.</small></span></label>
-        <div class="bar" style="margin-top:7px"><button class="btn sm" id="ctxTidy">Tidy up now</button><button class="btn sm" id="ctxNew">New chat</button></div></div>
+        <div class="h" id="ctxTxt"></div>
+        <label class="tg"><input type="checkbox" id="compactSw"><span class="sw"></span><span class="l">Tidy up automatically<small>At about 70% full he writes himself a short note and carries on in a fresh chat, so a long session can't quietly eat your usage.</small></span></label>
+        <div class="bar" style="margin-top:9px"><button class="btn sm" id="ctxTidy">Tidy up now</button><button class="btn sm" id="ctxNew">New chat</button></div></div>
       <div class="row"><div class="t">Projects</div><div class="h">Say “switch to my <i>name</i>” to jump there. Add by voice: “remember my blog is in ~/code/blog”.</div>
         <div id="projList"></div>
         <div class="bar" style="margin-top:7px"><input type="text" id="projName" placeholder="name" style="flex:1 1 80px;min-width:0"><input type="text" id="projPath" placeholder="~/code/app" style="flex:2 1 120px;min-width:0"><button class="btn pri sm" id="projAdd">add</button></div></div>
@@ -572,16 +576,15 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
         <label class="tg"><input type="checkbox" id="autoSw"><span class="sw"></span><span class="l">Start when I log in<small>Ready and listening for “hey Void”.</small></span></label>
         <label class="tg"><input type="checkbox" id="notifySw"><span class="sw"></span><span class="l">Notify me when a long task finishes<small>…while he's hidden.</small></span></label>
         <label class="tg"><input type="checkbox" id="popupSw"><span class="sw"></span><span class="l">Pop back up when it's done</span></label>
-        <label class="tg"><input type="checkbox" id="fullSw"><span class="sw"></span><span class="l">Show everything I said<small>The end of your words, wrapped over a few lines, instead of one cut-off line.</small></span></label>
         <label class="tg"><input type="checkbox" id="updSw"><span class="sw"></span><span class="l">Check for updates<small>Asks GitHub for the latest version when he starts, every few hours and when you open Settings. Nothing about you is sent.</small></span></label>
       </div>
+      <div class="row"><div class="t">Memory &amp; history</div><div class="h">Say “remember …” and he keeps it for every future chat.</div>
+        <div class="bar"><button class="btn" data-open="memory">🧠 Memory <i id="memCount"></i></button><button class="btn" data-open="history">🕘 History</button></div></div>
       <div class="row"><div class="t">Void <span id="verTxt"></span></div><div class="h" id="updTxt"></div>
         <div class="bar"><button class="btn" id="updNow" hidden>⬇ Update now</button><button class="btn" id="updCheck">Check now</button></div></div>
       <div class="row"><div class="t">Need help?</div><div class="h">Copies a report (versions, mic, voice, the end of his log) to paste when you ask for help. Nothing is sent; your name and folders are blanked out.</div>
         <div class="bar"><button class="btn" id="diagCopy">📋 Copy diagnostics</button><button class="btn" id="diagReport">Report a problem</button></div>
         <pre id="diagPrev" hidden style="max-height:160px;overflow:auto;font-size:10.5px;white-space:pre-wrap;user-select:text;margin:8px 0 0"></pre></div>
-      <div class="row"><div class="t">Memory &amp; history</div><div class="h">Say “remember …” and he keeps it for every future chat.</div>
-        <div class="bar"><button class="btn" data-open="memory">🧠 Memory <i id="memCount"></i></button><button class="btn" data-open="history">🕘 History</button></div></div>
       <div class="row"><div class="t">Things you can just say</div>
         <div class="keys"><kbd>volume up</kbd><span>also mute, set volume to 40</span><kbd>pause / next song</kbd><span>needs playerctl</span><kbd>timer 10 minutes</kbd><span>“remind me at 5 to…”</span><kbd>what time is it</kbd><span>and the date</span><kbd>open firefox</kbd><span>any app</span><kbd>lock my screen</kbd><span></span><kbd>switch to my app</kbd><span>your projects</span></div></div>
       <div class="row"><div class="t">Hotkeys</div><div class="h">Bind in your desktop, e.g. Hyprland <code>bind = SUPER, A, exec, void listen</code></div>
@@ -1401,7 +1404,8 @@ let ctxWarned=0;
 const kTok=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'k':String(n);
 function ctxRender(){ const c=info.context; if(!c) return; const bar=$('#ctxBar'), txt=$('#ctxTxt'); if(!bar||!txt) return;
   const pct=Math.min(1,c.pct||0); bar.firstElementChild.style.width=(pct*100).toFixed(1)+'%'; bar.classList.toggle('warn',pct>=.6&&pct<.85); bar.classList.toggle('full',pct>=.85);
-  txt.textContent=c.compacting?'Tidying up…':`${kTok(c.used)} of ${kTok(c.max)} used (${Math.round(pct*100)}%)${c.notes?' · carrying a note from before':''}`; }
+  $('#ctxPct').textContent=Math.round(pct*100)+'%';
+  txt.textContent=c.compacting?'Tidying up…':`${kTok(c.used)} of ${kTok(c.max)} tokens${c.notes?' · carrying a note from before':''}`; }
 function onContext(c){ info.context=c; ctxRender();
   if(c.compacting){ tick('tidying up my notes…'); poke('thinking',2500); return; }
   if(c.compacted){ ctxWarned=0; tick('✓ tidied up — fresh chat, I kept my notes'); poke('happy',1200); return; }
