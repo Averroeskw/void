@@ -98,9 +98,19 @@ DEFAULTS = {
     "trust": "ask",
     # (old setting, still honoured if you set it by hand and "trust" is missing)
     "permission_mode": "acceptEdits",
-    "model": "",
+    # auto = the small fast model for quick questions, the full one for real work
+    "model": "auto",
     # how hard Claude thinks (claude --effort): low | medium | high | xhigh | max
-    "effort": "high",
+    "effort": "medium",
+    # light mode: only the tools a voice assistant needs (files, shell, web), no skills / MCP servers / sub-agents.
+    # Halves what every chat re-sends to Claude (about 25k → 13k tokens). Turn it off to give him all your tools.
+    "lean": True,
+    # stop a runaway job: Claude gives up once one request has cost this much (0 = no limit)
+    "max_cost_usd": 3,
+    # and tidy up the chat at this many tokens, however big Claude's window is (a long chat is re-read on every turn)
+    "compact_tokens": 100000,
+    # the fast model "auto" uses for quick questions
+    "auto_model": "haiku",
     "extra_args": [],
     "partial_messages": True,
     "voice_prompt": VOICE_PROMPT,
@@ -248,6 +258,7 @@ class State:
         self.ctx_used, self.ctx_max = int(s.get("ctx_used") or 0), int(s.get("ctx_max") or 200000)
         self.compacting = False
         self.auto_pick = ""
+        self.last_worked = False                   # did the last answer use tools? then a short "yes" is still work
 
     def save(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1436,7 +1447,7 @@ class Wake:
             BUS.pub(t="wake", text=rest)
         elif follow:
             said = (text or "").strip(" .,!?")
-            if said and said.lower() not in NOISE_WORDS:
+            if len(said.split()) >= 2 and said.lower() not in NOISE_WORDS:     # (a stray word isn't a request)
                 cls.follow_until = 0.0
                 BUS.pub(t="wake", text=said, follow=True)
 
@@ -2332,6 +2343,20 @@ def hooks_file():
 
 
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
+LEAN_TOOLS = "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch"
+
+
+WORKISH = re.compile(r"\b(code|files?|fix|bug|commit|tests?|run|build|refactor|install|folder|project|git|error|script|"
+                     r"function|write|edit|create|make|deploy|server|repo|update|delete|rename|search|find|package|"
+                     r"config|open|move|copy|download|change|add|remove|set|screen|look|read|check|debug)\b", re.I)
+
+
+def pick_auto(said, extra, follow):
+    """Auto model: the fast one only for a short, plain question. Anything that looks like work, an attachment, or a
+    reply to a job he just did (\"yes, do it\") goes to the full model, and so does a chat that's mid-task."""
+    if extra or len(said) >= 160 or WORKISH.search(said) or ST.last_worked:
+        return ""
+    return CFG.get("auto_model") or "haiku"
 
 
 def build_cmd(binary, partial):
@@ -2352,6 +2377,11 @@ def build_cmd(binary, partial):
         c += ["--model", mdl]
     if CFG.get("effort") in EFFORTS:
         c += ["--effort", CFG["effort"]]
+    if CFG.get("lean", True):
+        c += ["--tools", LEAN_TOOLS, "--disable-slash-commands", "--strict-mcp-config",
+              "--exclude-dynamic-system-prompt-sections"]
+    if float(CFG.get("max_cost_usd") or 0) > 0:
+        c += ["--max-budget-usd", str(CFG["max_cost_usd"])]
     sp = CFG["voice_prompt"] or ""
     if CFG.get("root_mode"):
         sp += ("\n\nRoot mode is ON: the user allows you to run any command, including ones that need root. "
@@ -2380,8 +2410,14 @@ def track_context(usage):
     BUS.pub(t="ctx", **context_info())
 
 
+def ctx_scale():
+    """What the meter measures against: his own tidy-up budget, not Claude's window (which can be a million tokens)."""
+    cap, at = int(CFG.get("compact_tokens") or 0), float(CFG.get("compact_at") or 0.7)
+    return min(ST.ctx_max, int(cap / at)) if cap else ST.ctx_max
+
+
 def context_info():
-    mx = max(ST.ctx_max, 1)
+    mx = max(ctx_scale(), 1)
     return {"used": ST.ctx_used, "max": mx, "pct": round(ST.ctx_used / mx, 3), "notes": bool(ST.notes),
             "compacting": ST.compacting}
 
@@ -2401,7 +2437,9 @@ def compact_session():
     ST.compacting = True
     BUS.pub(t="ctx", **context_info())
     try:
-        out = subprocess.run([binary, "-p", "--resume", ST.session, "--tools", "", "--output-format", "json"],
+        # (writing a handoff note needs no big model or deep thinking: the cheap one re-reads the whole chat for far less)
+        out = subprocess.run([binary, "-p", "--resume", ST.session, "--tools", "", "--model", "haiku", "--effort", "low",
+                              "--output-format", "json"],
                              input=ask, capture_output=True, text=True, timeout=180, cwd=ST.cwd).stdout
         note = (json.loads(out).get("result") or "").strip()
     except (OSError, subprocess.SubprocessError, ValueError):
@@ -2847,7 +2885,8 @@ def state_info():
         "bar_edge": CFG.get("bar_edge") if CFG.get("bar_edge") in ("top", "bottom", "left", "right") else "top",
         "cwd": ST.cwd, "cwd_display": pretty_path(ST.cwd), "session": bool(ST.session),
         "tts": tts_engine(), "mic": WIN or bool(mic_cmds()), "stt": "ready" if _whisper else (_whisper_err or "loading"),
-        "trust": trust(), "model": CFG["model"] or "default", "effort": CFG.get("effort") or "", "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
+        "trust": trust(), "model": CFG["model"] or "default", "effort": CFG.get("effort") or "", "lean": bool(CFG.get("lean", True)), "max_cost_usd": CFG.get("max_cost_usd") or 0,
+        "compact_tokens": CFG.get("compact_tokens") or 0, "root": bool(CFG.get("root_mode")) and not WIN, "root_ok": not WIN,
 
         "wake_word": bool(CFG.get("wake_word")), "notify_done": bool(CFG.get("notify_done")),
         "popup_done": bool(CFG.get("popup_done")), "hover": bool(CFG.get("hover")), "code_panel": CFG.get("code_panel", True) is not False, "live_minutes": int(CFG.get("live_minutes") or 10), "voice_native": Speaker.available(), "code_face": "you" if CFG.get("code_face") == "you" else "him",
@@ -3038,8 +3077,15 @@ class Handler(BaseHTTPRequestHandler):
                     AskPass.forget()
                 if "follow_up" in b:
                     upd["follow_up"] = max(0, min(60, int(b.get("follow_up") or 0)))
+                try:                                    # usage limits: 0 switches each one off
+                    if "max_cost_usd" in b:
+                        upd["max_cost_usd"] = round(max(0.0, min(1000.0, float(b["max_cost_usd"] or 0))), 2)
+                    if "compact_tokens" in b:
+                        upd["compact_tokens"] = max(0, min(5000000, int(float(b["compact_tokens"] or 0))))
+                except (TypeError, ValueError):
+                    pass
                 for key in ("wake_word", "notify_done", "popup_done", "code_panel", "hover", "click_through", "autostart", "listen_on_show",
-                            "barge_in", "sfx", "update_check", "auto_compact", "full_text"):
+                            "barge_in", "sfx", "update_check", "auto_compact", "full_text", "lean"):
                     if key in b:
                         upd[key] = bool(b[key])
                 if "ptt_hotkey" in b:
@@ -3272,10 +3318,7 @@ class Handler(BaseHTTPRequestHandler):
             prompt = FOLLOW_NOTE + said
         if not prompt:
             return self._json({"error": "empty prompt"}, 400)
-        workish = re.search(r"\b(code|file|files|fix|bug|commit|test|tests|run|build|refactor|install|folder|project|git|"
-                            r"error|script|function|write|edit|create|make|deploy|server|repo|update|delete|rename|"
-                            r"search|find|install|package|config)\b", said, re.I)
-        ST.auto_pick = "haiku" if (len(said) < 160 and not extra and not workish) else ""
+        ST.auto_pick = pick_auto(said, extra, follow)
         if not ST.lock.acquire(timeout=180 if ST.compacting else 0):    # (tidying its notes: wait, don't refuse)
             return self._json({"error": "still working on the last one"}, 409)
         try:
@@ -3368,6 +3411,7 @@ class Handler(BaseHTTPRequestHandler):
             rec["session"] = ST.session
             rec["him"] = untag(rec["him"]).strip()[-6000:]
             try:
+                ST.last_worked = bool(rec["tools"])
                 hist_add(rec)
                 recall.add(rec)
             except Exception as e:  # noqa: BLE001  (a notes problem must never break an answer)
@@ -3375,7 +3419,7 @@ class Handler(BaseHTTPRequestHandler):
             emit(t="done")
         finally:
             ST.lock.release()
-        if CFG.get("auto_compact", True) and ST.ctx_used >= ST.ctx_max * float(CFG.get("compact_at") or 0.7):
+        if CFG.get("auto_compact", True) and ST.ctx_used >= ctx_scale() * float(CFG.get("compact_at") or 0.7):
             threading.Thread(target=auto_compact, daemon=True).start()
         return None
 

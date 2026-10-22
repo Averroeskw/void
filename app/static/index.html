@@ -152,9 +152,11 @@ body.fulltext #cap{top:248px;height:148px}      /* same bottom edge as before; i
 body.fulltext #you{white-space:normal;max-height:4.3em;line-height:1.4;font-size:12.5px;color:#c4c4c4;display:flex;flex-direction:column;justify-content:flex-end;text-overflow:clip;margin-bottom:2px}
 .row .t.sub{margin-top:14px;padding-top:12px;border-top:1px solid #1c1c1c}
 .row .t .pct{margin-left:auto;font:600 11.5px var(--mono);color:#aaa}
-.ctxbar{height:6px;border-radius:3px;background:#ffffff1a;overflow:hidden;margin:6px 0 7px}
-.ctxbar i{display:block;height:100%;width:0;background:#3d9b74;transition:width .6s var(--ease),background .6s}
+.ctxbar{height:14px;border-radius:7px;background:#ffffff1a;overflow:hidden;margin:8px 0 8px}
+.ctxbar i{display:block;height:100%;width:0;background:var(--acc);transition:width .6s var(--ease),background .6s}
 .ctxbar.warn i{background:#e89a2c} .ctxbar.full i{background:#d8453a}
+input[type=range]{accent-color:var(--acc)}
+#ctxTxt{font-size:13px;font-weight:600;color:#ddd} #ctxTxt.warn{color:#e89a2c} #ctxTxt.full{color:#ef6a60}
 #him{font-size:14.5px;font-weight:500;max-height:4.5em;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;width:100%}
 #him.err{color:#ff8a8a}
 #him .ln{display:block}
@@ -558,8 +560,12 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
     <div class="tab" data-tab="brain">
       <div class="row"><div class="t">How much can he do on his own?</div><div class="opts" id="trustOpts"></div></div>
       <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div>
-        <div class="t sub">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan.</div><div class="seg" id="effortChips"></div></div>
-      <div class="row"><div class="t">His memory of this chat<span class="pct" id="ctxPct"></span></div>
+        <div class="t sub">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan. “default” leaves it to Claude.</div><div class="seg" id="effortChips"></div>
+        <label class="tg" style="margin-top:12px;padding-top:12px;border-top:1px solid #1c1c1c"><input type="checkbox" id="leanSw"><span class="sw"></span><span class="l">Light mode<small>Only the tools he needs (files, commands, web), not your other skills or plugins. Every chat starts about half the size, so it uses far less of your plan.</small></span></label>
+        <div class="t sub">Stop when usage hits this amount<span class="pct" id="costVal"></span></div>
+        <div class="h">If one request costs this much, he stops it. All the way left = no limit.</div>
+        <input type="range" id="costIn" min="0" max="20" step="0.5" style="width:100%"></div>
+      <div class="row"><div class="t">Chat size<span class="pct" id="ctxPct"></span></div>
         <div class="ctxbar" id="ctxBar"><i></i></div>
         <div class="h" id="ctxTxt"></div>
         <div class="h" id="recallTxt" style="margin-top:-3px"></div>
@@ -1407,7 +1413,10 @@ function ctxRender(){ const c=info.context; if(!c) return; const bar=$('#ctxBar'
   const pct=Math.min(1,c.pct||0); bar.firstElementChild.style.width=(pct*100).toFixed(1)+'%'; bar.classList.toggle('warn',pct>=.6&&pct<.85); bar.classList.toggle('full',pct>=.85);
   $('#ctxPct').textContent=Math.round(pct*100)+'%';
   const rc=info.recall||{}; $('#recallTxt').textContent=rc.entries?`Quick memory: ${rc.entries} recent chats kept · answered ${rc.answered||0}× straight from it, no usage`:'Quick memory fills up as you use him; recent things he can then answer without asking Claude.';
-  txt.textContent=c.compacting?'Tidying up…':`${kTok(c.used)} of ${kTok(c.max)} tokens${c.notes?' · carrying a note from before':''}`; }
+  const auto=info.auto_compact!==false;      // one plain sentence, so nobody has to read numbers
+  txt.textContent=c.compacting?'Tidying up…':pct>=.85?(auto?'Almost full — he’ll tidy up after this answer':'Almost full — press “Tidy up now”')
+    :pct>=.6?(auto?'Getting full — he’ll tidy up soon':'Getting full — press “Tidy up now” soon'):c.used?'Plenty of room':'Fresh chat';
+  txt.className='h '+(pct>=.85?'full':pct>=.6?'warn':''); txt.title=`${kTok(c.used)} of ${kTok(c.max)} tokens`+(c.notes?' · carrying a note from before':''); }
 function onContext(c){ info.context=c; ctxRender();
   if(c.compacting){ tick('tidying up my notes…'); poke('thinking',2500); return; }
   if(c.compacted){ ctxWarned=0; tick('✓ tidied up — fresh chat, I kept my notes'); poke('happy',1200); return; }
@@ -2094,12 +2103,13 @@ $('#pkAll').addEventListener('click',()=>{ const L=curLook(), R=randomLook(L); O
 function renderSettings(){
   { const rr=$('#rootSw').closest('.row'); if(rr) rr.style.display=info.root_ok===false?'none':''; }   // no sudo on Windows
   const cur=(info.model||'default');
-  $('#effortChips').innerHTML=EFFORTS.map(e=>`<button data-eff="${e}" class="${(info.effort||'')===e?'on':''}">${e}</button>`).join('');
+  $('#effortChips').innerHTML=['',...EFFORTS].map(e=>`<button data-eff="${e}" class="${(info.effort||'')===e?'on':''}">${e||'default'}</button>`).join('');
   $('#modelChips').innerHTML=MODELS.map(([id,l])=>`<button data-m="${id}" class="${cur===id?'on':''}">${l}</button>`).join('');
   $('#voiceChips').innerHTML=(info.voices||[]).map(v=>`<button data-v="${v.id}" class="${info.voice===v.id?'on':''}">${v.label}${v.downloading?'<i>⇣</i>':''}</button>`).join('');
   const sw={rootSw:info.root,speakSw:!muted,wakeSw:info.wake_word,autoSw:info.autostart,listenShowSw:info.listen_on_show,hoverSw:info.hover,
     clickSw:info.click_through,notifySw:info.notify_done,popupSw:info.popup_done,codeSw:info.code_panel!==false,bargeSw:info.barge_in,sfxSw:info.sfx,linkSw:curLook().link,rndSw:curLook().random,
-    updSw:info.update_check!==false,fullSw:info.full_text,compactSw:info.auto_compact!==false};
+    updSw:info.update_check!==false,fullSw:info.full_text,compactSw:info.auto_compact!==false,leanSw:info.lean!==false};
+  { const c=$('#costIn'); if(c&&document.activeElement!==c){ c.value=info.max_cost_usd||0; costLbl(); } }
   renderUpdate(); renderPtt();
   for(const k in sw){ const e=document.getElementById(k); if(e) e.checked=!!sw[k]; }
   const ps=restPu();
@@ -2214,6 +2224,8 @@ setEl.addEventListener('click',e=>{
   if(e.target.closest('#updNow')) post('/api/update').then(r=>r.json()).then(u=>{ info.update=u; renderUpdate();
     if(u.state==='failed') return tick(u.error||'update failed',true); poke('excited',900); tick('updating — I’ll be right back'); });
 });
+const costLbl=()=>{ const v=+$('#costIn').value; $('#costVal').textContent=v?'$'+v.toFixed(2):'No limit'; };
+setEl.addEventListener('input',e=>{ if(e.target.id==='costIn') costLbl(); });
 setEl.addEventListener('change',e=>{
   const id=e.target.id, on=e.target.checked;
   if(id==='rootSw') setSetting(on?{root:true}:{root:false,trust:'ask'}).then(()=>{ tick(on?'root mode ON — he can run anything (I\'ll ask for your sudo password)':'root mode off',on); poke(on?'scared':'happy',900); });
@@ -2230,12 +2242,14 @@ setEl.addEventListener('change',e=>{
   if(id==='updSw') setSetting({update_check:on}).then(renderUpdate);
   if(id==='fullSw') setSetting({full_text:on}).then(showInfo);
   if(id==='compactSw') setSetting({auto_compact:on});
+  if(id==='costIn') setSetting({max_cost_usd:+e.target.value||0}).then(()=>tick(+e.target.value?'a request stops at $'+e.target.value:'no usage limit'));
+  if(id==='leanSw') setSetting({lean:on}).then(()=>tick(on?'light mode: fewer tools, less usage':'all your tools on'));
   if(id==='codeSw'){ setSetting({code_panel:on}); if(!on) CP.hide(); }
   if(id==='micSel') setSetting({mic_device:e.target.value}).then(()=>tick('microphone changed'));
   if(id==='linkSw'){ const L=curLook(); const patch={link:on}; if(on){ patch.pupR=L.pupL; patch.whiteR=L.whiteL; } setLook(patch).then(()=>selectPart(pkPart.replace('R','L'))); }
   if(id==='rndSw') setLook({random:on}).then(()=>{ if(on){ lookRolled=false; syncLook(true); } else { lookShown=''; syncLook(); } renderSettings(); });
 });
-setEl.addEventListener('keydown',e=>{ if(e.target.matches('input[type=text]')) e.stopPropagation(); if(e.key==='Enter'&&(e.target.id==='projPath'||e.target.id==='projName')) $('#projAdd').click(); });
+setEl.addEventListener('keydown',e=>{ if(e.target.matches('input[type=text],input[type=number]')) e.stopPropagation(); if(e.key==='Enter'&&(e.target.id==='projPath'||e.target.id==='projName')) $('#projAdd').click(); });
 setInterval(()=>{ if(setEl.classList.contains('on') && (info.voices||[]).some(v=>v.downloading)) refresh().then(renderSettings); },1500);
 
 /* ================= slash commands ================= */
