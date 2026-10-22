@@ -34,6 +34,7 @@ from urllib.parse import urlparse
 APP_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(APP_DIR))
 import quick  # noqa: E402
+import recall  # noqa: E402
 WIN = os.name == "nt"                        # Windows: OS bits go through winsys.py instead of Linux command-line tools
 if WIN:
     import winsys  # noqa: E402
@@ -269,6 +270,7 @@ def pretty_path(p):
 # ---------------------------------------------------------------- memory + history
 MEM_PATH = DATA_DIR / "memory.json"
 HIST_PATH = DATA_DIR / "history.jsonl"
+recall.init(DATA_DIR, HIST_PATH)
 _mem_lock = threading.Lock()
 
 
@@ -339,13 +341,9 @@ def memory_prompt(fresh):
     if ST.notes:                                # the chat was compacted: this is what happened so far
         parts.append("Notes you wrote when this chat got long (what's done and what's open — carry on from here):\n"
                      + ST.notes)
-    if fresh:                                   # a new conversation: give him a sense of what happened lately
-        recent = [h for h in hist_load(8) if h.get("you")][:6]
-        if recent:
-            parts.append("Recent conversations with the user (background only — don't bring these up unless the user "
-                     "refers to them):\n" + "\n".join(
-                f"- [{time.strftime('%b %d %H:%M', time.localtime(h['ts']))}, in {h.get('cwd_display', '?')}] "
-                f"they said: {h['you'][:160]!r} — you answered: {(h.get('him') or '')[:200]!r}" for h in recent))
+    rp = recall.prompt() if fresh else ""      # a new conversation: what happened lately, today in full (see recall.py)
+    if rp:
+        parts.append(rp)
     return "\n\n".join(parts)
 
 
@@ -2870,7 +2868,7 @@ def state_info():
                    for k, v in VOICES.items()],
         "voice_engine": tts_engine() or "none",
         "claude": bool(claude_bin()), "busy": ST.lock.locked(), "config": str(CONF_PATH),
-        "context": context_info(), "auto_compact": bool(CFG.get("auto_compact", True)), "full_text": bool(CFG.get("full_text")),
+        "context": context_info(), "recall": recall.stats(), "auto_compact": bool(CFG.get("auto_compact", True)), "full_text": bool(CFG.get("full_text")),
     }
 
 
@@ -3078,7 +3076,11 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/events":
                 return self.events()
             if p == "/api/quick":
-                r = quick.handle(json.loads(self._body() or b"{}").get("text", ""))
+                said = json.loads(self._body() or b"{}").get("text", "")
+                mem = recall.answer(said)                # answered from his quick memory: no Claude call, no usage
+                if mem:
+                    return self._json({"handled": True, "say": mem, "mood": "happy", "state": state_info()})
+                r = quick.handle(said)
                 if r and r.get("cd"):
                     ST.cwd = r["cd"]
                     ST.fresh()
@@ -3329,6 +3331,8 @@ class Handler(BaseHTTPRequestHandler):
                     rec["him"] += "\n\n"
                 elif t == "tool" and len(rec["tools"]) < 30:
                     rec["tools"].append(kw.get("name"))
+                    if kw.get("name") in recall.EDIT_TOOLS and kw.get("detail"):
+                        rec.setdefault("files", []).append(os.path.basename(kw["detail"].rstrip("…")))
                 elif t == "result":
                     if not rec["him"].strip() and kw.get("text"):
                         rec["him"] = kw["text"]
@@ -3365,8 +3369,9 @@ class Handler(BaseHTTPRequestHandler):
             rec["him"] = untag(rec["him"]).strip()[-6000:]
             try:
                 hist_add(rec)
-            except OSError:
-                pass
+                recall.add(rec)
+            except Exception as e:  # noqa: BLE001  (a notes problem must never break an answer)
+                print(f"[void] history/quick memory: {e}", file=sys.stderr)
             emit(t="done")
         finally:
             ST.lock.release()

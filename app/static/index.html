@@ -562,6 +562,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
       <div class="row"><div class="t">His memory of this chat<span class="pct" id="ctxPct"></span></div>
         <div class="ctxbar" id="ctxBar"><i></i></div>
         <div class="h" id="ctxTxt"></div>
+        <div class="h" id="recallTxt" style="margin-top:-3px"></div>
         <label class="tg"><input type="checkbox" id="compactSw"><span class="sw"></span><span class="l">Tidy up automatically<small>At about 70% full he writes himself a short note and carries on in a fresh chat, so a long session can't quietly eat your usage.</small></span></label>
         <div class="bar" style="margin-top:9px"><button class="btn sm" id="ctxTidy">Tidy up now</button><button class="btn sm" id="ctxNew">New chat</button></div></div>
       <div class="row"><div class="t">Projects</div><div class="h">Say “switch to my <i>name</i>” to jump there. Add by voice: “remember my blog is in ~/code/blog”.</div>
@@ -1405,6 +1406,7 @@ const kTok=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'k':String(
 function ctxRender(){ const c=info.context; if(!c) return; const bar=$('#ctxBar'), txt=$('#ctxTxt'); if(!bar||!txt) return;
   const pct=Math.min(1,c.pct||0); bar.firstElementChild.style.width=(pct*100).toFixed(1)+'%'; bar.classList.toggle('warn',pct>=.6&&pct<.85); bar.classList.toggle('full',pct>=.85);
   $('#ctxPct').textContent=Math.round(pct*100)+'%';
+  const rc=info.recall||{}; $('#recallTxt').textContent=rc.entries?`Quick memory: ${rc.entries} recent chats kept · answered ${rc.answered||0}× straight from it, no usage`:'Quick memory fills up as you use him; recent things he can then answer without asking Claude.';
   txt.textContent=c.compacting?'Tidying up…':`${kTok(c.used)} of ${kTok(c.max)} tokens${c.notes?' · carrying a note from before':''}`; }
 function onContext(c){ info.context=c; ctxRender();
   if(c.compacting){ tick('tidying up my notes…'); poke('thinking',2500); return; }
