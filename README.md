@@ -67,6 +67,19 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 </td>
 <td valign="top">
 
+**One line, any distro.** Paste it into a terminal:
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/PLAYER99-void/void/main/get.sh \
+  | bash
+```
+
+It sets up Void, his voice and hearing, and starts him. Updates itself from his settings.
+
+<details>
+<summary><b>Other ways to install</b> (.deb · .rpm · Arch · source)</summary>
+
 <p align="center">
 <img src="https://img.shields.io/badge/-Ubuntu-E95420?style=flat-square&logo=ubuntu&logoColor=white" alt="Ubuntu">
 <img src="https://img.shields.io/badge/-Debian-A81D33?style=flat-square&logo=debian&logoColor=white" alt="Debian">
@@ -74,18 +87,7 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 <img src="https://img.shields.io/badge/-Arch_Linux-1793D1?style=flat-square&logo=archlinux&logoColor=white" alt="Arch Linux">
 </p>
 
-**One line, any distro.** Paste it into a terminal:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/PLAYER99-void/void/main/get.sh | bash
-```
-
-<details>
-<summary><b>What that line does, and other ways to install</b></summary>
-
-It picks the right package for your system, downloads and installs it with everything it needs, sets up his
-voice and hearing, and starts him. On a distro without a package, it gets the source and installs that instead.
-**Update now** in his settings keeps him current either way.
+The line above picks the right package for your system. On a distro without one, it installs from source.
 
 **Or download a package yourself** (.deb · .rpm · Arch)
 
