@@ -297,6 +297,43 @@ def mem_save(items):
     MEM_PATH.write_text(json.dumps(items, indent=1))
 
 
+def claude_dir():
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+
+
+def plugins_list():
+    """The Claude Code plugins you have installed, and whether each is switched on (user settings.json → enabledPlugins)."""
+    try:
+        inst = json.loads((claude_dir() / "plugins" / "installed_plugins.json").read_text(encoding="utf-8")).get("plugins") or {}
+        on = json.loads((claude_dir() / "settings.json").read_text(encoding="utf-8")).get("enabledPlugins") or {}
+    except (OSError, ValueError, AttributeError):
+        inst, on = {}, {}
+    out = []
+    for pid, entries in inst.items():
+        e = (entries[0] if isinstance(entries, list) and entries else {}) or {}
+        out.append({"id": pid, "name": pid.split("@")[0], "from": pid.partition("@")[2], "version": str(e.get("version") or ""),
+                    "enabled": on.get(pid) is True})
+    return sorted(out, key=lambda x: x["name"].lower())
+
+
+def plugin_set(pid, enabled):
+    """Switch one installed plugin on/off. Only ids that are really installed; every other setting is left alone."""
+    if pid not in {x["id"] for x in plugins_list()}:
+        return False
+    f = claude_dir() / "settings.json"
+    try:
+        cfg = json.loads(f.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        cfg = {}
+    except ValueError:
+        return False                              # (never overwrite a settings file we can't read)
+    cfg.setdefault("enabledPlugins", {})[pid] = bool(enabled)
+    tmp = f.with_suffix(".json.void-tmp")
+    tmp.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    os.replace(tmp, f)
+    return True
+
+
 def mem_add(text):
     text = " ".join(str(text).split())[:400]
     if not text:
@@ -3188,6 +3225,11 @@ class Handler(BaseHTTPRequestHandler):
                 b = json.loads(self._body() or b"{}")
                 notify(str(b.get("title") or "Void"), str(b.get("body") or ""))
                 return self._json({"ok": True})
+            if p == "/api/plugins":
+                b = json.loads(self._body() or b"{}")
+                if b.get("op") == "set" and not plugin_set(str(b.get("id") or ""), b.get("enabled")):
+                    return self._json({"error": "couldn't change that plug-in", "items": plugins_list()}, 400)
+                return self._json({"items": plugins_list(), "lean": bool(CFG.get("lean", True))})
             if p == "/api/memory":
                 b = json.loads(self._body() or b"{}")
                 op = b.get("op", "list")

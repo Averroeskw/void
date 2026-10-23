@@ -1761,6 +1761,14 @@ async function openPanel(kind){
       <div class="bar"><button class="btn sm pri" data-h="cont">↩ continue this chat</button><button class="btn sm" data-h="again">ask again</button><button class="btn sm" data-h="copy">copy answer</button></div></div>`).join('')
       :'<div class="empty">Nothing yet — everything you ask shows up here,<br>so you can reread answers or pick a chat back up.</div>';
     body._items=items;
+  } else if(kind==='plugins'){
+    $('#pTitle').textContent='Plug-ins';
+    body.innerHTML='<div class="empty">loading…</div>';
+    const j=await (await post('/api/plugins',{op:'list'})).json(), items=j.items||[];
+    body.innerHTML=(j.lean?'<div class="h" style="color:#e89a2c;font-size:11.5px;margin:2px 0 9px">Light mode is on, so he isn’t using plug-ins right now. Turn it off in Settings → Brain to use the ones switched on here.</div>':'')
+      +(items.length?items.map(x=>`<label class="tg" style="padding:7px 0;border-bottom:1px solid #1c1c1c"><input type="checkbox" data-plug="${esc(x.id)}"${x.enabled?' checked':''}><span class="sw"></span><span class="l">${esc(x.name)}<small>${esc(x.from)}${x.version?' · v'+esc(x.version):''}</small></span></label>`).join('')
+        :'<div class="empty">No plug-ins installed yet.<br>Add them with <code>/plugin</code> in Claude Code and they show up here.</div>')
+      +(items.length?'<div class="h" style="color:#8d8d8d;font-size:11.5px;margin-top:9px">Changes apply to your next chat.</div>':'');
   } else if(kind==='memory'){
     $('#pTitle').textContent='Memory';
     const items=(await (await post('/api/memory',{op:'list'})).json()).items||[];
@@ -1819,10 +1827,15 @@ panelEl.addEventListener('click',async e=>{
     send(a.prompt);
   }
 });
+panelEl.addEventListener('change',async e=>{ const id=e.target.dataset&&e.target.dataset.plug; if(!id) return;
+  const r=await post('/api/plugins',{op:'set',id,enabled:e.target.checked}); const j=await r.json().catch(()=>({}));
+  if(!r.ok){ e.target.checked=!e.target.checked; return tick(j.error||'couldn’t change that',true); }
+  tick(e.target.checked?'plug-in on':'plug-in off'); });
 panelEl.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.id==='memNew'){ e.preventDefault(); $('#memAdd').click(); } });
 
 /* ================= right-click menu ================= */
 const ICON={
+  plugins:'<path d="M9 2v5M15 2v5"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v5"/>',
   new:'<path d="M12 5v14M5 12h14"/>',
   bar:'<path d="M2 4h20"/><path d="M7 4v2a4 4 0 0 0 4 4h2a4 4 0 0 0 4-4V4"/>',
   cd:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
@@ -1834,7 +1847,7 @@ const ICON={
   hide:'<path d="M6 6l12 12M18 6 6 18"/>',
 };
 // (no top bar / blob button: you dock him by dragging him into a screen edge, and pull him out to get the blob back)
-const MENU=[['talk','talk'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['set','settings'],['hide','hide']];
+const MENU=[['talk','talk'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['plugins','plug-ins'],['set','settings'],['hide','hide']];
 const MENU_XY=[];
 menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*Math.PI/180, r=122;
   MENU_XY[i]=[Math.cos(ang)*r/1.1, Math.sin(ang)*r/1.1];                 // same spot in the face's SVG units (330px = 300 units)
@@ -1854,7 +1867,7 @@ function layoutMenu(){
 let menuShutAt=0;
 function menu(on){ if(on) layoutMenu(); if(!on&&menuOn) menuShutAt=performance.now(); if(on!==menuOn) sfx(on?'menu':'close'); menuOn=on; menuEl.classList.toggle('on',on); document.body.classList.toggle('menu',on); if(on){ closePanels(); hideAsk(); } $('[data-a="hover"]').classList.toggle('on',!!info.hover); sendRegion(true); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
-  ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'),
+  ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'), plugins:()=>openPanel('plugins'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
 function dismiss(){ menu(false); hideAsk(); closePanels(); endListening(); if(!native('hide')) poke('sleepy',1200); }
 // Esc / hiding him: he stops listening — a recording in progress is dropped and the "just keep talking" window closes
