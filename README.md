@@ -49,8 +49,9 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 
 <table>
 <tr>
-<th width="50%"><img src="https://img.shields.io/badge/Windows_10_%2F_11-0078D4?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40IDkuOCAydjkuNEgwem0xMC45LTEuNkwyNCAwdjExLjNIMTAuOXpNMCAxMi42aDkuOFYyMkwwIDIwLjZ6bTEwLjkgMEgyNFYyNGwtMTMuMS0xLjh6Ii8%2BPC9zdmc%2B" alt="Windows 10 / 11"></th>
-<th width="50%"><img src="https://img.shields.io/badge/Linux-333333?style=flat-square&logo=linux&logoColor=white" alt="Linux"></th>
+<th width="33%"><img src="https://img.shields.io/badge/Windows_10_%2F_11-0078D4?style=flat-square&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMy40IDkuOCAydjkuNEgwem0xMC45LTEuNkwyNCAwdjExLjNIMTAuOXpNMCAxMi42aDkuOFYyMkwwIDIwLjZ6bTEwLjkgMEgyNFYyNGwtMTMuMS0xLjh6Ii8%2BPC9zdmc%2B" alt="Windows 10 / 11"></th>
+<th width="33%"><img src="https://img.shields.io/badge/Linux-333333?style=flat-square&logo=linux&logoColor=white" alt="Linux"></th>
+<th width="33%"><img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></th>
 </tr>
 <tr>
 <td valign="top">
@@ -67,12 +68,35 @@ Void is a little orb that floats on your desktop. Tell him what you want, and he
 </td>
 <td valign="top">
 
-**One line, any distro.** Paste it into a terminal:
+<p align="center"><a href="#linux-one-line-install"><img src="https://img.shields.io/badge/Copy-one_line-333333?style=for-the-badge&logo=linux&logoColor=white" alt="Copy the one-line Linux install"></a></p>
+
+1. Paste the line below into a terminal.
+2. Wait a few minutes while it sets up his voice and hearing.
+3. Run <code>void</code>.
+
+<sub>Ubuntu, Debian, Fedora and Arch.<br>Other ways to install are below.</sub>
+
+</td>
+<td valign="top">
+
+<p align="center"><a href="https://github.com/ohshitgorillas/void/tree/macos"><img src="https://img.shields.io/badge/Get-macOS_branch-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Get the macOS branch"></a></p>
+
+1. Open the <b>macos</b> branch of the fork.
+2. Follow its install steps.
+3. Find <b>Void</b> in Applications.
+
+<sub>Community-maintained fork.<br>Not tested by the main project.</sub>
+
+</td>
+</tr>
+</table>
+
+### Linux: one-line install
+
+Paste it into a terminal:
 
 ```bash
-curl -fsSL \
-  https://raw.githubusercontent.com/PLAYER99-void/void/main/get.sh \
-  | bash
+curl -fsSL https://raw.githubusercontent.com/PLAYER99-void/void/main/get.sh | bash
 ```
 
 It sets up Void, his voice and hearing, and starts him. Updates itself from his settings.
@@ -120,14 +144,6 @@ It gets the system packages for you (pacman, apt or dnf) and updates itself with
 <sub>Gentoo or system-wide? See the <a href="docs/GUIDE.md#install-from-source">guide</a>.</sub>
 
 </details>
-
-</td>
-</tr>
-</table>
-
-### macOS
-
-<p align="center"><img src="https://img.shields.io/badge/-macOS-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></p>
 
 > [!NOTE]
 > The Mac version lives on the [`macos` branch of `ohshitgorillas/void`](https://github.com/ohshitgorillas/void/tree/macos),
