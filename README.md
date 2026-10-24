@@ -18,7 +18,6 @@ Say “hey Void” and he does the work.</p>
   <a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/github/v/release/PLAYER99-void/void?style=flat-square&color=3d9b74&label=latest" alt="Latest release"></a>
   <a href="https://github.com/PLAYER99-void/void/actions/workflows/installer.yml"><img src="https://img.shields.io/github/actions/workflow/status/PLAYER99-void/void/installer.yml?style=flat-square&label=installer%20tests" alt="Installer tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license"></a>
-  <a href="https://discord.gg/Y87KGhqbK5"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Join the Discord"></a>
 </p>
 
 <p align="center"><a href="https://discord.gg/Y87KGhqbK5"><img src="https://img.shields.io/badge/Join_our_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="40" alt="Join our Discord"></a></p>
