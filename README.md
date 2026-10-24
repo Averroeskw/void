@@ -21,6 +21,8 @@ Say “hey Void” and he does the work.</p>
   <a href="https://discord.gg/Y87KGhqbK5"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Join the Discord"></a>
 </p>
 
+<p align="center"><a href="https://discord.gg/Y87KGhqbK5"><img src="https://img.shields.io/badge/Join_our_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" height="40" alt="Join our Discord"></a></p>
+
 <br>
 
 <table>
