@@ -18,6 +18,7 @@ Say “hey Void” and he does the work.</p>
   <a href="https://github.com/PLAYER99-void/void/releases/latest"><img src="https://img.shields.io/github/v/release/PLAYER99-void/void?style=flat-square&color=3d9b74&label=latest" alt="Latest release"></a>
   <a href="https://github.com/PLAYER99-void/void/actions/workflows/installer.yml"><img src="https://img.shields.io/github/actions/workflow/status/PLAYER99-void/void/installer.yml?style=flat-square&label=installer%20tests" alt="Installer tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3d9b74?style=flat-square" alt="MIT license"></a>
+  <a href="https://discord.gg/Y87KGhqbK5"><img src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white" alt="Join the Discord"></a>
 </p>
 
 <br>
@@ -220,6 +221,7 @@ Run **`void doctor`** first. It checks your mic, his voice and Claude Code in a 
 | "I can't find Claude Code" | Install [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and run `claude` once to sign in. |
 | Windows: "DLL load failed" | Install the [Visual C++ runtime](https://aka.ms/vs/17/release/vc_redist.x64.exe), then `void restart`. |
 | Something else | Right-click him → Settings → More → **Copy diagnostics**, then **Report a problem** and paste it. Or see [Troubleshooting](docs/GUIDE.md#troubleshooting). |
+| Want to chat or share what you built | Join the [Void Discord](https://discord.gg/Y87KGhqbK5). |
 
 <br>
 
