@@ -57,3 +57,12 @@ Installed on 2026-10-25: all three backends answered VOID_OK through the authent
 Desktop microphone policy is preserved: wake_word=false, barge_in=false, follow_up=0, listen_on_show=false. Autostart is off; app-menu and notch launching work. Automatic upstream update checks are off to avoid replacing this fork's integration. No microphone was enabled and no existing Hermes model choice was changed.
 
 Archie voice and Zima/Jetson retain their existing controls. They are not selectable conversation backends in this version. Zima/Jetson do not have verified job feeds. This is not a claim of full remote-agent support.
+
+
+## Returning characters to Agents
+
+Void now has a visible ↑ Agents button and the former Hide menu entry uses the same label. The button hides the companion window without deleting it or stopping its backend. Void returns automatically after 30 seconds without interaction, provided it is not busy, speaking, recording, transcribing, awaiting approval, holding a draft/attachment, hovered, or displaying an open settings/history/menu panel. It stays available in the persistent Omarchy agent roster.
+
+All SummonedAgent cards have the same ↑ Agents button and 30-second idle return. Hover and active working/thinking/waiting/upload/restart states reset the timer. This applies to roster character cards, not unrelated windows or persistent dashboard decorations. The native orb keeps its existing drag/dock behavior.
+
+Validation: idle policy regression checks cover the timeout boundary, hover, hidden state, active state, recent interaction and post-task grace period; JavaScript syntax checked. Live visual and inactivity checks are recorded in the task session.

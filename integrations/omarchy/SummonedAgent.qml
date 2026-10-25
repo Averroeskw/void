@@ -10,10 +10,20 @@ PanelWindow {
     property string detail: ""
     property string state: "offline"
     property color tint: "#c9ab78"
+    property double lastUse: Date.now()
+    readonly property bool taskActive: ["working", "thinking", "waiting", "upload", "restart"].indexOf(state) >= 0
+    Timer {
+        interval: 1000; running: summon.shown; repeat: true
+        onTriggered: {
+            if (cardHover.hovered || summon.taskActive) summon.lastUse = Date.now()
+            else if (Date.now() - summon.lastUse >= 30000) summon.dismiss()
+        }
+    }
     signal openRequested()
     signal dismissed()
     function reveal() {
         exitMotion.stop()
+        lastUse = Date.now()
         shown = true
         card.y = -330
         entrance.restart()
@@ -34,6 +44,7 @@ PanelWindow {
     NumberAnimation { id: exitMotion; target: card; property: "y"; to: -330; duration: summon.calm ? 1 : 300; easing.type: Easing.InCubic; onFinished: { summon.shown = false; summon.dismissed() } }
     Item {
         id: card
+        HoverHandler { id: cardHover; onHoveredChanged: summon.lastUse = Date.now() }
         x: 25; y: -330; width: 390; height: 310
         AgentFace {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -61,7 +72,7 @@ PanelWindow {
                     }
                     Rectangle {
                         width: 116; height: 36; radius: 12; color: "#303632"
-                        Text { anchors.centerIn: parent; text: "Dismiss ↑"; color: "#ede8df"; font.pixelSize: 13 }
+                        Text { anchors.centerIn: parent; text: "↑ Agents"; color: "#ede8df"; font.pixelSize: 13 }
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: summon.dismiss() }
                     }
                 }

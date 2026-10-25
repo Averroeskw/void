@@ -436,6 +436,11 @@ body.hover #code{display:none}
 body.term #chip.work{opacity:0}          /* the terminal already says what he's doing */
 
 </style>
+<style>
+#returnAgents {position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:90;padding:7px 14px;border:1px solid #b8aa87;border-radius:18px;background:#20251fee;color:#eee7d6;font:13px system-ui;cursor:pointer;white-space:nowrap}
+body.bar #returnAgents,body.hover #returnAgents {display:none}
+body.returningAgents {opacity:0;margin-top:-80px!important;transition:opacity .3s,margin-top .3s}
+</style>
 </head>
 <body class="m-idle">
 <div id="flash"></div><div id="paint"></div>
@@ -620,6 +625,8 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
   <button id="go" class="round" type="submit" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
 </form>
 
+<button id="returnAgents" title="Return to the Agents bar; your agent stays installed">↑ Agents</button>
+<script src="/idle-return.js"></script>
 <script>
 // The server never writes its token into this page (anyone on the computer can load it). His window reads the token
 // from runtime.json, which only you can read, and passes it in the address after '#' (that part is never sent over
@@ -1848,7 +1855,7 @@ const ICON={
   hide:'<path d="M6 6l12 12M18 6 6 18"/>',
 };
 // (no top bar / blob button: you dock him by dragging him into a screen edge, and pull him out to get the blob back)
-const MENU=[['talk','talk'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['plugins','plug-ins'],['set','settings'],['hide','hide']];
+const MENU=[['talk','talk'],['cd','folder'],['history','history'],['look','show my screen'],['hover','hover mode'],['plugins','plug-ins'],['set','settings'],['hide','↑ Agents']];
 const MENU_XY=[];
 menuEl.innerHTML=MENU.map(([a,l],i)=>{ const ang=(-168+i*(156/(MENU.length-1)))*Math.PI/180, r=122;
   MENU_XY[i]=[Math.cos(ang)*r/1.1, Math.sin(ang)*r/1.1];                 // same spot in the face's SVG units (330px = 300 units)
@@ -1870,7 +1877,17 @@ function menu(on){ if(on) layoutMenu(); if(!on&&menuOn) menuShutAt=performance.n
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('.mb'); if(!b) return; menu(false);
   ({talk:()=>startRec('auto'), bar:()=>toggleBar(), cd:()=>showAsk('/cd '), history:()=>openPanel('history'), plugins:()=>openPanel('plugins'),
     look:()=>shoot('screen').then(j=>{ if(j) showAsk(''); }), hover:toggleHover, hide:dismiss, set:()=>settings(true)})[b.dataset.a](); });
-function dismiss(){ menu(false); hideAsk(); closePanels(); endListening(); if(!native('hide')) poke('sleepy',1200); }
+let returningAgents=false, returnTimer=null;
+function dismiss(){
+  if(returningAgents) return;
+  menu(false); hideAsk(); closePanels(); endListening();
+  returningAgents=true; document.body.classList.add('returningAgents');
+  returnTimer=setTimeout(()=>{
+    if(!native('hide')) poke('sleepy',1200);
+    document.body.classList.remove('returningAgents'); returningAgents=false;
+  },320);
+}
+$('#returnAgents').addEventListener('click',e=>{ e.preventDefault(); dismiss(); });
 // Esc / hiding him: he stops listening — a recording in progress is dropped and the "just keep talking" window closes
 function endListening(){ if(rec&&rec.mode!=='approve') stopRec(true); post('/api/follow',{act:'cancel'}).catch(()=>{}); follow=false; hearRaw=0; }
 
@@ -2318,7 +2335,7 @@ function toggleMute(){ muted=!muted; try{localStorage.setItem('void.muted',muted
 // hidden (Esc, hide, closing him) = fully off: he stops talking and the server closes the mic — no "hey Void" until
 // he's shown again (Start menu, your hotkey, or `void`)
 window.voidHidden=()=>{ hiddenNow=true; endListening(); menu(false); hideAsk(); shush(); post('/api/sleep',{on:true}).catch(()=>{}); };
-window.voidShown=()=>{ hiddenNow=false; post('/api/sleep',{on:false}).catch(()=>{}); entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
+window.voidShown=()=>{ clearTimeout(returnTimer); returningAgents=false; document.body.classList.remove('returningAgents'); hiddenNow=false; post('/api/sleep',{on:false}).catch(()=>{}); entrance(); wake(); refresh().then(()=>{ syncEye(true); if(pendingAppr||busy) return;
   if(info.listen_on_show&&!info.hover) setTimeout(()=>startRec('auto'),450); else setTimeout(()=>poke('wink',900),350); }); };
 async function comeBack(){ if(!info.hover) return; await toggleHover(false); await sleep(700); }
 window.voidCmd=async c=>{ hiddenNow=false;
@@ -2355,7 +2372,7 @@ function sendRegion(force){
     if(edge==='top') rs.push([R(r.left+r.width/2-75),R(r.top),150,52]);
     else if(edge==='bottom') rs.push([R(r.left+r.width/2-75),R(r.bottom-52),150,52]);
     else rs.push([edge==='left'?R(r.left):R(r.right-68),R(r.top+r.height/2-65),68,130]);
-  } else add(E.body,8);
+  } else { add(E.body,8); add($('#returnAgents'),2); }
   if(menuOn) $$('.mb').forEach(b=>add(b,2));
   if(ask.classList.contains('on')) add(ask,4);
   if(setEl.classList.contains('on')) add(setEl,4);
@@ -2583,6 +2600,21 @@ refresh().then(()=>{
 applyLook(LOOK_DEFAULT);
 events();
 setInterval(()=>{ if(!busy) refresh(); },15000);
+
+// Return to the persistent agent roster after 30 seconds of real inactivity.
+let agentsLastUse=performance.now();
+for(const name of ['pointermove','pointerdown','keydown','wheel'])
+  addEventListener(name,()=>{agentsLastUse=performance.now();},{passive:true});
+const originalShown=window.voidShown;
+window.voidShown=()=>{ agentsLastUse=performance.now(); originalShown(); };
+setInterval(()=>{
+  const blocked=busy || info.busy || playing || rec || transcribing || pendingAppr || pwReq ||
+    input.value.trim() || atts.length || menuOn || setEl.classList.contains('on') || panelEl.classList.contains('on');
+  const hovered=!!document.querySelector('#body:hover,#ask:hover,#returnAgents:hover,#barPill:hover');
+  if(blocked || hovered){ agentsLastUse=performance.now(); return; }
+  if(VoidIdleReturn.shouldReturn({hidden:hiddenNow||returningAgents,blocked:!!blocked,hovered,
+      now:performance.now(),lastUse:agentsLastUse,timeout:30000})) dismiss();
+},1000);
 </script>
 </body>
 </html>
