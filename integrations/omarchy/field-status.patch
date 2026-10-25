@@ -1,6 +1,6 @@
 --- a/field-status.py
 +++ b/field-status.py
-@@ -36,9 +36,28 @@
+@@ -36,9 +36,29 @@
          hermes = row('hermes','field','Hermes · Field',mood,str(latest.get('request') or 'Local agent · workspace 9')[:140], 'Running a task' if data.get('agent_busy') else str(latest.get('status') or 'No active task'))
      # Availability is not activity. These remain explicitly unconnected until an
      # authenticated job-event adapter is installed; never invent idle workers.
@@ -22,7 +22,8 @@
 +        with urllib.request.urlopen(req, timeout=0.6) as response:
 +            status = json.load(response)
 +        state = 'working' if status.get('busy') else 'idle'
-+        detail = 'Working · Claude Code' if status.get('busy') else 'Ready · Claude Code · desktop mic off'
++        backend = {'claude':'Claude Code','codex':'Codex','hermes':'Hermes'}.get(status.get('agent_backend'),'Claude Code')
++        detail = ('Working · ' if status.get('busy') else 'Ready · ') + backend + (' · wake word on' if status.get('wake_word') else ' · wake word off')
 +    except (OSError, ValueError, KeyError):
 +        pass
 +    return dict(agent='void',id='local',name='Void',state=state,
