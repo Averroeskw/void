@@ -2494,6 +2494,7 @@ def compact_session():
 
 
 def auto_compact():
+    if CFG.get("agent_backend", "claude") != "claude": return
     """After an answer: if the chat is past `compact_at` of the window, compact it (waits for any run in progress)."""
     if not ST.lock.acquire(blocking=False):
         return
@@ -2504,6 +2505,9 @@ def auto_compact():
 
 
 def run_claude(prompt, emit, partial):
+    if CFG.get("agent_backend", "claude") != "claude":
+        import agent_backends
+        return agent_backends.run(CFG["agent_backend"], prompt, emit, ST, trust())
     binary = claude_bin()
     if not binary:
         emit(t="error", text=f"Couldn't find Claude Code (`{CFG['claude_bin']}`). Install it, run `claude` once to "
@@ -2915,7 +2919,8 @@ def diagnostics():
 
 
 def state_info():
-    return {
+    import agent_backends
+    return {"agent_backend": CFG.get("agent_backend", "claude"), "agent_backends": agent_backends.available(),
         "version": VERSION, "update": Updates.status(), "update_check": bool(CFG.get("update_check", True)),
         "platform": "windows" if WIN else "linux", "ptt_hotkey": CFG.get("ptt_hotkey", "") or "",
         "presence": "bar" if CFG.get("presence") == "bar" else "orb",
@@ -3108,6 +3113,10 @@ class Handler(BaseHTTPRequestHandler):
                     upd["look"] = look()
                 if b.get("pupil_style") in ("slit", "circle", "dot"):
                     upd["pupil_style"] = b["pupil_style"]
+                if b.get("agent_backend") in ("claude", "codex", "hermes"):
+                    if ST.lock.locked():
+                        return self._json({"error": "Wait for the current agent to finish"}, 409)
+                    upd["agent_backend"] = b["agent_backend"]
                 if b.get("trust") in ("ask", "trust", "readonly"):
                     upd["trust"] = b["trust"]
                     upd["root_mode"] = False
@@ -3247,6 +3256,8 @@ class Handler(BaseHTTPRequestHandler):
                 if b.get("op") == "clear":
                     HIST_PATH.unlink(missing_ok=True)
                 return self._json({"items": hist_load(int(b.get("limit") or 60))})
+            if p == "/api/resume" and CFG.get("agent_backend", "claude") != "claude":
+                return self._json({"error": "History resume currently requires Claude"}, 400)
             if p == "/api/resume":
                 b = json.loads(self._body() or b"{}")
                 d = b.get("cwd") or ST.cwd
@@ -3263,6 +3274,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(state_info())
             if p == "/api/devices":
                 return self._json({"mics": list_mics()})
+            if p == "/api/compact" and CFG.get("agent_backend", "claude") != "claude":
+                return self._json({"error": "Use New chat to clear this agent's bounded conversation"}, 400)
             if p == "/api/compact":                   # "tidy up now"
                 if not ST.lock.acquire(blocking=False):
                     return self._json({"error": "still working on the last one"}, 409)
@@ -3273,6 +3286,10 @@ class Handler(BaseHTTPRequestHandler):
                 finally:
                     ST.lock.release()
             if p == "/api/new":
+                if ST.lock.locked():
+                    return self._json({"error": "Still working"}, 409)
+                import agent_backends
+                agent_backends.HISTORY.pop((CFG.get("agent_backend", "claude"), ST.cwd), None)
                 ST.fresh()
                 ST.save()
                 APPROVALS.reset()
@@ -3353,6 +3370,8 @@ class Handler(BaseHTTPRequestHandler):
     def ask(self):
         body = json.loads(self._body() or b"{}")
         said = (body.get("prompt") or "").strip()
+        if CFG.get("agent_backend", "claude") != "claude" and body.get("attach"):
+            return self._json({"error": "Attachments currently require the Claude backend"}, 400)
         extra = attach_prompt(body.get("attach"))
         prompt = (extra + "\n\n" + said).strip() if extra else said
         follow = bool(body.get("follow")) and not extra
@@ -3450,7 +3469,8 @@ class Handler(BaseHTTPRequestHandler):
                 break
             if gate["ignored"]:
                 return
-            rec["session"] = ST.session
+            rec["agent"] = CFG.get("agent_backend", "claude")
+            rec["session"] = ST.session if rec["agent"] == "claude" else None
             rec["him"] = untag(rec["him"]).strip()[-6000:]
             try:
                 ST.last_worked = bool(rec["tools"])

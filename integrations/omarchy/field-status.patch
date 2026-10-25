@@ -1,0 +1,32 @@
+--- a/field-status.py
++++ b/field-status.py
+@@ -36,9 +36,28 @@
+         hermes = row('hermes','field','Hermes · Field',mood,str(latest.get('request') or 'Local agent · workspace 9')[:140], 'Running a task' if data.get('agent_busy') else str(latest.get('status') or 'No active task'))
+     # Availability is not activity. These remain explicitly unconnected until an
+     # authenticated job-event adapter is installed; never invent idle workers.
+-    return [voice, hermes,
++    return [voice, hermes, void_entry(now),
+             row('remote','zima','Hermes · Zima','offline','Remote coordination','Live job feed not connected · open Remote'),
+             row('remote','jetson','Jetson · Orin','offline','Remote speech / GPU','Live job feed not connected · open Remote')]
++
++
++def void_entry(now):
++    installed = (Path.home()/'.local/bin/void').exists()
++    state = 'offline'
++    detail = 'Installed · click to open' if installed else 'Not installed'
++    try:
++        runtime = json.loads((Path.home()/'.local/share/void/runtime.json').read_text())
++        port = int(runtime['port'])
++        req = urllib.request.Request(f'http://127.0.0.1:{port}/api/state',
++            headers={'X-Void-Token': runtime['token']})
++        with urllib.request.urlopen(req, timeout=0.6) as response:
++            status = json.load(response)
++        state = 'working' if status.get('busy') else 'idle'
++        detail = 'Working · Claude Code' if status.get('busy') else 'Ready · Claude Code · desktop mic off'
++    except (OSError, ValueError, KeyError):
++        pass
++    return dict(agent='void',id='local',name='Void',state=state,
++        task='Desktop companion · Claude Code',detail=detail,updated=now,source='field-status')
+ 
+ 
+ def publish(rows):

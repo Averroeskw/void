@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Launch Void in the existing unlocked desktop session."""
+import json, os, subprocess
+from pathlib import Path
+home=Path.home()
+subprocess.run([str(home/'.local/bin/archie-desktopctl'),'inspect'],check=True,stdout=subprocess.DEVNULL)
+sessions=json.loads(subprocess.check_output(['hyprctl','instances','-j'],text=True))
+if len(sessions)!=1: raise SystemExit('Exactly one desktop session is required')
+s=sessions[0]
+env=dict(os.environ,HYPRLAND_INSTANCE_SIGNATURE=s['instance'],WAYLAND_DISPLAY=s['wl_socket'],XDG_RUNTIME_DIR=f'/run/user/{os.getuid()}',OMARCHY_PATH='/usr/share/omarchy')
+env['PATH']=str(home/'.local/bin')+':/usr/bin:/bin'
+with (home/'.local/share/void/launch.log').open('a') as log:
+ subprocess.Popen([str(home/'.local/bin/void'),'show'],env=env,stdout=log,stderr=log,start_new_session=True)

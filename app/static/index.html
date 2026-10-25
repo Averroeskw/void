@@ -559,6 +559,7 @@ body.term #chip.work{opacity:0}          /* the terminal already says what he's 
     <!-- ================= BRAIN ================= -->
     <div class="tab" data-tab="brain">
       <div class="row"><div class="t">How much can he do on his own?</div><div class="opts" id="trustOpts"></div></div>
+      <div class="row"><div class="t">Answering agent</div><div class="h">Each agent uses its existing account and configuration. Hermes uses its own approvals; Codex runs in its workspace sandbox. New chat clears this agent’s conversation.</div><div class="seg" id="agentChips"></div></div>
       <div class="row"><div class="t">Claude model</div><div class="h">Auto uses the fast model for quick questions and the full one for real work.</div><div class="seg" id="modelChips"></div>
         <div class="t sub">Thinking effort</div><div class="h">Higher thinks harder on real work, but is slower and uses more of your plan. “default” leaves it to Claude.</div><div class="seg" id="effortChips"></div>
         <label class="tg" style="margin-top:12px;padding-top:12px;border-top:1px solid #1c1c1c"><input type="checkbox" id="leanSw"><span class="sw"></span><span class="l">Light mode<small>Only the tools he needs (files, commands, web), not your other skills or plugins. Every chat starts about half the size, so it uses far less of your plan.</small></span></label>
@@ -1673,7 +1674,7 @@ async function send(text,opts={}){
   if(LIVE_OFF.test(text)){ const was=liveOn(); setLive(false); capShow(); setYou(text); say(was?'Okay, I stopped looking.':"I wasn't looking."); poke('wink',1000); return; }
   if(CTX_TIDY.test(text)){ capShow(); setYou(text); say('Okay, tidying up.'); tidyNow(); return; }
   if(MEM_SHOW.test(text)){ capShow(); setYou(text); const n=info.memory_count||0; say(n?`I have ${n} note${n>1?'s':''} — here they are.`:"Nothing yet! Say “remember …” and I'll keep it."); openPanel('memory'); return; }
-  if(!atts.length && text && !opts.claude){
+  if((info.agent_backend||'claude')==='claude' && !atts.length && text && !opts.claude){
     try{ const q=await (await post('/api/quick',{text})).json();
       if(q.handled){ capShow(); setYou(text); say(q.say); poke(q.mood||'happy',1300); if(q.sfx) sfx(q.sfx); if(q.state){ info=q.state; showInfo(); } return; } }catch(e){} }
   if(busy){ tick("one sec — I'm still on the last thing"); return; }
@@ -2114,6 +2115,7 @@ $('#pkAll').addEventListener('click',()=>{ const L=curLook(), R=randomLook(L); O
   post('/api/settings',{look:L}).then(r=>r.json()).then(j=>{ info=j; }); selectPart(pkPart); poke('excited',900); });
 
 function renderSettings(){
+  $('#agentChips').innerHTML=(info.agent_backends||[]).map(a=>`<button data-agent="${esc(a.id)}" ${a.available?'':'disabled'} class="${(info.agent_backend||'claude')===a.id?'on':''}">${esc(a.name)}</button>`).join('');
   { const rr=$('#rootSw').closest('.row'); if(rr) rr.style.display=info.root_ok===false?'none':''; }   // no sudo on Windows
   const cur=(info.model||'default');
   $('#effortChips').innerHTML=['',...EFFORTS].map(e=>`<button data-eff="${e}" class="${(info.effort||'')===e?'on':''}">${e||'default'}</button>`).join('');
@@ -2202,10 +2204,11 @@ async function loadMics(){
   try{ const j=await (await post('/api/devices')).json(), cur=info.mic_device||'';
     $('#micSel').innerHTML=`<option value="">System default</option>`+(j.mics||[]).map(m=>`<option value="${esc(m.id)}"${m.id===cur?' selected':''}>${esc(m.label)}</option>`).join('');
   }catch(e){} }
-async function setSetting(b){ try{ info=await (await post('/api/settings',b)).json(); showInfo(); if(setEl.classList.contains('on')) renderSettings(); }catch(e){ tick('settings: '+e.message,true); } }
+async function setSetting(b){ try{ const next=await (await post('/api/settings',b)).json(); if(next.error) throw new Error(next.error); info=next; showInfo(); if(setEl.classList.contains('on')) renderSettings(); }catch(e){ tick('settings: '+e.message,true); } }
 function setLook(patch){ clearTimeout(saveT); const L={...curLook(),...patch}; info.look=L; applyLook(L); lookShown=JSON.stringify(L); return setSetting({look:L}); }
 setEl.addEventListener('click',e=>{
   if(e.target.closest('[data-close]')) return settings(false);
+  const ba=e.target.closest('[data-agent]'); if(ba) return setSetting({agent_backend:ba.dataset.agent}).then(()=>tick('agent → '+(info.agent_backend||'claude')));
   const g=k=>e.target.closest(`[data-${k}]`);
   const be=g('eff'); if(be) return setSetting({effort:be.dataset.eff}).then(()=>tick('effort → '+be.dataset.eff));
   const bm=g('m'), bv=g('v'), bp=g('ps'), bs=g('stt'), bt=g('trust'), bo=g('open'), bk=g('skin'), bsw=g('sw'), bpd=g('pdel');
@@ -2284,6 +2287,7 @@ async function slash(cmd){
   if(c==='remember') return send('remember '+arg);
   if(c==='forget') return send('forget '+arg);
   if(c==='effort'){ if(!EFFORTS.includes(arg)) return tick('/effort <'+EFFORTS.join('|')+'>',true); await setSetting({effort:arg}); return tick('effort → '+arg); }
+  if(c==='agent'){ if(!['claude','codex','hermes'].includes(arg)) return tick('/agent claude · codex · hermes'); await setSetting({agent_backend:arg}); return tick('agent → '+info.agent_backend); }
   if(c==='model'){ await setSetting({model:arg||'default'}); tick('model → '+(info.model||'default')); return; }
   if(c==='voice'){ if(arg) await setSetting({voice:arg}); else settings(true,'voice'); return; }
   if(c==='settings') return settings(true);

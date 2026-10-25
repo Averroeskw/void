@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+export PATH="$HOME/.local/bin:$PATH"
+mkdir -p "$HOME/.config/void" "$HOME/.local/share/void" "$HOME/.local/share/applications"
+python3 - <<'PY'
+import json
+from pathlib import Path
+p=Path.home()/'.config/void/config.json'
+if not p.exists():
+ p.write_text(json.dumps(dict(cwd=str(Path.home()/'Archie'),claude_bin=str(Path.home()/'.local/bin/claude'),wake_word=False,barge_in=False,follow_up=0,listen_on_show=False,autostart=False,trust='ask',lean=False,presence='orb',update_check=False),indent=2)+'\n')
+ p.chmod(0o600)
+PY
+cp -r "$HOME/Archie/void/app" "$HOME/.local/share/void/app"
+printf '%s\n' "$HOME/Archie/void" > "$HOME/.local/share/void/source"
+install -m755 "$HOME/Archie/void/bin/void" "$HOME/.local/bin/void"
+# --user skips privileged packages; those are installed separately by the owner.
+"$HOME/Archie/void/install.sh" --user
+cat > "$HOME/.local/share/applications/void.desktop" <<DESKTOP
+[Desktop Entry]
+Name=Void
+Comment=Void companion · Claude Code
+Exec=$HOME/.local/bin/void
+Icon=$HOME/.local/share/void/app/static/icon.png
+Type=Application
+Categories=Utility;Development;
+StartupWMClass=Void
+DESKTOP

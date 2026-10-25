@@ -1,6 +1,6 @@
 --- a/Notch.qml
 +++ b/Notch.qml
-@@ -22,7 +22,38 @@
+@@ -22,7 +22,42 @@
  // (Claude Code hooks + Grok Bots reporting via `myzk-agents set`).
  Item {
    id: root
@@ -9,7 +9,7 @@
 +  function summonAgent(kind) {
 +    root.summonedKind = kind || "archie"
 +    var key = root.summonedKind.indexOf(":") >= 0 ? root.summonedKind
-+      : root.summonedKind === "remote" ? "remote:zima" : root.summonedKind + ":field"
++      : root.summonedKind === "void" ? "void:local" : root.summonedKind === "remote" ? "remote:zima" : root.summonedKind + ":field"
 +    root.summonedData = root.snapshot(key)
 +    root.pinned = false; root.hovered = false; root.alertKey = ""
 +    summoned.reveal()
@@ -25,21 +25,25 @@
 +    agentName: root.summonedData ? root.summonedData.name : root.agentName(root.summonedKind)
 +    detail: root.summonedData ? root.summonedData.detail : "No live status available · open existing controls"
 +    state: root.summonedData ? root.summonedData.state : "offline"
-+    tint: root.summonedKind.indexOf("hermes") === 0 ? "#86b9ad" : root.summonedKind.indexOf("remote") === 0 ? "#a5a1d0" : "#d6ba85"
++    tint: root.summonedKind.indexOf("void") === 0 ? "#b8a4e4" : root.summonedKind.indexOf("hermes") === 0 ? "#86b9ad" : root.summonedKind.indexOf("remote") === 0 ? "#a5a1d0" : "#d6ba85"
 +    onOpenRequested: root.launchField(root.summonedKind.split(":")[0])
 +  }
 +  Timer {
 +    interval: 1000; running: summoned.shown; repeat: true
 +    onTriggered: {
-+      var k = root.summonedKind.indexOf(":") >= 0 ? root.summonedKind : root.summonedKind === "remote" ? "remote:zima" : root.summonedKind + ":field"
++      var k = root.summonedKind.indexOf(":") >= 0 ? root.summonedKind : root.summonedKind === "void" ? "void:local" : root.summonedKind === "remote" ? "remote:zima" : root.summonedKind + ":field"
 +      root.summonedData = root.snapshot(k)
 +    }
 +  }
 +  function launchField(kind) {
++    if (kind === "void") {
++      Quickshell.execDetached([root.home + "/.local/bin/archie-void-open"])
++      return
++    }
      root.pinned=false; root.hovered=false; root.alertKey=""; root.inputOpen=false; root.clientOpen=false
      Quickshell.execDetached(["python3", Qt.resolvedUrl("open-field.py").toString().replace("file://", ""), kind])
    }
-@@ -628,7 +659,7 @@
+@@ -628,7 +663,7 @@
  
    // Tapping the pet: open its chat (or a new one), its terminal, or just play.
    function tapPet(d) {
@@ -48,7 +52,7 @@
    }
  
    function openClient() {
-@@ -826,7 +857,8 @@
+@@ -826,7 +861,8 @@
    // Keyboard/script control: `qs -p $OMARCHY_PATH/shell ipc call myzk.notch toggle`
    IpcHandler {
      target: "myzk.notch"
@@ -58,7 +62,7 @@
      function toggle(): void { root.pinned = !root.pinned; if (!root.pinned) root.pickedKey = "" }
      function grok(): void { if (!root.pinned) root.pinned = true; root.grokOpen = !root.grokOpen }
      function ask(): void { root.openInput() }
-@@ -850,6 +882,7 @@
+@@ -850,6 +886,7 @@
      // Opens the client window on the Git & Checksum tab.
      function tools(): void { clientWin.tab = 1; root.clientOpen = true }
      function close(): void {

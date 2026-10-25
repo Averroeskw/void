@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Install signed native runtime packages into Void's private user prefix."""
+from pathlib import Path
+import subprocess, urllib.request
+root=Path.home()/'.local/share/void/native'
+cache=root/'packages';cache.mkdir(parents=True,exist_ok=True)
+packages=['gtk-layer-shell','espeak-ng','gst-plugins-good','playerctl','maim','xclip']
+urls=subprocess.check_output(['pacman','-Sp','--print-format','%l',*packages],text=True).splitlines()
+for url in urls:
+    if not url.startswith('https://'): raise SystemExit('Expected HTTPS package URL')
+    dest=cache/url.rsplit('/',1)[1]
+    print('Downloading',dest.name,flush=True)
+    urllib.request.urlretrieve(url,dest)
+    urllib.request.urlretrieve(url+'.sig',str(dest)+'.sig')
+    subprocess.run(['pacman-key','--verify',str(dest)+'.sig',str(dest)],check=True,stdout=subprocess.DEVNULL)
+    subprocess.run(['bsdtar','-xf',str(dest),'-C',str(root),'usr'],check=True)
+print('Verified native runtime ready:',root,flush=True)
