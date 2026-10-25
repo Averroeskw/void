@@ -70,3 +70,25 @@
        root.customOpen = false; root.detectOpen = false; root.closeInput(); root.answerKey = ""; root.pinned = false
      }
      // Opens the most recent notch conversation.
+@@ -1439,8 +1476,8 @@
+                   scale: root.mode === "expanded" ? (hovered ? 1.04 : 1) : 0.85
+                   Behavior on opacity { NumberAnimation { duration: 240 } }
+                   Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack } }
+-                  onActivated: root.pickedKey = key
+-                  closable: true
++                  onActivated: { root.pickedKey = key; root.summonAgent(key) }
++                  closable: ["archie", "hermes", "remote", "void"].indexOf(agent) < 0
+                   onCloseRequested: root.forget(agent, ident)
+                 }
+               }
+@@ -1579,8 +1616,8 @@
+                     forceReaction: root.forceReaction
+                     focused: key === root.focusKey
+                     fontFamily: root.fontFamily
+-                    onActivated: root.pickedKey = key
+-                    closable: true
++                    onActivated: { root.pickedKey = key; root.summonAgent(key) }
++                    closable: ["archie", "hermes", "remote", "void"].indexOf(agent) < 0
+                     onCloseRequested: root.forget(agent, ident)
+ 
+                     // 0 = tucked inside the capsule, 1 = in its slot.
